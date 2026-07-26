@@ -1,0 +1,22 @@
+{
+    "project_name": "requirements",
+    "layout_publication_status": "READY_FOR_PUBLICATION",
+    "page_count": 7,
+    "file_size_kb": 569.2,
+    "rendered_diagrams_count": 3,
+    "technical_evaluation": {
+        "render_success_rate": 100.0,
+        "diagram_visual_render_rate": 100.0,
+        "page_budget_adherence": 83.3,
+        "visual_overflow_rate": 100.0,
+        "styling_consistency_score": 100.0
+    },
+    "project_management_kpis": {
+        "pdf_generated_success": true,
+        "total_pdf_pages_count": 7,
+        "file_size_kb": 569.2,
+        "rendered_diagram_images_count": 3,
+        "overflow_events_detected_count": 0
+    },
+    "execution_warnings": []
+}

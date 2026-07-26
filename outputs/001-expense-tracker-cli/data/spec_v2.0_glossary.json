@@ -1,0 +1,117 @@
+{
+    "project_name": "Expense Tracker CLI",
+    "items": [
+        {
+            "term": "CRUD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Functional Requirements",
+            "project_definition": "The four foundational persistent storage mutation primitives limited to addition, retrieval, and removal for this version."
+        },
+        {
+            "term": "Data Types",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "The specific storage formats used for identifiers, text, and financial values to maintain structural integrity."
+        },
+        {
+            "term": "Database Locking",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Edge Cases",
+            "project_definition": "A concurrency state where the SQLite file is inaccessible, requiring a graceful user notification."
+        },
+        {
+            "term": "Environment",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ASSUM-PY310",
+            "project_definition": "The operational context consisting of a standard terminal shell with the required runtime version."
+        },
+        {
+            "term": "Expense",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "A single financial expenditure event containing a label, cost, and timestamp."
+        },
+        {
+            "term": "Fixed-Point Numeric Constraint",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "NFR-PRECISION",
+            "project_definition": "The requirement to maintain exactly 2 decimal places for financial accuracy using high-precision types."
+        },
+        {
+            "term": "ID",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-004",
+            "project_definition": "A unique integer primary key used for targeting specific records for removal or listing."
+        },
+        {
+            "term": "Large Numbers",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "NFR-PRECISION",
+            "project_definition": "Numeric values reaching millions that must be processed without floating-point precision loss."
+        },
+        {
+            "term": "Negative Amounts",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "CON-NEG-AMT",
+            "project_definition": "Financial inputs below zero which are strictly forbidden during record creation."
+        },
+        {
+            "term": "Persistence",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-005",
+            "project_definition": "The mechanism ensuring data survives application termination via a local SQLite file."
+        },
+        {
+            "term": "Python 3.10",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ASSUM-PY310",
+            "project_definition": "The minimum required interpreter version for executing the system logic."
+        },
+        {
+            "term": "Scope",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Functional Requirements",
+            "project_definition": "The boundary of delivered features, specifically excluding categories, date filters, and record modifications."
+        },
+        {
+            "term": "Special Characters",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Edge Cases",
+            "project_definition": "Non-alphanumeric inputs like emojis or quotes that must be handled by the CLI without failure."
+        },
+        {
+            "term": "Timezone",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "The local temporal reference used for recording the creation timestamp of entries."
+        },
+        {
+            "term": "Updated",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Feature Specification: Expense Tracker CLI",
+            "project_definition": "The date of the last modification to the technical specification document."
+        },
+        {
+            "term": "Zero Amount",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Edge Cases",
+            "project_definition": "A financial value of 0.00, accepted for tracking free items."
+        }
+    ]
+}

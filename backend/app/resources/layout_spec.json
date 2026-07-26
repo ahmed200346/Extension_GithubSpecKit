@@ -1,0 +1,42 @@
+{
+  "document_metadata": {
+    "target_format": "PDF",
+    "page_size": "A4",
+    "orientation": "portrait",
+    "margins_mm": {
+      "top": 22,
+      "bottom": 20,
+      "left": 18,
+      "right": 18
+    }
+  },
+  "branding_theme": {
+    "primary_color": "#1A365D",
+    "secondary_color": "#2B6CB0",
+    "accent_color": "#38A169",
+    "background_light": "#F7FAFC",
+    "text_color": "#2D3748",
+    "border_color": "#CBD5E0",
+    "font_family_heading": "Helvetica-Bold",
+    "font_family_body": "Helvetica"
+  },
+  "typography_rules": {
+    "h1": { "font_size": 22, "leading": 26, "space_after": 12, "keep_with_next": true },
+    "h2": { "font_size": 14.5, "leading": 18, "space_after": 8, "keep_with_next": true },
+    "h3": { "font_size": 12, "leading": 15, "space_after": 6, "keep_with_next": true },
+    "body": { "font_size": 11.0, "leading": 15.5, "space_after": 7 },
+    "table_cell": { "font_size": 9.0, "leading": 12.0 },
+    "code": { "font_size": 9.0, "leading": 12.0 }
+  },
+  "diagram_rendering_limits": {
+    "max_width_pt": 504,
+    "max_height_pt": 650,
+    "dpi": 300,
+    "fallback_scaling_strategy": "fit_to_width"
+  },
+  "target_metrics": {
+    "min_render_success_rate": 100.0,
+    "max_visual_overflow_rate": 0.0,
+    "min_styling_consistency_score": 95.0
+  }
+}

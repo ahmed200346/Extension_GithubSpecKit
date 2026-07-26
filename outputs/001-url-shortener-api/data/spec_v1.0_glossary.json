@@ -1,0 +1,19 @@
+{
+    "project_name": "URL Shortener API",
+    "items": [
+        {
+            "term": "API",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "CONS-TECH",
+            "project_definition": "The programmatic interface developed with FastAPI to handle requests for link compression and resolution."
+        },
+        {
+            "term": "URLMapping",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-URLMAPPING",
+            "project_definition": "A data record that associates a unique short code with a destination long address."
+        }
+    ]
+}

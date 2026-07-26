@@ -1,0 +1,28 @@
+{
+    "diagrams": [
+        {
+            "title": "URL Shortener Data Model",
+            "type": "erDiagram",
+            "description": "Entity Relationship diagram for the URLRecord entity in SQLite, detailing attributes and constraints.",
+            "mermaid_code": "erDiagram\n    URLRECORD ||--o| URLRECORD : \"self-reference\"\n    URLRECORD {\n        int id PK\n        string original_url\n        string short_code \"Unique\"\n        string custom_alias \"Unique, Optional\"\n        int clicks_count\n        datetime created_at\n        datetime expires_at \"Optional\"\n        boolean is_active\n    }"
+        },
+        {
+            "title": "Short URL Creation Sequence",
+            "type": "sequenceDiagram",
+            "description": "Detailed interaction flow for creating a shortened URL, including validation and conflict handling.",
+            "mermaid_code": "sequenceDiagram\n    participant Client\n    participant API as FastAPI\n    participant DB as SQLite\n    \n    Client->>API: POST /api/v1/shorten {url, custom_alias, expires_at}\n    API->>API: Validate URL (Pydantic)\n    API->>DB: Check if custom_alias exists\n    DB-->>API: Result (Exists/Not Exists)\n    \n    alt Alias Conflict\n        API-->>Client: 409 Conflict {\"detail\": \"Alias already in use\"}\n    else Valid\n        API->>DB: Insert record (original_url, short_code, etc.)\n        DB-->>API: Success (ID)\n        API-->>Client: 201 Created {short_url, short_code}\n    end"
+        },
+        {
+            "title": "URL Redirection Logic Flow",
+            "type": "flowchart",
+            "description": "Decision logic for handling redirection requests, including expiration and activity checks.",
+            "mermaid_code": "flowchart TD\n    START[Start: GET /short_code] --> LOOKUP[Query DB by short_code or custom_alias]\n    LOOKUP --> DEC_EXISTS{\"Does record exist?\"}\n    \n    DEC_EXISTS -- No --> ERR_404[\"404 Not Found: Short URL not found\"]\n    DEC_EXISTS -- Yes --> DEC_ACTIVE{\"Is is_active == true?\"}\n    \n    DEC_ACTIVE -- No --> ERR_INACTIVE[\"404 Not Found: Short URL is inactive\"]\n    DEC_ACTIVE -- Yes --> DEC_EXPIRED{\"Is expires_at < now?\"}\n    \n    DEC_EXPIRED -- Yes --> ERR_410[\"410 Gone: Short URL has expired\"]\n    DEC_EXPIRED -- No --> INC_CLICK[Increment clicks_count]\n    \n    INC_CLICK --> REDIRECT[\"307 Temporary Redirect to original_url\"]\n    REDIRECT --> END[End]\n    ERR_404 --> END\n    ERR_INACTIVE --> END\n    ERR_410 --> END"
+        },
+        {
+            "title": "Requirements Traceability Matrix",
+            "type": "flowchart",
+            "description": "Mapping of User Stories to Functional Requirements and the underlying Data Entity.",
+            "mermaid_code": "flowchart LR\n    subgraph UserStories [User Stories]\n        US-CREATE[\"US-CREATE: Create Short URL\"]\n        US-REDIRECT[\"US-REDIRECT: Redirect to Long URL\"]\n        US-STATS[\"US-STATS: View Link Statistics\"]\n        US-DELETE[\"US-DELETE: Delete/Disable Short Link\"]\n    end\n\n    subgraph Requirements [Functional Requirements]\n        FR-001[\"FR-001: Unique Identifier\"]\n        FR-002[\"FR-002: Custom Alias\"]\n        FR-003[\"FR-003: Expiration Date\"]\n        FR-004[\"FR-004: 307 Redirect\"]\n        FR-005[\"FR-005: Atomic Click Count\"]\n        FR-006[\"FR-006: Stats Endpoint\"]\n        FR-007[\"FR-007: Deactivation/Deletion\"]\n        FR-010[\"FR-010: Expiration Handling\"]\n    end\n\n    subgraph DataLayer [Data Layer]\n        ENTITY-URLRECORD[\"ENTITY-URLRECORD: URLRecord Table\"]\n    end\n\n    US-CREATE --> FR-001\n    US-CREATE --> FR-002\n    US-CREATE --> FR-003\n    US-REDIRECT --> FR-004\n    US-REDIRECT --> FR-005\n    US-REDIRECT --> FR-010\n    US-STATS --> FR-006\n    US-DELETE --> FR-007\n\n    FR-001 --> ENTITY-URLRECORD\n    FR-004 --> ENTITY-URLRECORD"
+        }
+    ]
+}

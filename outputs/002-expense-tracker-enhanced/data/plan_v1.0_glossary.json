@@ -1,0 +1,159 @@
+{
+    "project_name": "Enhanced Expense Tracker",
+    "items": [
+        {
+            "term": "Branch",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Implementation Plan: Enhanced Expense Tracker",
+            "project_definition": "The specific git version control pointer `002-expense-tracker-enhanced` used for this feature set."
+        },
+        {
+            "term": "CRUD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The four foundational persistent storage mutation primitives requiring pre-implementation test suites."
+        },
+        {
+            "term": "Constraints",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "Mandatory operational requirements, specifically the necessity for atomic database write operations via commit/rollback mechanisms."
+        },
+        {
+            "term": "Data Integrity",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The assurance of accuracy and consistency across the 3-layer architecture through transactions and service-level validation."
+        },
+        {
+            "term": "Date",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Implementation Plan: Enhanced Expense Tracker",
+            "project_definition": "The temporal marker `2026-07-25` associated with the documentation version."
+        },
+        {
+            "term": "Exhaustive Specification",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The complete set of feature requirements located in `spec.md` serving as the primary foundation for development."
+        },
+        {
+            "term": "GATE",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "A quality control milestone that must be marked as passed to verify compliance with the system constitution."
+        },
+        {
+            "term": "Modular Architecture",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The mandated separation of concerns dividing the system into CLI, Service, and Repository segments."
+        },
+        {
+            "term": "Option",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Source Code (repository root)",
+            "project_definition": "The chosen structural configuration '1' designating a standalone single project setup."
+        },
+        {
+            "term": "Performance Goals",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The operational limit requiring listing and filtering of 1,000 records in under 1 second."
+        },
+        {
+            "term": "Primary Dependencies",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The core external library `pytest` used for verifying system behavior."
+        },
+        {
+            "term": "Project Type",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The classification of the application as a Command Line Interface tool."
+        },
+        {
+            "term": "Python 3.10",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "STACK-PY310",
+            "project_definition": "The minimum required runtime environment version for the application logic."
+        },
+        {
+            "term": "SQL",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "LAYER-REPO",
+            "project_definition": "The structured query language used within the repository layer for data persistence interaction."
+        },
+        {
+            "term": "Spec",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Implementation Plan: Enhanced Expense Tracker",
+            "project_definition": "The referenced `spec.md` file containing the functional requirements."
+        },
+        {
+            "term": "Storage",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "STORAGE-SQLITE",
+            "project_definition": "The local persistence mechanism implemented via SQLite."
+        },
+        {
+            "term": "Strict",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ARCH-3LAYER",
+            "project_definition": "The non-negotiable adherence to the defined 3-layer dependency flow."
+        },
+        {
+            "term": "Structure Decision",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Source Code (repository root)",
+            "project_definition": "The final architectural selection for the physical file organization of the standalone tool."
+        },
+        {
+            "term": "TDD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The methodology requiring `pytest` suites to be written for all methods before the logic is implemented."
+        },
+        {
+            "term": "Target Platform",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The supported execution environments including Windows, Linux, and macOS shell terminals."
+        },
+        {
+            "term": "Testing",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "TOOL-PYTEST",
+            "project_definition": "The process of executing unit and integration suites using the `pytest` framework."
+        },
+        {
+            "term": "YAGNI",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The design principle ensuring that only requested enhancements from the specification are implemented without speculative additions."
+        }
+    ]
+}

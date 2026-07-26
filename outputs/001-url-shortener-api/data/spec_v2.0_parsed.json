@@ -1,0 +1,329 @@
+{
+    "parsing_rationale": "The document is a detailed functional specification for a URL Shortener API. I have mapped the User Stories and Functional Requirements to the 'Functional Requirements' template field, the Key Entities and Assumptions to 'Non-Functional Requirements' (as they define the technical constraints/stack), and the Measurable Outcomes to 'Success Criteria'. The structure follows a clear flow from business needs (User Stories) to technical constraints (Entities/Requirements).",
+    "project_info": {
+        "project_name": "URL Shortener API",
+        "source_type": "refining",
+        "brief_explanation": "API for creating, redirecting, tracking, and deleting shortened URLs with custom aliases and expiration dates.",
+        "source_context": "Extraction from feature branch 001-url-shortener-api spec.md"
+    },
+    "doc_type": "spec",
+    "sections": [
+        {
+            "title": "Feature Specification: URL Shortener API",
+            "level": 1,
+            "raw_content": "**Feature Branch**: `001-url-shortener-api`\n\n**Created**: 2026-07-26\n\n**Status**: Draft\n\n**Input**: User description: \"Update specification for URL Shortener API with detailed SQLite data model (id, original_url, short_code, custom_alias, clicks_count, created_at, expires_at, is_active), API contracts (POST /api/v1/shorten, GET /{short_code}, GET /api/v1/stats/{short_code}, DELETE /api/v1/urls/{short_code}), strict URL validation via Pydantic (http/https), structured JSON errors ({\"detail\": \"...\"}) for 400, 404, 409, 422, and expiration handling (404 or 410). Include sequence diagrams for redirection and creation flows with Mermaid response convention.\"",
+            "mapped_to_template_field": "Goals & Objectives"
+        },
+        {
+            "title": "User Scenarios & Testing *(mandatory)*",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "User Story 1 - Create Short URL (Priority: P1)",
+            "level": 3,
+            "raw_content": "As a user, I want to provide a long URL and optionally a custom alias and expiration date, so that I can receive a shortened version for easy sharing.\n\n**Why this priority**: Core value proposition of the service.\n\n**Independent Test**: Submit a long URL with optional custom alias and expiration to the creation endpoint and verify the returned short code or alias.\n\n**Acceptance Scenarios**:\n\n1. **Given** a valid long URL, **When** the user submits it for shortening, **Then** the system returns a unique short identifier.\n2. **Given** a valid long URL and a unique custom alias, **When** the user submits both, **Then** the system uses the custom alias as the short identifier.\n3. **Given** a valid long URL and a custom alias that is already taken, **When** the user submits it, **Then** the system returns a \"409 Conflict\" error.\n4. **Given** a valid long URL and an expiration date, **When** the user submits it, **Then** the system creates the link and ensures it becomes inactive after the specified date.\n5. **Given** an invalid URL format (e.g., missing http/https), **When** the user submits it, **Then** the system returns a \"422 Unprocessable Entity\" error.\n\n---",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "User Story 2 - Redirect to Long URL (Priority: P1)",
+            "level": 3,
+            "raw_content": "As a user, I want to visit a shortened URL and be automatically redirected to the original long URL, provided the link is active and not expired.\n\n**Why this priority**: Essential for the short link to be useful.\n\n**Independent Test**: Visit a known active and non-expired short URL and verify the browser lands on the original destination.\n\n**Acceptance Scenarios**:\n\n1. **Given** a valid existing and active short identifier, **When** the user visits the corresponding short URL, **Then** the system redirects the user via \"307 Temporary Redirect\" to the original long URL and increments the click count.\n2. **Given** a short identifier that exists but has expired, **When** the user visits the URL, **Then** the system returns a \"410 Gone\" or \"404 Not Found\" response.\n3. **Given** a short identifier that exists but is marked as inactive, **When** the user visits the URL, **Then** the system returns a \"404 Not Found\" response.\n\n---",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "User Story 3 - Handle Non-Existent URL (Priority: P2)",
+            "level": 3,
+            "raw_content": "As a user, I want to see a clear error message when I visit a short URL that does not exist.\n\n**Why this priority**: Ensures a good user experience and prevents confusing \"empty\" pages.\n\n**Independent Test**: Visit a short URL with a random/non-existent identifier.\n\n**Acceptance Scenarios**:\n\n1. **Given** a short identifier that has never been created, **When** the user visits the corresponding short URL, **Then** the system returns a \"404 Not Found\" response.\n\n---",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "User Story 4 - View Link Statistics (Priority: P2)",
+            "level": 3,
+            "raw_content": "As a user, I want to retrieve the number of clicks for a specific short URL to monitor its usage.\n\n**Why this priority**: Provides value to creators for tracking engagement.\n\n**Independent Test**: Request stats for a known short identifier and verify the click count matches the actual number of redirections.\n\n**Acceptance Scenarios**:\n\n1. **Given** a valid short identifier, **When** the user requests stats via the API, **Then** the system returns a JSON object containing the `clicks_count`.\n\n---",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "User Story 5 - Delete/Disable Short Link (Priority: P3)",
+            "level": 3,
+            "raw_content": "As a user, I want to deactivate or delete a short URL so that it can no longer be used for redirection.\n\n**Why this priority**: Allows users to manage their links and revoke access if necessary.\n\n**Independent Test**: Delete a known short link and then attempt to visit it to verify it now returns a \"404 Not Found\" response.\n\n**Acceptance Scenarios**:\n\n1. **Given** a valid short identifier, **When** the user sends a deletion request, **Then** the system marks the link as inactive or removes it and returns a success response.\n\n---",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Edge Cases",
+            "level": 3,
+            "raw_content": "- **Duplicate Long URLs**: When the same long URL is shortened multiple times, the system generates a new unique short code for each request unless a custom alias is provided.\n- **Extreme URL Length**: The system supports URLs up to the maximum size allowed by the SQLite TEXT field without crashing.\n- **Race Conditions on Clicks**: Clicks are incremented atomically to ensure accuracy under high concurrency.\n- **Invalid Expiration Dates**: Dates in the past are rejected during creation with a \"400 Bad Request\" error.",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Technical Flows",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Short URL Creation Flow",
+            "level": 3,
+            "raw_content": "```mermaid\nsequenceDiagram\n    participant Client\n    participant API as FastAPI\n    participant DB as SQLite\n    \n    Client->>API: POST /api/v1/shorten {url, custom_alias, expires_at}\n    API->>API: Validate URL (Pydantic)\n    API->>DB: Check if custom_alias exists\n    DB-->>API: Result (Exists/Not Exists)\n    alt Alias Conflict\n        API-->>Client: \"409 Conflict\" {\"detail\": \"Alias already in use\"}\n    else Valid\n        API->>DB: Insert record (original_url, short_code, etc.)\n        DB-->>API: Success (ID)\n        API-->>Client: \"201 Created\" {short_url, short_code}\n    end\n```",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Redirection Flow",
+            "level": 3,
+            "raw_content": "```mermaid\nsequenceDiagram\n    participant Client\n    participant API as FastAPI\n    participant DB as SQLite\n    \n    Client->>API: GET /{short_code}\n    API->>DB: Query by short_code or custom_alias\n    DB-->>API: Record (original_url, expires_at, is_active)\n    \n    alt Not Found\n        API-->>Client: \"404 Not Found\" {\"detail\": \"Short URL not found\"}\n    else Inactive\n        API-->>Client: \"404 Not Found\" {\"detail\": \"Short URL is inactive\"}\n    else Expired\n        API-->>Client: \"410 Gone\" {\"detail\": \"Short URL has expired\"}\n    else Valid\n        API->>DB: Increment clicks_count\n        DB-->>API: Success\n        API-->>Client: \"307 Temporary Redirect\" (Location: original_url)\n    end\n```",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Requirements *(mandatory)*",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Functional Requirements",
+            "level": 3,
+            "raw_content": "- **FR-001**: System MUST generate a unique short identifier for a provided long URL.\n- **FR-002**: System MUST support an optional `custom_alias` for the short identifier, ensuring it is unique.\n- **FR-003**: System MUST support an optional `expires_at` date and time for links.\n- **FR-004**: System MUST perform a \"307 Temporary Redirect\" to the original long URL for active, non-expired links.\n- **FR-005**: System MUST atomically increment the `clicks_count` each time a successful redirection occurs.\n- **FR-006**: System MUST provide a stats endpoint `GET /api/v1/stats/{short_code}` returning the usage metrics.\n- **FR-007**: System MUST allow deactivating or deleting a short link via `DELETE /api/v1/urls/{short_code}`.\n- **FR-008**: System MUST strictly validate that input URLs use the `http` or `https` schema via Pydantic.\n- **FR-009**: System MUST return structured JSON errors in the format `{\"detail\": \"...\"}` for HTTP codes 400, 404, 409, and 422.\n- **FR-010**: System MUST return a \"410 Gone\" or \"404 Not Found\" response if a link's `expires_at` date has passed.",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Key Entities *(include if feature involves data)*",
+            "level": 3,
+            "raw_content": "- **URLRecord**: Represents a shortened URL mapping in the SQLite database.\n    - **id**: Unique identifier (Integer/UUID).\n    - **original_url**: The target long URL (TEXT).\n    - **short_code**: The system-generated short identifier (VARCHAR, Unique).\n    - **custom_alias**: The user-provided short identifier (VARCHAR, Unique, Optional).\n    - **clicks_count**: Total number of successful redirections (INTEGER, default 0).\n    - **created_at**: Timestamp of creation (DATETIME).\n    - **expires_at**: Timestamp after which the link is invalid (DATETIME, Optional).\n    - **is_active**: Boolean flag indicating if the link is currently active (BOOLEAN).",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "Success Criteria *(mandatory)*",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Measurable Outcomes",
+            "level": 3,
+            "raw_content": "- **SC-001**: Short URL generation (including database write) completes in under 1 second.\n- **SC-002**: Redirection logic (DB lookup + redirect response) occurs with under 500ms overhead.\n- **SC-003**: 100% of active, non-expired short links correctly redirect to their intended destination.\n- **SC-004**: 100% of invalid/expired/conflicting requests return the correct structured JSON error response.",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "Assumptions",
+            "level": 2,
+            "raw_content": "- The system is implemented using **FastAPI** for the API layer and **SQLite** for persistence.\n- **Pydantic** is used for input validation and schema enforcement.\n- All errors are returned as JSON with a `detail` field.\n- The `short_code` is generated using a secure, collision-resistant algorithm (e.g., Base62 encoding of a random number).\n- Input URLs must be absolute and include the protocol (http/https).",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        }
+    ],
+    "elements": [
+        {
+            "type": "user_story",
+            "identifier": "US-CREATE",
+            "content": "As a user, I want to provide a long URL and optionally a custom alias and expiration date, so that I can receive a shortened version for easy sharing.",
+            "source_section": "User Story 1 - Create Short URL (Priority: P1)",
+            "attributes": {
+                "priority": "P1"
+            }
+        },
+        {
+            "type": "user_story",
+            "identifier": "US-REDIRECT",
+            "content": "As a user, I want to visit a shortened URL and be automatically redirected to the original long URL, provided the link is active and not expired.",
+            "source_section": "User Story 2 - Redirect to Long URL (Priority: P1)",
+            "attributes": {
+                "priority": "P1"
+            }
+        },
+        {
+            "type": "user_story",
+            "identifier": "US-NOTFOUND",
+            "content": "As a user, I want to see a clear error message when I visit a short URL that does not exist.",
+            "source_section": "User Story 3 - Handle Non-Existent URL (Priority: P2)",
+            "attributes": {
+                "priority": "P2"
+            }
+        },
+        {
+            "type": "user_story",
+            "identifier": "US-STATS",
+            "content": "As a user, I want to retrieve the number of clicks for a specific short URL to monitor its usage.",
+            "source_section": "User Story 4 - View Link Statistics (Priority: P2)",
+            "attributes": {
+                "priority": "P2"
+            }
+        },
+        {
+            "type": "user_story",
+            "identifier": "US-DELETE",
+            "content": "As a user, I want to deactivate or delete a short URL so that it can no longer be used for redirection.",
+            "source_section": "User Story 5 - Delete/Disable Short Link (Priority: P3)",
+            "attributes": {
+                "priority": "P3"
+            }
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-001",
+            "content": "System MUST generate a unique short identifier for a provided long URL.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-002",
+            "content": "System MUST support an optional `custom_alias` for the short identifier, ensuring it is unique.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-003",
+            "content": "System MUST support an optional `expires_at` date and time for links.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-004",
+            "content": "System MUST perform a \"307 Temporary Redirect\" to the original long URL for active, non-expired links.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-005",
+            "content": "System MUST atomically increment the `clicks_count` each time a successful redirection occurs.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-006",
+            "content": "System MUST provide a stats endpoint `GET /api/v1/stats/{short_code}` returning the usage metrics.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-007",
+            "content": "System MUST allow deactivating or deleting a short link via `DELETE /api/v1/urls/{short_code}`.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-008",
+            "content": "System MUST strictly validate that input URLs use the `http` or `https` schema via Pydantic.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-009",
+            "content": "System MUST return structured JSON errors in the format `{\"detail\": \"...\"}` for HTTP codes 400, 404, 409, and 422.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-010",
+            "content": "System MUST return a \"410 Gone\" or \"404 Not Found\" response if a link's `expires_at` date has passed.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "entity",
+            "identifier": "ENTITY-URLRECORD",
+            "content": "URLRecord: Represents a shortened URL mapping in the SQLite database (id, original_url, short_code, custom_alias, clicks_count, created_at, expires_at, is_active).",
+            "source_section": "Key Entities *(include if feature involves data)*",
+            "attributes": {}
+        },
+        {
+            "type": "success_criterion",
+            "identifier": "SC-001",
+            "content": "Short URL generation (including database write) completes in under 1 second.",
+            "source_section": "Measurable Outcomes",
+            "attributes": {}
+        },
+        {
+            "type": "success_criterion",
+            "identifier": "SC-002",
+            "content": "Redirection logic (DB lookup + redirect response) occurs with under 500ms overhead.",
+            "source_section": "Measurable Outcomes",
+            "attributes": {}
+        },
+        {
+            "type": "assumption",
+            "identifier": "ASSUMPTION-TECH",
+            "content": "The system is implemented using FastAPI for the API layer and SQLite for persistence.",
+            "source_section": "Assumptions",
+            "attributes": {}
+        }
+    ],
+    "relationships": [
+        {
+            "source": "FR-001",
+            "to": "US-CREATE",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-002",
+            "to": "US-CREATE",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-003",
+            "to": "US-CREATE",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-004",
+            "to": "US-REDIRECT",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-005",
+            "to": "US-REDIRECT",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-006",
+            "to": "US-STATS",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-007",
+            "to": "US-DELETE",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-010",
+            "to": "US-REDIRECT",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-001",
+            "to": "ENTITY-URLRECORD",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "FR-004",
+            "to": "ENTITY-URLRECORD",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "SC-001",
+            "to": "FR-001",
+            "relation_type": "relates_to"
+        }
+    ],
+    "structural_gaps": [
+        {
+            "missing_section": "Scope & Out-of-Scope",
+            "priority": "MEDIUM",
+            "remediation_advice": "Define explicit boundaries, e.g., whether analytics are limited to click counts or include geo/browser data."
+        },
+        {
+            "missing_section": "Open Questions & Uncertainties",
+            "priority": "LOW",
+            "remediation_advice": "Add a section for unresolved technical choices, such as the specific Base62 algorithm."
+        }
+    ],
+    "open_questions": []
+}

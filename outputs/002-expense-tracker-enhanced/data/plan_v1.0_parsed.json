@@ -1,0 +1,195 @@
+{
+    "parsing_rationale": "I have analyzed the technical plan for the Enhanced Expense Tracker. The document defines a strict 3-layer architecture (CLI, Service, Repository) and specifies the tech stack (Python, SQLite, pytest). I mapped the technical context and project structure to the required template fields, extracted the architectural components as elements, and established the dependency flow between the layers. Since API contracts, detailed data schemas, and security identity were not explicitly detailed in the raw content (only mentioned as outputs for future phases), they are marked as structural gaps.",
+    "project_info": {
+        "project_name": "Enhanced Expense Tracker",
+        "source_type": "refining",
+        "brief_explanation": "Implementation of a CLI tool for expense tracking with categorized expenses, date-based filtering, and a 3-layer architecture for data integrity.",
+        "source_context": "Technical implementation plan derived from feature specifications."
+    },
+    "doc_type": "plan",
+    "sections": [
+        {
+            "title": "Implementation Plan: Enhanced Expense Tracker",
+            "level": 1,
+            "raw_content": "**Branch**: `002-expense-tracker-enhanced` | **Date**: 2026-07-25 | **Spec**: [spec.md](./spec.md)\n\n**Input**: Feature specification from `/specs/002-expense-tracker-enhanced/spec.md`",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Summary",
+            "level": 2,
+            "raw_content": "Implement an enhanced version of the Expense Tracker CLI that supports categorized expenses, date-based filtering, and a strict 3-layer architecture (CLI -> Service -> Repository) to ensure data integrity and testability.",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Technical Context",
+            "level": 2,
+            "raw_content": "**Language/Version**: Python 3.10+\n\n**Primary Dependencies**: `pytest` (Testing framework)\n\n**Storage**: SQLite (Local persistence)\n\n**Testing**: `pytest` (Unit and Integration tests)\n\n**Target Platform**: Local Terminal / Shell (Windows, Linux, macOS)\n\n**Project Type**: CLI (Command Line Interface)\n\n**Performance Goals**: Listing and filtering expenses in a dataset of up to 1,000 records takes less than 1 second.\n\n**Constraints**: All database write operations must be atomic (commit/rollback).\n\n**Scale/Scope**: Single-user local tool.",
+            "mapped_to_template_field": "Tech Stack & Tooling"
+        },
+        {
+            "title": "Constitution Check",
+            "level": 2,
+            "raw_content": "*GATE: Passed*\n\n- **Simplicity and YAGNI**: The requested enhancements (categorization, filtering) are direct requirements from the specification.\n- **Data Integrity**: The use of SQLite transactions and service-layer validation adheres to the constitution.\n- **Modular Architecture**: The design follows the mandated 3-layer separation (CLI $\\rightarrow$ Service $\\rightarrow$ Repository).\n- **TDD for CRUD**: The plan explicitly requires `pytest` suites for all Repository and Service methods prior to implementation.\n- **Exhaustive Specification**: The feature spec was reviewed and is used as the foundation for this plan.",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Project Structure",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": "System Architecture & Topology"
+        },
+        {
+            "title": "Documentation (this feature)",
+            "level": 3,
+            "raw_content": "```text\nspecs/002-expense-tracker-enhanced/\n├── plan.md              # This file\n├── research.md          # Phase 0 output\n├── data-model.md        # Phase 1 output\n├── quickstart.md        # Phase 1 output\n└── contracts/           # Phase 1 output\n```",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Source Code (repository root)",
+            "level": 3,
+            "raw_content": "```text\nsrc/\n├── cli/                 # CLI Layer: Input parsing, error mapping to user messages\n│   └── main.py\n├── services/            # Service Layer: Business logic, validation, orchestration\n│   └── expense_service.py\n├── repository/          # Repository Layer: SQL execution, transaction management\n│   └── expense_repository.py\n└── models/              # Shared entities and data types\n    └── expense.py\n\ntests/\n├── unit/                # Tests for Service and Repository layers\n│   ├── test_service.py\n│   └── test_repository.py\n└── integration/         # End-to-end CLI flow tests\n    └── test_cli.py\n```\n\n**Structure Decision**: Selected \"Option 1: Single project\" as it is a standalone CLI tool. The structure explicitly separates the three mandated layers.",
+            "mapped_to_template_field": "System Architecture & Topology"
+        },
+        {
+            "title": "Complexity Tracking",
+            "level": 2,
+            "raw_content": "*No violations of the constitution identified. All technical choices are required by the specification.*",
+            "mapped_to_template_field": null
+        }
+    ],
+    "elements": [
+        {
+            "type": "architecture_choice",
+            "identifier": "ARCH-3LAYER",
+            "content": "Strict 3-layer architecture: CLI -> Service -> Repository",
+            "source_section": "Summary",
+            "attributes": {
+                "pattern": "Layered Architecture"
+            }
+        },
+        {
+            "type": "architecture_choice",
+            "identifier": "STACK-PY310",
+            "content": "Python 3.10+",
+            "source_section": "Technical Context",
+            "attributes": {}
+        },
+        {
+            "type": "architecture_choice",
+            "identifier": "STORAGE-SQLITE",
+            "content": "SQLite for local persistence",
+            "source_section": "Technical Context",
+            "attributes": {
+                "constraint": "Atomic write operations (commit/rollback)"
+            }
+        },
+        {
+            "type": "architecture_choice",
+            "identifier": "TOOL-PYTEST",
+            "content": "pytest for Unit and Integration tests",
+            "source_section": "Technical Context",
+            "attributes": {}
+        },
+        {
+            "type": "entity",
+            "identifier": "LAYER-CLI",
+            "content": "CLI Layer: Input parsing and error mapping",
+            "source_section": "Source Code (repository root)",
+            "attributes": {
+                "file": "src/cli/main.py"
+            }
+        },
+        {
+            "type": "entity",
+            "identifier": "LAYER-SERVICE",
+            "content": "Service Layer: Business logic, validation, orchestration",
+            "source_section": "Source Code (repository root)",
+            "attributes": {
+                "file": "src/services/expense_service.py"
+            }
+        },
+        {
+            "type": "entity",
+            "identifier": "LAYER-REPO",
+            "content": "Repository Layer: SQL execution and transaction management",
+            "source_section": "Source Code (repository root)",
+            "attributes": {
+                "file": "src/repository/expense_repository.py"
+            }
+        },
+        {
+            "type": "entity",
+            "identifier": "LAYER-MODEL",
+            "content": "Shared entities and data types",
+            "source_section": "Source Code (repository root)",
+            "attributes": {
+                "file": "src/models/expense.py"
+            }
+        }
+    ],
+    "relationships": [
+        {
+            "source": "LAYER-CLI",
+            "to": "LAYER-SERVICE",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "LAYER-SERVICE",
+            "to": "LAYER-REPO",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "LAYER-SERVICE",
+            "to": "LAYER-MODEL",
+            "relation_type": "relates_to"
+        },
+        {
+            "source": "LAYER-REPO",
+            "to": "LAYER-MODEL",
+            "relation_type": "relates_to"
+        },
+        {
+            "source": "LAYER-REPO",
+            "to": "STORAGE-SQLITE",
+            "relation_type": "implements"
+        },
+        {
+            "source": "ARCH-3LAYER",
+            "to": "LAYER-CLI",
+            "relation_type": "contains"
+        },
+        {
+            "source": "ARCH-3LAYER",
+            "to": "LAYER-SERVICE",
+            "relation_type": "contains"
+        },
+        {
+            "source": "ARCH-3LAYER",
+            "to": "LAYER-REPO",
+            "relation_type": "contains"
+        }
+    ],
+    "structural_gaps": [
+        {
+            "missing_section": "Data Models & Schemas",
+            "priority": "HIGH",
+            "remediation_advice": "The plan mentions a data-model.md output for Phase 1; this must be ingested to define the Expense entity attributes."
+        },
+        {
+            "missing_section": "API Contracts & Flow",
+            "priority": "HIGH",
+            "remediation_advice": "Specific method signatures for the Service and Repository layers are missing (referred to as 'contracts/' output in Phase 1)."
+        },
+        {
+            "missing_section": "Security & Identity",
+            "priority": "LOW",
+            "remediation_advice": "Since it's a single-user local CLI tool, security might be minimal, but any file access permissions or data encryption needs should be noted."
+        },
+        {
+            "missing_section": "Open Questions & Uncertainties",
+            "priority": "LOW",
+            "remediation_advice": "No uncertainties were declared in the document; verify if any edge cases in date-filtering are unresolved."
+        }
+    ],
+    "open_questions": []
+}

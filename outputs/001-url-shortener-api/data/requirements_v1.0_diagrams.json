@@ -1,0 +1,16 @@
+{
+    "diagrams": [
+        {
+            "title": "Specification Validation Workflow",
+            "type": "flowchart",
+            "description": "Models the quality assurance process for the URL Shortener API specification based on the provided checklist criteria.",
+            "mermaid_code": "flowchart TD\n    START[Start Validation] --> CHECK_CONTENT{\"Content Quality Validated?\"}\n    \n    CHECK_CONTENT -- \"No\" --> FIX_CONTENT[\"Refine User Value & Remove Implementation Details\"]\n    FIX_CONTENT --> CHECK_CONTENT\n    \n    CHECK_CONTENT -- \"Yes\" --> CHECK_REQ{\"Requirements Complete?\"}\n    \n    CHECK_REQ -- \"No\" --> FIX_REQ[\"Resolve [NEEDS CLARIFICATION] & Define Edge Cases\"]\n    FIX_REQ --> CHECK_REQ\n    \n    CHECK_REQ -- \"Yes\" --> CHECK_READY{\"Feature Ready for Planning?\"}\n    \n    CHECK_READY -- \"No\" --> FIX_READY[\"Define Acceptance Criteria & Primary Flows\"]\n    FIX_READY --> CHECK_READY\n    \n    CHECK_READY -- \"Yes\" --> VALIDATED[\"Specification Validated (spec.md)\"]\n    VALIDATED --> END[End Process]"
+        },
+        {
+            "title": "Project Assumptions Mapping",
+            "type": "flowchart",
+            "description": "Traceability map for the technical assumptions identified in the quality checklist.",
+            "mermaid_code": "flowchart LR\n    subgraph ASSUMPTIONS [Project Assumptions]\n        ASSUMP-TECH[\"ASSUMP-TECH: The tech stack is FastAPI and SQLite\"]\n    end\n    \n    subgraph CONTEXT [Operational Context]\n        CTX-USER[\"User Request Satisfaction\"]\n    end\n    \n    ASSUMP-TECH -->|satisfies| CTX-USER"
+        }
+    ]
+}

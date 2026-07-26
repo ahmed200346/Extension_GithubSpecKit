@@ -1,0 +1,32 @@
+{
+    "document_type": "plan",
+    "project_name": "Enhanced Expense Tracker",
+    "technical_evaluation": {
+        "schema_adherence_rate": 100.0,
+        "structural_integrity_recall": 33.3,
+        "graph_relational_integrity": 100.0,
+        "macro_micro_traceability_index": 100.0,
+        "model_template_conformity": 100.0,
+        "quality_alerts": [
+            "Section requise absente des correspondances : data models & schemas",
+            "Section requise absente des correspondances : open questions & uncertainties",
+            "Section requise absente des correspondances : security & identity",
+            "Section requise absente des correspondances : api contracts & flow"
+        ]
+    },
+    "project_management_kpis": {
+        "health_index": 70.0,
+        "completeness_score": 33.3,
+        "readiness_status": "NEEDS_REFINEMENT",
+        "extracted_metrics_summary": {
+            "total_nodes_extracted": 8,
+            "total_edges_extracted": 8
+        },
+        "gaps_summary": {
+            "high_severity": 2,
+            "medium_severity": 0,
+            "low_severity": 2,
+            "unresolved_uncertainties": 0
+        }
+    }
+}

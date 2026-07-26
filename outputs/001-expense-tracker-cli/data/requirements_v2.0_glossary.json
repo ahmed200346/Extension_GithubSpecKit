@@ -1,0 +1,19 @@
+{
+    "project_name": "Expense Tracker CLI",
+    "items": [
+        {
+            "term": "CRUD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "EXP-CRUD",
+            "project_definition": "The four foundational persistent storage mutation primitives applied to financial expenditure records."
+        },
+        {
+            "term": "Feature",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Feature Readiness",
+            "project_definition": "A discrete unit of deliverable functionality that must satisfy measurable success criteria and mapped user scenarios."
+        }
+    ]
+}

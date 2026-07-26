@@ -1,0 +1,210 @@
+{
+  "project_source_indicators": {
+    "scratch": {
+      "keywords": ["init", "bootstrap", "create", "from scratch", "nouveau projet", "première version", "installation", "setup-db", "greenfield", "initial setup"],
+      "description": "Le projet est créé à partir de zéro, sans base de code existante ou héritée."
+    },
+    "refining": {
+      "keywords": ["update", "add", "refactor", "modify", "align", "fix", "extension", "modifier", "intégrer", "migration", "brownfield", "legacy", "existing codebase", "improvement"],
+      "description": "Le projet modifie, améliore ou étend une application ou une architecture déjà existante."
+    }
+  },
+  "spec": {
+    "doc_type": "spec",
+    "description": "Spécification fonctionnelle axée sur le 'Quoi' et le 'Pourquoi'. C'est la source de vérité métier.",
+    "expected_element_types": [
+      "user_story",
+      "requirement",
+      "functional_requirement",
+      "non_functional_requirement",
+      "entity",
+      "success_criterion",
+      "constraint",
+      "assumption"
+    ],
+    "required_sections": [
+      {
+        "name": "Goals & Objectives",
+        "aliases": ["Goals", "Objectifs", "Contexte", "Introduction", "Why This Project", "Business Value", "Vision", "Problématique"],
+        "description": "Justification métier, objectifs à atteindre et valeur ajoutée. Doit extraire la vision globale et le problème à résoudre.",
+        "extraction_hints": "Chercher des phrases commençant par 'L'objectif est de', 'Le but est', 'We aim to'."
+      },
+      {
+        "name": "Functional Requirements",
+        "aliases": ["Exigences Fonctionnelles", "Functional Specs", "User Stories", "Périmètre", "Features", "Fonctionnalités", "Requirements", "Authentication Endpoints", "Courses Endpoints", "Enrollments Endpoints", "Data Type Reference", "User", "Course", "Module", "Enrollment"],
+        "description": "Description précise des fonctionnalités attendues. Doit être extrait sous forme de liste structurée.",
+        "extraction_hints": "Identifier les listes à puces, les tableaux de fonctionnalités ou les User Stories (As a... I want...)."
+      },
+      {
+        "name": "Non-Functional Requirements",
+        "aliases": ["Exigences Non-Fonctionnelles", "Contraintes Techniques", "NFR", "Qualités", "Performance", "Scalabilité", "Disponibilité", "API Overview", "Response Envelope", "HTTP Status Codes", "Error Code Reference", "Authentication & Authorization Summary"],
+        "description": "Critères de performance, scalabilité, compatibilité, sécurité globale ou exigences de plateforme.",
+        "extraction_hints": "Rechercher des mentions de temps de réponse (ms), de nombre d'utilisateurs simultanés, ou de standards de conformité."
+      },
+      {
+        "name": "Scope & Out-of-Scope",
+        "aliases": ["Périmètre", "Hors-périmètre", "Limites", "Out of Scope", "In Scope", "Exclusions"],
+        "description": "Définition claire de ce qui est inclus et de ce qui est explicitement exclu.",
+        "extraction_hints": "Distinguer les sections 'In Scope' et 'Out of Scope'. Capturer les limites du projet."
+      },
+      {
+        "name": "Open Questions & Uncertainties",
+        "aliases": ["Questions en suspens", "Uncertainties", "Zones d'ombre", "Hypothèses", "Risques", "TBD", "To be defined", "Examples"],
+        "description": "Éléments non tranchés, risques identifiés, ou questions nécessitant un arbitrage.",
+        "extraction_hints": "Extraire tout ce qui est marqué comme 'Question', 'Hypothèse' ou 'À définir'."
+      }
+    ]
+  },
+  "plan": {
+    "doc_type": "plan",
+    "description": "Plan technique, d'implémentation et contrats d'intégration. Transforme le 'Quoi' en 'Comment'.",
+    "expected_element_types": [
+      "phase",
+      "task",
+      "decision",
+      "milestone",
+      "endpoint",
+      "entity",
+      "architecture_choice"
+    ],
+    "required_sections": [
+      {
+        "name": "System Architecture & Topology",
+        "aliases": ["Conception", "Architecture", "Schéma", "Composants", "Infrastructure", "Diagramme", "High-Level Design", "HLD", "Topology", "API Overview"],
+        "description": "Structure globale, flux de données et diagramme logique.",
+        "extraction_hints": "Identifier les descriptions de composants, les flux de données et les références à des diagrammes (Mermaid, PlantUML)."
+      },
+      {
+        "name": "Tech Stack & Tooling",
+        "aliases": ["Stack technique", "Outils", "Technologies", "Frameworks", "Langages", "Dependencies", "Environment", "Response Envelope"],
+        "description": "Choix validés de langages, frameworks, bases de données et outils système.",
+        "extraction_hints": "Extraire la liste des technologies avec leurs versions si précisées."
+      },
+      {
+        "name": "Data Models & Schemas",
+        "aliases": ["Base de données", "Modèle de données", "Database Schema", "Modèles", "Tables", "ERD", "Schema", "Entities", "Data Type Reference", "User", "Course", "Module", "Enrollment"],
+        "description": "Structures des tables PostgreSQL, clés primaires/étrangères, relations et types de données.",
+        "extraction_hints": "Rechercher des descriptions de tables, des colonnes SQL ou des diagrammes Entité-Relation."
+      },
+      {
+        "name": "API Contracts & Flow",
+        "aliases": ["Endpoints", "API", "Contrats", "Routes", "Communication", "Request/Response", "REST", "GraphQL", "Payloads", "Authentication Endpoints", "Courses Endpoints", "Enrollments Endpoints", "HTTP Status Codes", "Error Code Reference"],
+        "description": "Définition des interfaces d'API (FastAPI), requêtes et réponses attendues.",
+        "extraction_hints": "Extraire les méthodes HTTP (GET, POST, etc.), les URLs d'endpoints et les structures JSON de requête/réponse."
+      },
+      {
+        "name": "Security & Identity",
+        "aliases": ["Sécurité", "Auth", "Authentication", "Chiffrement", "Permissions", "RBAC", "JWT", "OAuth2", "Firewall", "Authentication & Authorization Summary"],
+        "description": "Gestion de l'accès, clés API, gestion des tokens ou conformité d'accès.",
+        "extraction_hints": "Identifier les mechanisms d'authentification et les rôles utilisateurs."
+      },
+      {
+        "name": "Open Questions & Uncertainties",
+        "aliases": ["Questions en suspens", "Uncertainties", "Zones d'ombre", "Hypothèses", "Risques", "TBD", "To be defined", "Examples"],
+        "description": "Éléments non tranchés, risques identifiés, ou questions nécessitant un arbitrage.",
+        "extraction_hints": "Extraire tout ce qui est marqué comme 'Question', 'Hypothèse' ou 'À définir'."
+      }
+    ]
+  },
+  "task": {
+    "doc_type": "task",
+    "description": "Fiche de tâche ou liste maîtresse d'exécution. C'est le niveau opérationnel final.",
+    "expected_element_types": [
+      "phase",
+      "task",
+      "sub_task",
+      "acceptance_criterion",
+      "test_case",
+      "dependency",
+      "constraint"
+    ],
+    "required_sections": [
+      {
+        "name": "Task Description & Objective",
+        "aliases": ["Description", "Objectif", "Task Overview", "But", "Implementation Detail", "Scope of Work"],
+        "description": "Détail fonctionnel de la tâche et son contexte.",
+        "extraction_hints": "Capturer l'action précise à réaliser et le résultat attendu."
+      },
+      {
+        "name": "Dependencies & Integration Points",
+        "aliases": ["Dépendances", "Intégration", "External Services", "APIs", "Modules", "Dependencies"],
+        "description": "Liste des dépendances externes, services ou modules nécessaires pour la tâche.",
+        "extraction_hints": "Identifier les services externes, les APIs et les modules dont la tâche dépend."
+      },
+      {
+        "name": "Acceptance Criteria",
+        "aliases": ["Critères d'acceptation", "Acceptance Criteria", "Definition of Done", "DoD", "Validation"],
+        "description": "Conditions quantifiables et vérifiables pour valider la tâche.",
+        "extraction_hints": "Extraire les points de vérification sous forme de liste (ex: 'L'API doit retourner 200 OK')."
+      },
+      {
+        "name": "Checkboxes Checklist",
+        "aliases": ["Checklist", "Tasks", "Sous-tâches", "Liste de contrôle", "Step-by-step"],
+        "description": "Liste de tâches Markdown (- [ ]) actionnables pour suivre l'avancement.",
+        "extraction_hints": "Extraire tous les éléments de type checkbox Markdown."
+      },
+      {
+        "name": "Testing & Validation",
+        "aliases": ["Tests", "Validation", "Unit Tests", "Integration Tests", "QA", "Test Plan"],
+        "description": "Stratégie de test, cas de test et critères de validation pour la tâche.",
+        "extraction_hints": "Extraire les plans de test, les cas de test et les critères de validation associés à la tâche."
+      },
+      {
+        "name": "Security & Performance Constraints",
+        "aliases": ["Contraintes", "Sécurité de la tâche", "Performance Limits", "Edge Cases", "Limitations"],
+        "description": "Limitations de sécurité ou exigences de rapidité spécifiques à ce bloc de code.",
+        "extraction_hints": "La capture des limitations de sécurité ou exigences de rapidité spécifiques à ce bloc de code."
+      },
+      {
+        "name": "Implementation Notes & References",
+        "aliases": ["Notes d'implémentation", "Références", "Guidelines", "Best Practices", "Documentation", "Notes"],
+        "description": "Informations supplémentaires pour guider l'implémentation, liens vers la documentation ou les standards.",
+        "extraction_hints": "Capturer les notes de mise en œuvre, les liens vers la documentation et les bonnes pratiques."
+      },
+      {
+        "name": "Open Questions & Uncertainties",
+        "aliases": ["Questions en suspens", "Uncertainties", "Zones d'ombre", "Hypothèses", "Risques", "TBD", "To be defined"],
+        "description": "Éléments non tranchés, risques identifiés, ou questions nécessitant un arbitrage.",
+        "extraction_hints": "Extraire tout ce qui est marqué comme 'Question', 'Hypothèse' ou 'À définir'."
+      }
+    ]
+  },
+  "constitution": {
+    "doc_type": "constitution",
+    "description": "Charte qualité, standards de développement et règles de gouvernance technique du dépôt.",
+    "expected_element_types": [
+      "coding_standard",
+      "rule",
+      "testing_gate",
+      "workflow_constraint",
+      "tool_configuration",
+      "requirement"
+    ],
+    "required_sections": [
+      {
+        "name": "Coding Standards & Style",
+        "aliases": ["Standards de code", "Linting", "Style Guide", "Règles d'écriture", "Conventions", "Formatting"],
+        "description": "Directives de formatage, conventions de nommage et configurations d'outils de validation de code.",
+        "extraction_hints": "Chercher les mentions de frameworks spécifiques, règles TypeScript, conventions de casse ou outils comme ESLint/Prettier."
+      },
+      {
+        "name": "Testing Discipline & Gates",
+        "aliases": ["Discipline de test", "Testing", "Couverture", "Tests", "Validation rules", "Seuils"],
+        "description": "Obligations de rédaction de tests (unitaires/intégration) et seuils minimaux de couverture requis.",
+        "extraction_hints": "Identifier les frameworks de test mentionnés (Jest, Playwright) ou les exigences de couverture (ex: 80% de couverture)."
+      },
+      {
+        "name": "Branching & PR Workflow",
+        "aliases": ["Workflow Git", "Pull Requests", "Branches", "CI/CD Gates", "Merge Requirements", "Gates"],
+        "description": "Règles de nommage des branches, processus de revue de code et barrières automatiques de validation CI/CD.",
+        "extraction_hints": "Repérer les mots-clés liés au cycle Git comme main, develop, squash, rebase, ou approbation requise."
+      },
+      {
+        "name": "Open Questions & Uncertainties",
+        "aliases": ["Questions en suspens", "Uncertainties", "Zones d'ombre", "Hypothèses", "Risques", "TBD", "To be defined"],
+        "description": "Éléments non tranchés, risques identifiés, ou questions nécessitant un arbitrage.",
+        "extraction_hints": "Extraire tout ce qui est marqué comme 'Question', 'Hypothèse' ou 'À définir'."
+      }
+    ]
+  }
+}

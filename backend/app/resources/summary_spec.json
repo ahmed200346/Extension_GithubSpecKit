@@ -1,0 +1,13 @@
+{
+  "agent_name": "Summary Agent",
+  "expected_output_format": "JSON",
+  "required_fields": {
+    "executive_brief": "A concise architectural overview explaining the core value, host platform, and data pattern. Must synthesize the project identity and context from the parsed metadata. Strict limit: 30 to 150 words.",
+    "technical_stack": {
+      "languages_and_frameworks": "List of core runtimes, frameworks, and testing tools. Must be cross-referenced with the extracted graph elements of type 'tool_configuration'.",
+      "architectural_constraints": "List of physical boundaries, routing paradigms, and technical thresholds. Must be explicitly extracted by analyzing the elements of type 'constraint' or 'non_functional_requirement' and their relational dependencies."
+    },
+    "maturity_assessment": "A deep professional judgment on the stability and quality of the specifications. Must evaluate the structural completeness by cross-referencing the 'structural_gaps' array and the section mapping success states, without parroting raw scores.",
+    "critical_dependencies": "External systems, SDKs, specific environment variables, and non-negotiable workflow gates. Must be mapped by traversing the graph relationships (e.g., 'depends_on', 'relates_to') between entities and requirements."
+  }
+}

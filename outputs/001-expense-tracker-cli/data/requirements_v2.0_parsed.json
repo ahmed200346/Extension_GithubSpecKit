@@ -1,0 +1,105 @@
+{
+    "parsing_rationale": "The source document is not a functional specification itself, but rather a 'Quality Checklist' designed to validate a specification. Since the target doc_type is 'spec', I have extracted the implicit requirements and constraints mentioned as 'passed' in the checklist. The document refers to a 'baseline for the 001-Expense-tracker project' covering 'basic CRUD and totals', which I have formalized as core functional requirements.",
+    "project_info": {
+        "project_name": "Expense Tracker CLI",
+        "source_type": "refining",
+        "brief_explanation": "Validation checklist confirming the readiness of the Expense Tracker CLI specification, emphasizing CRUD operations and totals calculation.",
+        "source_context": "Requirements quality audit file."
+    },
+    "doc_type": "spec",
+    "sections": [
+        {
+            "title": "Specification Quality Checklist: Expense Tracker CLI (Detailed)",
+            "level": 1,
+            "raw_content": "**Purpose**: Validate specification completeness and quality before proceeding to planning\n**Created**: 2026-07-25\n**Feature**: [spec.md](spec.md)",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Content Quality",
+            "level": 2,
+            "raw_content": "- [x] No implementation details (languages, frameworks, APIs)\n- [x] Focused on user value and business needs\n- [x] Written for non-technical stakeholders\n- [x] All mandatory sections completed",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "Requirement Completeness",
+            "level": 2,
+            "raw_content": "- [x] No [NEEDS CLARIFICATION] markers remain\n- [x] Requirements are testable and unambiguous\n- [x] Success criteria are measurable\n- [x] Success criteria are technology-agnostic (no implementation details)\n- [x] All acceptance scenarios are defined\n- [x] Edge cases are identified\n- [x] Scope is clearly bounded\n- [x] Dependencies and assumptions identified",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Feature Readiness",
+            "level": 2,
+            "raw_content": "- [x] All functional requirements have clear acceptance criteria\n- [x] User scenarios cover primary flows\n- [x] Feature meets measurable outcomes defined in Success Criteria\n- [x] No implementation details leak into specification",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Notes",
+            "level": 2,
+            "raw_content": "- All items passed validation. The specification is now a comprehensive baseline for the 001-Expense-tracker project, covering basic CRUD and totals.",
+            "mapped_to_template_field": "Goals & Objectives"
+        }
+    ],
+    "elements": [
+        {
+            "type": "functional_requirement",
+            "identifier": "EXP-CRUD",
+            "content": "The system must provide basic CRUD (Create, Read, Update, Delete) capabilities for expenses.",
+            "source_section": "Notes",
+            "attributes": {
+                "scope": "core"
+            }
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "EXP-TOTALS",
+            "content": "The system must be able to calculate and display expense totals.",
+            "source_section": "Notes",
+            "attributes": {
+                "scope": "core"
+            }
+        },
+        {
+            "type": "non_functional_requirement",
+            "identifier": "SPEC-AGNOSTIC",
+            "content": "The specification must remain technology-agnostic, containing no implementation details regarding languages, frameworks, or APIs.",
+            "source_section": "Content Quality",
+            "attributes": {
+                "category": "documentation_standard"
+            }
+        },
+        {
+            "type": "constraint",
+            "identifier": "SPEC-TESTABLE",
+            "content": "All requirements must be testable and unambiguous with measurable success criteria.",
+            "source_section": "Requirement Completeness",
+            "attributes": {
+                "category": "quality_gate"
+            }
+        }
+    ],
+    "relationships": [
+        {
+            "source": "EXP-CRUD",
+            "to": "SPEC-TESTABLE",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "EXP-TOTALS",
+            "to": "SPEC-TESTABLE",
+            "relation_type": "depends_on"
+        }
+    ],
+    "structural_gaps": [
+        {
+            "missing_section": "Scope & Out-of-Scope",
+            "priority": "MEDIUM",
+            "remediation_advice": "The checklist confirms scope is 'bounded', but the actual boundaries are not listed in this audit file."
+        },
+        {
+            "missing_section": "Open Questions & Uncertainties",
+            "priority": "LOW",
+            "remediation_advice": "The checklist indicates no markers remain, suggesting this section is empty or resolved."
+        }
+    ],
+    "open_questions": []
+}

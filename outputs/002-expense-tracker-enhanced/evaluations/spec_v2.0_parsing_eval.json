@@ -1,0 +1,30 @@
+{
+    "document_type": "spec",
+    "project_name": "Enhanced Expense Tracker",
+    "technical_evaluation": {
+        "schema_adherence_rate": 60.0,
+        "structural_integrity_recall": 80.0,
+        "graph_relational_integrity": 93.8,
+        "macro_micro_traceability_index": 100.0,
+        "model_template_conformity": 100.0,
+        "quality_alerts": [
+            "Section requise absente des correspondances : open questions & uncertainties",
+            "Relation orpheline détectée : Lien brisé entre 'FR-012' et 'SC-004'"
+        ]
+    },
+    "project_management_kpis": {
+        "health_index": 100.0,
+        "completeness_score": 80.0,
+        "readiness_status": "READY_FOR_EXECUTION",
+        "extracted_metrics_summary": {
+            "total_nodes_extracted": 22,
+            "total_edges_extracted": 16
+        },
+        "gaps_summary": {
+            "high_severity": 0,
+            "medium_severity": 0,
+            "low_severity": 1,
+            "unresolved_uncertainties": 0
+        }
+    }
+}

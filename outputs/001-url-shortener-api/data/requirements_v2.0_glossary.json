@@ -1,0 +1,19 @@
+{
+    "project_name": "URL Shortener API",
+    "items": [
+        {
+            "term": "API",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Content Quality",
+            "project_definition": "The programmatic interface layer facilitating network-based communication between the client and the backend services."
+        },
+        {
+            "term": "Feature",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Feature Readiness",
+            "project_definition": "A discrete unit of functional value that must satisfy measurable outcomes and clear acceptance criteria."
+        }
+    ]
+}

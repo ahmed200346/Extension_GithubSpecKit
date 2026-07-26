@@ -1,0 +1,22 @@
+{
+    "diagrams": [
+        {
+            "title": "3-Layer Architecture Exception Flow",
+            "type": "flowchart",
+            "description": "Models the 'Bottom-Up Exception' strategy where errors propagate from the Repository through the Service to the CLI.",
+            "mermaid_code": "flowchart TD\n    START[Start Operation] --> REPO_OP[\"Repository Layer: Execute SQL\"]\n    REPO_OP --> DEC1{\"Error Occurred?\"}\n    DEC1 -- \"No\" --> END[End Operation]\n    DEC1 -- \"Yes\" --> REPO_ERR[\"Throw Low-Level Exception (e.g. sqlite3.OperationalError)\"]\n    \n    REPO_ERR --> SERV_CATCH[\"Service Layer: Catch Repository Error\"]\n    SERV_CATCH --> SERV_MAP[\"Map to Business Exception (e.g. EntityNotFoundError)\"]\n    SERV_MAP --> CLI_CATCH[\"CLI Layer: Catch Service Exception\"]\n    CLI_CATCH --> CLI_MAP[\"Map to User-Friendly String\"]\n    CLI_MAP --> END"
+        },
+        {
+            "title": "Technical Requirements Traceability",
+            "type": "flowchart",
+            "description": "Maps the relationships between the Repository Pattern and the associated functional/non-functional requirements.",
+            "mermaid_code": "flowchart TD\n    subgraph \"Core Architecture\"\n        REPO-PATTERN[\"REPO-PATTERN: Class-based Repository\"]\n    end\n\n    subgraph \"Implementation Constraints\"\n        SIMPLICITY-YAGNI[\"SIMPLICITY-YAGNI: Avoid SQLAlchemy ORM\"]\n    end\n\n    subgraph \"Operational Requirements\"\n        EXCEPTION-STRAT[\"EXCEPTION-STRAT: Bottom-Up Exception Strategy\"]\n        ATOMIC-TX[\"ATOMIC-TX: Atomic Transactions\"]\n        TDD-WORKFLOW[\"TDD-WORKFLOW: Tiered Testing Strategy\"]\n    end\n\n    EXCEPTION-STRAT -->|depends_on| REPO-PATTERN\n    ATOMIC-TX -->|implements| REPO-PATTERN\n    TDD-WORKFLOW -->|relates_to| REPO-PATTERN\n    SIMPLICITY-YAGNI -.->|constrains| REPO-PATTERN"
+        },
+        {
+            "title": "TDD Testing Strategy Sequence",
+            "type": "sequenceDiagram",
+            "description": "Illustrates the tiered testing approach for Repositories, Services, and Integration.",
+            "mermaid_code": "sequenceDiagram\n    participant TestRunner as Pytest\n    participant RepoTest as Repository Test\n    participant MemDB as In-Memory SQLite\n    participant ServTest as Service Test\n    participant MockRepo as Mock Repository\n    participant IntTest as Integration Test\n    participant FileDB as File-based SQLite\n\n    Note over TestRunner, MemDB: Repository Layer Testing\n    TestRunner ->> RepoTest: Run CRUD Tests\n    RepoTest ->> MemDB: Execute SQL\n    MemDB -->> RepoTest: Return Result\n\n    Note over TestRunner, MockRepo: Service Layer Testing\n    TestRunner ->> ServTest: Run Business Logic Tests\n    ServTest ->> MockRepo: Call Method\n    MockRepo -->> ServTest: Return Mocked Data\n\n    Note over TestRunner, FileDB: Full Stack Testing\n    TestRunner ->> IntTest: Run CLI Command\n    IntTest ->> FileDB: Persistent Storage Access\n    FileDB -->> IntTest: Return Result"
+        }
+    ]
+}

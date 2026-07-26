@@ -1,0 +1,203 @@
+{
+    "parsing_rationale": "The document is a functional specification for a CLI Expense Tracker. I have mapped the physical sections to the template fields. User stories, functional requirements, entities, and success criteria were extracted as atomic elements. Relationships were established between the user story, the functional requirements it triggers, and the data entity it populates. Structural gaps were identified for missing high-level sections like 'Goals & Objectives' and 'Open Questions'.",
+    "project_info": {
+        "project_name": "Expense Tracker CLI",
+        "source_type": "scratch",
+        "brief_explanation": "A simple Python CLI application to record expenses into a SQLite database.",
+        "source_context": "Initial specification for feature/001-expense-tracker-cli"
+    },
+    "doc_type": "spec",
+    "sections": [
+        {
+            "title": "Feature Specification: Expense Tracker CLI",
+            "level": 1,
+            "raw_content": "**Feature Branch**: `feature/001-expense-tracker-cli`\n\n**Created**: 2026-07-24\n\n**Status**: Draft\n\n**Input**: User description: \"Crée une spécification initiale très simple dans .specify/specs/expense_tracker_spec.md pour une application CLI de gestion de dépenses (Expense Tracker) en Python. Respecte la Constitution du projet : Langage : Python 3.10+, Base de données : SQLite, Interface : CLI basique. Contenu souhaité : 1. Titre et résumé exécutif court. 2. Une User Story basique : Permettre à l'utilisateur d'ajouter une dépense avec un montant et une description via la CLI. 3. Un modèle de données minimal (table SQLite `expenses`).\"",
+            "mapped_to_template_field": "Goals & Objectives"
+        },
+        {
+            "title": "User Scenarios & Testing *(mandatory)*",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "User Story 1 - Record a New Expense (Priority: P1)",
+            "level": 3,
+            "raw_content": "As a user, I want to record a spending event by providing a description and an amount via the command line so that I can track my expenses.\n\n**Why this priority**: This is the core functionality of the application. Without the ability to add expenses, the tracker serves no purpose.\n\n**Independent Test**: Execute a command to add an expense (e.g., `add \"Lunch\" 15.50`) and verify that the data is persisted in the database and a confirmation is shown.\n\n**Acceptance Scenarios**:\n\n1. **Given** the application is running, **When** I provide a valid description (non-empty string) and a positive numeric amount, **Then** the expense is saved to the database and a success message is displayed.\n2. **Given** the application is running, **When** I provide a non-numeric amount, **Then** an error message is displayed explaining the input is invalid, and no record is created.\n3. **Given** the application is running, **When** I provide an empty description, **Then** an error message is displayed and no record is created.\n\n---",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Edge Cases",
+            "level": 3,
+            "raw_content": "- **Negative Amounts**: The system should treat negative amounts as invalid inputs unless explicitly defined as \"income\" (out of scope for this initial spec).\n- **Zero Amount**: Expenses of 0.00 should be accepted if the description is valid.\n- **Large Numbers**: Ensure the system handles large numeric values without precision loss (using appropriate numeric types).\n- **Special Characters**: Descriptions containing quotes or special characters should be handled without crashing the CLI.",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Requirements *(mandatory)*",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Functional Requirements",
+            "level": 3,
+            "raw_content": "- **FR-001**: System MUST allow users to add a new expense by providing a description and an amount via the CLI.\n- **FR-002**: System MUST persist every successfully added expense in a SQLite database.\n- **FR-003**: System MUST validate that the amount is a valid positive number.\n- **FR-004**: System MUST validate that the description is not empty.\n- **FR-005**: System MUST provide immediate visual confirmation (success or error) to the user after an attempt to add an expense.",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Key Entities *(include if feature involves data)*",
+            "level": 3,
+            "raw_content": "- **Expense**: Represents a single financial expenditure.\n  - `id`: Unique identifier (Primary Key).\n  - `description`: A brief text description of the expense.\n  - `amount`: The numeric cost of the expense.\n  - `created_at`: Timestamp of when the expense was recorded.",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "Success Criteria *(mandatory)*",
+            "level": 2,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "Measurable Outcomes",
+            "level": 3,
+            "raw_content": "- **SC-001**: Users can successfully add a valid expense in under 10 seconds from command execution to confirmation.\n- **SC-002**: 100% of validated and \"successfully added\" expenses are retrievable from the SQLite database.\n- **SC-003**: 100% of invalid inputs (e.g., text in amount field) result in a user-facing error message rather than a system crash.",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "Assumptions",
+            "level": 2,
+            "raw_content": "- **Environment**: The user has Python 3.10+ installed and is running the application in a standard terminal/shell.\n- **Persistence**: The SQLite database file is automatically created in the project root or a designated data folder on first execution.\n- **Scope**: Only \"adding\" expenses is covered in this initial specification; listing, deleting, or summarizing expenses is out of scope for this version.\n- **Data Types**: Amounts are handled as decimals to ensure financial precision.",
+            "mapped_to_template_field": "Scope & Out-of-Scope"
+        }
+    ],
+    "elements": [
+        {
+            "type": "user_story",
+            "identifier": "US-01",
+            "content": "As a user, I want to record a spending event by providing a description and an amount via the command line so that I can track my expenses.",
+            "source_section": "User Story 1 - Record a New Expense (Priority: P1)",
+            "attributes": {
+                "priority": "P1"
+            }
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-001",
+            "content": "System MUST allow users to add a new expense by providing a description and an amount via the CLI.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-002",
+            "content": "System MUST persist every successfully added expense in a SQLite database.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-003",
+            "content": "System MUST validate that the amount is a valid positive number.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-004",
+            "content": "System MUST validate that the description is not empty.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "FR-005",
+            "content": "System MUST provide immediate visual confirmation (success or error) to the user after an attempt to add an expense.",
+            "source_section": "Functional Requirements",
+            "attributes": {}
+        },
+        {
+            "type": "entity",
+            "identifier": "ENT-EXPENSE",
+            "content": "Expense: Represents a single financial expenditure (id, description, amount, created_at).",
+            "source_section": "Key Entities *(include if feature involves data)*",
+            "attributes": {
+                "table": "expenses",
+                "db": "SQLite"
+            }
+        },
+        {
+            "type": "success_criterion",
+            "identifier": "SC-001",
+            "content": "Users can successfully add a valid expense in under 10 seconds from command execution to confirmation.",
+            "source_section": "Measurable Outcomes",
+            "attributes": {}
+        },
+        {
+            "type": "success_criterion",
+            "identifier": "SC-002",
+            "content": "100% of validated and \"successfully added\" expenses are retrievable from the SQLite database.",
+            "source_section": "Measurable Outcomes",
+            "attributes": {}
+        },
+        {
+            "type": "success_criterion",
+            "identifier": "SC-003",
+            "content": "100% of invalid inputs result in a user-facing error message rather than a system crash.",
+            "source_section": "Measurable Outcomes",
+            "attributes": {}
+        },
+        {
+            "type": "assumption",
+            "identifier": "ASSUMP-ENV",
+            "content": "The user has Python 3.10+ installed and is running the application in a standard terminal/shell.",
+            "source_section": "Assumptions",
+            "attributes": {}
+        },
+        {
+            "type": "constraint",
+            "identifier": "CONS-SCOPE",
+            "content": "Only \"adding\" expenses is covered; listing, deleting, or summarizing is out of scope.",
+            "source_section": "Assumptions",
+            "attributes": {}
+        }
+    ],
+    "relationships": [
+        {
+            "source": "US-01",
+            "to": "FR-001",
+            "relation_type": "implements"
+        },
+        {
+            "source": "FR-001",
+            "to": "FR-003",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "FR-001",
+            "to": "FR-004",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "FR-002",
+            "to": "ENT-EXPENSE",
+            "relation_type": "contains"
+        },
+        {
+            "source": "FR-001",
+            "to": "FR-002",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "FR-005",
+            "to": "SC-003",
+            "relation_type": "relates_to"
+        }
+    ],
+    "structural_gaps": [
+        {
+            "missing_section": "Open Questions & Uncertainties",
+            "priority": "MEDIUM",
+            "remediation_advice": "Add a section to identify potential ambiguities in the CLI interface or database schema."
+        }
+    ],
+    "open_questions": []
+}

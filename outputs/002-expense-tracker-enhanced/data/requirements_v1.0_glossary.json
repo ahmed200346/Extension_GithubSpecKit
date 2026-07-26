@@ -1,0 +1,19 @@
+{
+    "project_name": "Enhanced Expense Tracker",
+    "items": [
+        {
+            "term": "Feature",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Feature Readiness",
+            "project_definition": "A distinct piece of functionality that must satisfy measurable outcomes and a set of clear acceptance criteria."
+        },
+        {
+            "term": "TDD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "PROC-TDD",
+            "project_definition": "A software development process where automated verification scripts are authored prior to the actual logic implementation."
+        }
+    ]
+}

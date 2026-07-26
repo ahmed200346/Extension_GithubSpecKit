@@ -1,0 +1,75 @@
+{
+    "project_name": "URL Shortener API",
+    "items": [
+        {
+            "term": "API",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ASSUMPTION-TECH",
+            "project_definition": "The interface layer responsible for exposing endpoints such as shorten, stats, and urls to clients."
+        },
+        {
+            "term": "DB",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Short URL Creation Flow",
+            "project_definition": "The persistence mechanism where mapping records and click metrics are stored."
+        },
+        {
+            "term": "FastAPI",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ASSUMPTION-TECH",
+            "project_definition": "The high-performance web framework utilized for the service layer."
+        },
+        {
+            "term": "ID",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENTITY-URLRECORD",
+            "project_definition": "The unique primary key for each record, stored as an integer or a 128-bit globally unique identifier."
+        },
+        {
+            "term": "JSON",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-009",
+            "project_definition": "The standard data interchange format used for structured error responses containing a detail field."
+        },
+        {
+            "term": "Pydantic",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-008",
+            "project_definition": "The library used for strict input validation and schema enforcement for incoming requests."
+        },
+        {
+            "term": "SQLite",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ASSUMPTION-TECH",
+            "project_definition": "The lightweight relational database engine employed for persistent storage."
+        },
+        {
+            "term": "TEXT",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENTITY-URLRECORD",
+            "project_definition": "The database column type used to store the target long destination strings."
+        },
+        {
+            "term": "URLRecord",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENTITY-URLRECORD",
+            "project_definition": "A domain entity mapping a long destination to a short identifier with associated expiration and activity metadata."
+        },
+        {
+            "term": "UUID",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENTITY-URLRECORD",
+            "project_definition": "An alternative primary key format ensuring uniqueness across distributed systems."
+        }
+    ]
+}

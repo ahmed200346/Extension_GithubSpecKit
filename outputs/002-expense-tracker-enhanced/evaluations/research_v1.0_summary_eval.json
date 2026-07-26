@@ -1,0 +1,17 @@
+{
+    "agent_evaluated": "Summary Agent",
+    "project_name": "Enhanced Expense Tracker",
+    "technical_evaluation": {
+        "maturity_alignment_score": 80.0,
+        "conciseness_precision_score": 100.0,
+        "extraction_completeness_rate": 85.0,
+        "brief_word_count": 62,
+        "hallucinations_detected_count": 1
+    },
+    "project_management_kpis": {
+        "extracted_technologies_count": 3,
+        "architectural_constraints_count": 4,
+        "external_dependencies_count": 4,
+        "external_risk_exposure": "ÉLEVÉ"
+    }
+}

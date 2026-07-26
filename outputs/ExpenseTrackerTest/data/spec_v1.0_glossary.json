@@ -1,0 +1,40 @@
+{
+    "project_name": "Expense Tracker",
+    "items": [
+        {
+            "term": "Category",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-CATEGORY",
+            "project_definition": "A predefined set of labels including Food, Transport, Entertainment, Shopping, Utilities, and Other used to classify spending."
+        },
+        {
+            "term": "Expense",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "A financial record comprising a unique identifier, decimal value, ISO date, classification label, optional text, and a creation timestamp."
+        },
+        {
+            "term": "Fixed-Point Numeric Constraint",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "FR-002",
+            "project_definition": "A validation rule ensuring the monetary value is a positive number strictly greater than zero."
+        },
+        {
+            "term": "LocalStorage",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-009",
+            "project_definition": "The browser-based key-value storage mechanism used for persisting data across sessions without a backend."
+        },
+        {
+            "term": "NOT",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-013",
+            "project_definition": "A logical negation used to explicitly define out-of-scope operations, specifically forbidding the modification of existing records in the initial version."
+        }
+    ]
+}

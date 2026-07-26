@@ -1,0 +1,180 @@
+{
+    "project_name": "Enhanced Expense Tracker",
+    "items": [
+        {
+            "term": "Branch",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Implementation Plan: Enhanced Expense Tracker",
+            "project_definition": "The specific git version control identifier `002-expense-tracker-enhanced` used for this feature set."
+        },
+        {
+            "term": "CRUD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The four foundational persistent storage mutation primitives requiring prior verification via automated suites."
+        },
+        {
+            "term": "Constraints",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "Mandatory architectural boundaries prohibiting SQL in orchestration layers and preventing logic leakage across the three tiers."
+        },
+        {
+            "term": "Data Integrity",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The state of consistency and accuracy achieved through atomic transactions and service-tier verification."
+        },
+        {
+            "term": "DatabaseLockedError",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "A low-level persistence exception that must be mapped to a readable user message at the entry point."
+        },
+        {
+            "term": "Date",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Implementation Plan: Enhanced Expense Tracker",
+            "project_definition": "A temporal marker used for filtering records, requiring strict adherence to the ISO 8601 standard."
+        },
+        {
+            "term": "EntityNotFoundError",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "A specific service-tier exception triggered when a requested record does not exist in the persistent store."
+        },
+        {
+            "term": "Exhaustive Specification",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The complete set of feature requirements derived from spec.md that serves as the implementation foundation."
+        },
+        {
+            "term": "GATE",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "A binary validation checkpoint indicating whether the design adheres to the core system constitution."
+        },
+        {
+            "term": "Modular Architecture",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The organizational strategy enforcing a strict separation between the user interface, business logic, and data access."
+        },
+        {
+            "term": "Option",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Source Code (repository root)",
+            "project_definition": "A specific structural choice, specifically the single project variant, selected for this standalone tool."
+        },
+        {
+            "term": "Performance Goals",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The target execution speed requiring retrieval of one thousand entries in under one second."
+        },
+        {
+            "term": "Primary Dependencies",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The core external libraries, specifically pytest, required for the system to operate and be verified."
+        },
+        {
+            "term": "Project Type",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The application format defined as a command line interface."
+        },
+        {
+            "term": "Python 3.10",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "STACK-PY310",
+            "project_definition": "The minimum required runtime environment version for the codebase."
+        },
+        {
+            "term": "SQL",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ARCH-3LAYER",
+            "project_definition": "The query language restricted exclusively to the repository layer to prevent leakages."
+        },
+        {
+            "term": "Spec",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Implementation Plan: Enhanced Expense Tracker",
+            "project_definition": "The reference document containing the detailed functional requirements for the feature."
+        },
+        {
+            "term": "Storage",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "STORAGE-SQLITE",
+            "project_definition": "The local persistence mechanism implemented via SQLite."
+        },
+        {
+            "term": "Strict",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ARCH-3LAYER",
+            "project_definition": "The enforcement level of the 3-layer architecture where no cross-layer bypass is permitted."
+        },
+        {
+            "term": "Structure Decision",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Source Code (repository root)",
+            "project_definition": "The finalized layout choice for organizing the source files into a single project."
+        },
+        {
+            "term": "TDD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The methodology requiring test suites to be written before the actual implementation of methods."
+        },
+        {
+            "term": "Target Platform",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "The intended runtime environments including Windows, Linux, and macOS shells."
+        },
+        {
+            "term": "Testing",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "TEST-PYTEST",
+            "project_definition": "The quality assurance process utilizing unit and integration suites via the designated framework."
+        },
+        {
+            "term": "ValidationError",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Context",
+            "project_definition": "A service-tier exception raised when input data fails business rule checks."
+        },
+        {
+            "term": "YAGNI",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Constitution Check",
+            "project_definition": "The design principle of avoiding the implementation of functionality until it is explicitly required."
+        }
+    ]
+}

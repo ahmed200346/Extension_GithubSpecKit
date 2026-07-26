@@ -1,0 +1,28 @@
+{
+    "diagrams": [
+        {
+            "title": "Requirements Traceability Matrix",
+            "type": "flowchart",
+            "description": "Maps User Stories to their implementing Functional Requirements and associated Entities.",
+            "mermaid_code": "flowchart TD\n    subgraph User_Stories [\"User Stories\"]\n        US-ADD[\"US-ADD: Add Expense\"]\n        US-VIEW[\"US-VIEW: View Expenses\"]\n        US-DELETE[\"US-DELETE: Delete Expense\"]\n        US-TOTALS[\"US-TOTALS: View Dashboard Totals\"]\n    end\n\n    subgraph Functional_Requirements [\"Functional Requirements\"]\n        FR-001[\"FR-001: Add Expense Entry\"]\n        FR-002[\"FR-002: Amount Validation\"]\n        FR-003[\"FR-003: Date Validation\"]\n        FR-005[\"FR-005: Sorted List View\"]\n        FR-006[\"FR-006: Delete with Confirmation\"]\n        FR-007[\"FR-007: Total Amount Calculation\"]\n        FR-008[\"FR-008: Total Count Calculation\"]\n        FR-012[\"FR-012: Real-time Total Updates\"]\n    end\n\n    subgraph Data_Model [\"Data Model\"]\n        ENT-EXPENSE[\"ENT-EXPENSE: Expense Entity\"]\n        ENT-CATEGORY[\"ENT-CATEGORY: Category Entity\"]\n    end\n\n    US-ADD -->|implements| FR-001\n    US-ADD -->|implements| FR-002\n    US-ADD -->|implements| FR-003\n    US-VIEW -->|implements| FR-005\n    US-DELETE -->|implements| FR-006\n    US-TOTALS -->|implements| FR-007\n    US-TOTALS -->|implements| FR-008\n    US-TOTALS -->|implements| FR-012\n\n    FR-001 -->|depends_on| ENT-EXPENSE\n    FR-001 -->|depends_on| ENT-CATEGORY"
+        },
+        {
+            "title": "Expense Data Model",
+            "type": "erDiagram",
+            "description": "Entity Relationship Diagram for the Expense Tracker local storage schema.",
+            "mermaid_code": "erDiagram\n    ENT-EXPENSE ||--o{ ENT-CATEGORY : \"categorized_as\"\n    ENT-EXPENSE {\n        string id PK\n        decimal amount\n        string date\n        string category FK\n        string description\n        timestamp createdAt\n    }\n    ENT-CATEGORY {\n        string category_name PK\n    }"
+        },
+        {
+            "title": "Add Expense Workflow",
+            "type": "flowchart",
+            "description": "Detailed logic flow for adding a new expense including validations and edge case handling.",
+            "mermaid_code": "flowchart TD\n    START[Start: Add Expense]\n    INPUT[User enters amount, date, category, description]\n    VAL_AMT{ \"Amount > 0?\" }\n    VAL_DATE{ \"Date in future?\" }\n    WARN[Display Future Date Warning]\n    SAVE[Save to localStorage]\n    UPDATE[Update Dashboard Totals]\n    END[End: Expense Added]\n\n    START --> INPUT\n    INPUT --> VAL_AMT\n    VAL_AMT -- \"No\" --> INPUT\n    VAL_AMT -- \"Yes\" --> VAL_DATE\n    VAL_DATE -- \"Yes\" --> WARN\n    VAL_DATE -- \"No\" --> SAVE\n    WARN --> SAVE\n    SAVE --> UPDATE\n    UPDATE --> END"
+        },
+        {
+            "title": "Expense Management Sequence",
+            "type": "sequenceDiagram",
+            "description": "Interaction between the User, UI, and LocalStorage for core operations.",
+            "mermaid_code": "sequenceDiagram\n    actor User\n    participant UI as \"UI Dashboard\"\n    participant Storage as \"localStorage\"\n\n    User ->> UI: Input Expense Details\n    UI ->> UI: Validate Amount & Date\n    UI ->> Storage: Save Expense Object\n    Storage -->> UI: Confirm Save\n    UI ->> UI: Recalculate Totals\n    UI -->> User: Display Updated List & Totals\n\n    User ->> UI: Click Delete Expense\n    UI ->> User: Request Confirmation\n    User -->> UI: Confirm Delete\n    UI ->> Storage: Remove Expense by ID\n    Storage -->> UI: Confirm Removal\n    UI ->> UI: Recalculate Totals\n    UI -->> User: Refresh Dashboard View"
+        }
+    ]
+}

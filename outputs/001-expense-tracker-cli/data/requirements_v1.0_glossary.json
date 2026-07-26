@@ -1,0 +1,12 @@
+{
+    "project_name": "Expense Tracker CLI",
+    "items": [
+        {
+            "term": "Feature",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Feature Readiness",
+            "project_definition": "A distinct piece of functionality that must satisfy measurable outcomes and specific acceptance criteria to be considered ready for implementation."
+        }
+    ]
+}

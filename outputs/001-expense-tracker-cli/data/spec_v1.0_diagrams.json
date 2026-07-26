@@ -1,0 +1,28 @@
+{
+    "diagrams": [
+        {
+            "title": "Requirements Traceability Matrix",
+            "type": "flowchart",
+            "description": "Maps the User Story to its functional requirements and associated success criteria using exact identifiers.",
+            "mermaid_code": "flowchart TD\n    subgraph User_Stories\n        US-01[\"US-01: Record a New Expense\"]\n    end\n\n    subgraph Functional_Requirements\n        FR-001[\"FR-001: Add expense via CLI\"]\n        FR-002[\"FR-002: Persist in SQLite\"]\n        FR-003[\"FR-003: Validate positive amount\"]\n        FR-004[\"FR-004: Validate non-empty description\"]\n        FR-005[\"FR-005: Visual confirmation\"]\n    end\n\n    subgraph Success_Criteria\n        SC-003[\"SC-003: Invalid inputs result in error message\"]\n    end\n\n    US-01 -->|implements| FR-001\n    FR-001 -->|depends_on| FR-003\n    FR-001 -->|depends_on| FR-004\n    FR-001 -->|depends_on| FR-002\n    FR-005 -->|relates_to| SC-003"
+        },
+        {
+            "title": "Expense Recording Workflow",
+            "type": "flowchart",
+            "description": "Detailed logic flow for adding an expense, including validation branches and database persistence.",
+            "mermaid_code": "flowchart TD\n    START[Start] --> INPUT[\"User enters description and amount\"]\n    INPUT --> VAL_DESC{\"Is description non-empty?\"}\n    \n    VAL_DESC -- \"No\" --> ERR_DESC[\"Display Error: Description required\"]\n    VAL_DESC -- \"Yes\" --> VAL_AMT{\"Is amount a positive number?\"}\n    \n    VAL_AMT -- \"No\" --> ERR_AMT[\"Display Error: Invalid amount\"]\n    VAL_AMT -- \"Yes\" --> DB_SAVE[\"Save to ENT-EXPENSE table\"]\n    \n    ERR_DESC --> END[End]\n    ERR_AMT --> END\n    DB_SAVE --> CONFIRM[\"Display Success Message\"]\n    CONFIRM --> END"
+        },
+        {
+            "title": "Expense Data Model",
+            "type": "erDiagram",
+            "description": "Entity Relationship diagram for the SQLite database schema.",
+            "mermaid_code": "erDiagram\n    ENT-EXPENSE {\n        int id PK\n        string description\n        decimal amount\n        timestamp created_at\n    }"
+        },
+        {
+            "title": "Expense Addition Sequence",
+            "type": "sequenceDiagram",
+            "description": "Interaction between the User, CLI Interface, and SQLite Database for recording an expense.",
+            "mermaid_code": "sequenceDiagram\n    actor User\n    participant CLI as \"CLI Interface\"\n    participant DB as \"SQLite Database\"\n\n    User ->> CLI: Execute add \"Lunch\" 15.50\n    CLI ->> CLI: Validate inputs (FR-003, FR-004)\n    \n    alt Invalid Input\n        CLI -->> User: Display Error Message (FR-005)\n    else Valid Input\n        CLI ->> DB: INSERT INTO expenses (description, amount)\n        DB -->> CLI: Confirm Persistence\n        CLI -->> User: Display Success Message (FR-005)\n    end"
+        }
+    ]
+}

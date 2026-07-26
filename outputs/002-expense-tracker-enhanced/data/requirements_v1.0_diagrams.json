@@ -1,0 +1,16 @@
+{
+    "diagrams": [
+        {
+            "title": "Specification Quality Validation Workflow",
+            "type": "flowchart",
+            "description": "Models the quality control process for the Enhanced Expense Tracker specifications, incorporating the constraints and validation steps defined in the checklist.",
+            "mermaid_code": "flowchart TD\n    START[Start Specification Review] --> VAL_CONTENT{\"Check Content Quality?\"}\n    \n    VAL_CONTENT -- \"No\" --> FIX_CONTENT[Remove Implementation Details from FRs]\n    FIX_CONTENT --> VAL_CONTENT\n    \n    VAL_CONTENT -- \"Yes\" --> VAL_COMPL{\"Check Completeness?\"}\n    \n    VAL_COMPL -- \"No\" --> FIX_COMPL[Resolve [NEEDS CLARIFICATION] & Define Edge Cases]\n    FIX_COMPL --> VAL_COMPL\n    \n    VAL_COMPL -- \"Yes\" --> VAL_READINESS{\"Feature Ready?\"}\n    \n    VAL_READINESS -- \"No\" --> FIX_READINESS[Define Measurable Success Criteria]\n    FIX_READINESS --> VAL_READINESS\n    \n    VAL_READINESS -- \"Yes\" --> VAL_CONST{\"Verify Constitution Alignment?\"}\n    \n    VAL_CONST -- \"No\" --> FIX_CONST[Align with ARCH-3LAYER and DATA-SQLITE]\n    FIX_CONST --> VAL_CONST\n    \n    VAL_CONST -- \"Yes\" --> END[Specification Approved for Planning]"
+        },
+        {
+            "title": "Quality Constraints & Technical Requirements Traceability",
+            "type": "flowchart",
+            "description": "Maps the relationship between quality constraints and the mandated technical requirements of the project constitution.",
+            "mermaid_code": "flowchart TD\n    subgraph \"Quality Constraints\"\n        QUAL-NO-IMP[\"QUAL-NO-IMP: No Implementation Details in FRs\"]\n        QUAL-TESTABLE[\"QUAL-TESTABLE: Testable & Unambiguous Requirements\"]\n        QUAL-SCOPE[\"QUAL-SCOPE: Clearly Bounded Scope & Edge Cases\"]\n    end\n\n    subgraph \"Technical Constitution\"\n        ARCH-3LAYER[\"ARCH-3LAYER: 3-Layer Architecture\"]\n        DATA-SQLITE[\"DATA-SQLITE: SQLite Persistence\"]\n        PROC-TDD[\"PROC-TDD: TDD Process Requirements\"]\n    end\n\n    QUAL-NO-IMP -->|relates_to| ARCH-3LAYER\n    QUAL-TESTABLE -->|depends_on| PROC-TDD\n    QUAL-SCOPE -->|ensures| ARCH-3LAYER"
+        }
+    ]
+}

@@ -1,0 +1,50 @@
+{
+  "agent_name": "Diagram Agent",
+  "expected_output_format": "JSON",
+  "max_diagrams": 4,
+  "allowed_types": [
+    "flowchart",
+    "sequenceDiagram",
+    "classDiagram",
+    "erDiagram",
+    "stateDiagram",
+    "gantt",
+    "mindmap",
+    "pie"
+  ],
+  "syntax_rules": {
+    "mermaid_version": "v10+",
+    "formatting": "Strictly plain text raw Mermaid syntax inside 'mermaid_code'. No markdown fences (like ```mermaid) inside JSON values.",
+    "node_id_mandatory": true,
+    "quote_labels_with_special_chars": true,
+    "strict_identifier_preservation": "CRITICAL: You MUST use the exact original 'identifier' from the parsed JSON elements (e.g., 'US-01', 'FR-001', 'ENT-USER'). NEVER shorten or alter them to 'US1', 'FR1', or 'E_USER'."
+  },
+  "mapping_rules_from_parsed_json": {
+    "er_diagram": {
+      "source_data": "Extract from 'elements' with type ENTITY, DATABASE, or MODEL and their 'relations'.",
+      "rule": "Generate erDiagram using entity attributes and relational constraints (PK/FK). Use exact entity identifiers or entity names."
+    },
+    "sequence_diagram": {
+      "source_data": "Extract from 'elements' (Endpoints/APIs), 'user_stories', and user/system interaction flows.",
+      "rule": "Mandatory when user stories or API endpoints involve multi-step actor-system interactions."
+    },
+    "flowchart_traceability": {
+      "source_data": "Extract from 'elements' (Requirements, User Stories, Tasks) and structural 'sections'.",
+      "rule": "Model requirements traceability using EXACT original identifiers (e.g., US-01, FR-001) as node IDs. Must include subgraphs and explicit full-text labels."
+    },
+    "workflow_complexity": {
+      "source_data": "Extract business logic, conditions, and task phases.",
+      "rule": "Purely linear flowcharts are FORBIDDEN. Must include at least one decision diamond '{?}' and loop or alternative branch."
+    }
+  },
+  "output_structure": {
+    "diagrams": [
+      {
+        "title": "Explicit title of the diagram",
+        "type": "Must be one of the allowed_types (e.g., flowchart, sequenceDiagram, erDiagram)",
+        "description": "Brief operational context based on extracted elements or sections",
+        "mermaid_code": "Valid raw Mermaid.js syntax starting strictly with diagram type header"
+      }
+    ]
+  }
+}

@@ -1,0 +1,187 @@
+{
+    "project_name": "Enhanced Expense Tracker",
+    "items": [
+        {
+            "term": "Architecture",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-010",
+            "project_definition": "A strict 3-level layered structural pattern separating user interface, business logic, and data persistence."
+        },
+        {
+            "term": "CLI Layer",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-010",
+            "project_definition": "The outermost boundary responsible exclusively for handling user input and output."
+        },
+        {
+            "term": "CRUD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-013",
+            "project_definition": "The four foundational persistent storage mutation primitives."
+        },
+        {
+            "term": "DD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "FR-003",
+            "project_definition": "The day component of the ISO 8601 temporal representation."
+        },
+        {
+            "term": "Data Integrity",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Constraints",
+            "project_definition": "The mandatory enforcement of atomic transactions for all write operations."
+        },
+        {
+            "term": "Database",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "CONST-SQLITE",
+            "project_definition": "The SQLite engine utilized for all local state persistence."
+        },
+        {
+            "term": "Empty Description",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Edge Cases",
+            "project_definition": "A permissible state for the textual memo field of a financial record."
+        },
+        {
+            "term": "Expense",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "A financial record of a cost incurred, comprising a positive value, a specific classification, a memo, and a timestamp."
+        },
+        {
+            "term": "Fixed-Point Numeric Constraint",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "FR-002",
+            "project_definition": "A rule ensuring the monetary value is strictly greater than zero."
+        },
+        {
+            "term": "ID",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "A unique integer primary key that automatically increments for each record."
+        },
+        {
+            "term": "Invalid Category",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Edge Cases",
+            "project_definition": "Any classification input not matching the allowed set of Food, Transport, Bills, or Utilities."
+        },
+        {
+            "term": "KEY",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "The unique identifier constraint ensuring no two records share the same primary index."
+        },
+        {
+            "term": "Language",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "CONST-PY310",
+            "project_definition": "The Python 3.10+ runtime environment used for implementation."
+        },
+        {
+            "term": "MM",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "FR-003",
+            "project_definition": "The month component of the ISO 8601 temporal representation."
+        },
+        {
+            "term": "Non-Numeric Amount",
+            "category": "BUSINESS_DOMAIN",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Edge Cases",
+            "project_definition": "User input containing characters that cannot be parsed as a floating-point number."
+        },
+        {
+            "term": "PK",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "The primary unique identifier constraint for the data entity."
+        },
+        {
+            "term": "Python 3.10",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "CONST-PY310",
+            "project_definition": "The specific software version requirement for the execution environment."
+        },
+        {
+            "term": "REAL",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "The floating-point numeric storage type for monetary values."
+        },
+        {
+            "term": "Repository Layer",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-010",
+            "project_definition": "The innermost layer handling raw SQLite interactions and persistence logic."
+        },
+        {
+            "term": "SQL",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "CONST-SQLITE",
+            "project_definition": "The structured query language used by the persistence engine."
+        },
+        {
+            "term": "SQLite Locked",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-012",
+            "project_definition": "A specific concurrency exception occurring when another process holds an exclusive lock on the data file."
+        },
+        {
+            "term": "Service Layer",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-010",
+            "project_definition": "The middle tier responsible for business rules, input validation, and mapping exceptions to the user interface."
+        },
+        {
+            "term": "TDD",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "FR-013",
+            "project_definition": "A development methodology where pytest suites are defined before implementation."
+        },
+        {
+            "term": "TEXT",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "ENT-EXPENSE",
+            "project_definition": "The string-based storage type for categories, descriptions, and ISO dates."
+        },
+        {
+            "term": "Testing",
+            "category": "TECHNICAL_STACK",
+            "discovery": "EXPLICIT",
+            "contextual_anchor": "Technical Constraints",
+            "project_definition": "The process of verifying correctness using the mandatory pytest framework."
+        },
+        {
+            "term": "YYYY",
+            "category": "TECHNICAL_STACK",
+            "discovery": "IMPLICIT",
+            "contextual_anchor": "FR-003",
+            "project_definition": "The four-digit year component of the ISO 8601 temporal representation."
+        }
+    ]
+}

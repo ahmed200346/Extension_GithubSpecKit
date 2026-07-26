@@ -1,0 +1,121 @@
+{
+    "parsing_rationale": "The document is a technical research/design note focusing on architectural decisions. I have mapped the 'Decisions' as functional or non-functional requirements and the 'Rationale' as constraints or assumptions. The document is primarily technical design, meaning it lacks high-level business goals and scope definitions, which are marked as structural gaps.",
+    "project_info": {
+        "project_name": "Enhanced Expense Tracker",
+        "source_type": "refining",
+        "brief_explanation": "Technical design research focusing on the Repository pattern, 3-layer architecture, transaction management, and TDD workflow.",
+        "source_context": "Technical research document for implementation strategy."
+    },
+    "doc_type": "spec",
+    "sections": [
+        {
+            "title": "Research: Enhanced Expense Tracker Technical Design",
+            "level": 1,
+            "raw_content": "",
+            "mapped_to_template_field": null
+        },
+        {
+            "title": "1. Repository Pattern with SQLite in Python",
+            "level": 2,
+            "raw_content": "**Decision**: Use a Class-based Repository that manages a `sqlite3.Connection` object.\n\n**Rationale**: \n- Separates SQL dialect from business logic.\n- Allows for easy mocking of the database layer during service-level unit tests.\n- Centralizes all query logic, making schema changes easier to manage.\n\n**Alternatives considered**:\n- *Direct SQL in Service*: Rejected; violates the Constitution's modular architecture principle.\n- *SQLAlchemy ORM*: Rejected; violates Simplicity/YAGNI for a tool of this scale. Raw SQL provides better control over transactions and minimal overhead.",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "2. 3-Layer Architecture Communication",
+            "level": 2,
+            "raw_content": "**Decision**: Use a \"Bottom-Up Exception\" strategy.\n- **Repository**: Throws low-level exceptions (e.g., `sqlite3.OperationalError` $\\rightarrow$ `DatabaseLockedError`).\n- **Service**: Catches repository errors and throws business exceptions (e.g., `EntityNotFoundError`, `ValidationError`).\n- **CLI**: Catches service exceptions and maps them to user-friendly strings.\n\n**Rationale**: Prevents leaking implementation details (like SQL errors) to the user and keeps the service layer agnostic of the UI.",
+            "mapped_to_template_field": "Functional Requirements"
+        },
+        {
+            "title": "3. Atomic Transactions",
+            "level": 2,
+            "raw_content": "**Decision**: Implement transactions using Python's `with connection:` context manager or explicit `begin/commit/rollback` blocks within the Repository.\n\n**Rationale**: Ensures that if a multi-step write fails, the database is not left in a partial state. This directly satisfies the \"Data Integrity\" principle of the Constitution.",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "4. TDD Workflow with Pytest",
+            "level": 2,
+            "raw_content": "**Decision**: \n- **Repository Tests**: Use an in-memory SQLite database (`:memory:`) for fast, isolated unit tests of CRUD operations.\n- **Service Tests**: Mock the Repository layer to test business validation and orchestration logic without disk I/O.\n- **Integration Tests**: Run the actual CLI commands against a temporary file-based SQLite database to verify the full stack.\n\n**Rationale**: Provides the fastest feedback loop while ensuring high confidence in the final product.",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        }
+    ],
+    "elements": [
+        {
+            "type": "functional_requirement",
+            "identifier": "REPO-PATTERN",
+            "content": "Implementation of a Class-based Repository managing a sqlite3.Connection to separate SQL dialect from business logic.",
+            "source_section": "1. Repository Pattern with SQLite in Python",
+            "attributes": {
+                "technology": "sqlite3",
+                "pattern": "Repository"
+            }
+        },
+        {
+            "type": "constraint",
+            "identifier": "SIMPLICITY-YAGNI",
+            "content": "Avoid SQLAlchemy ORM to adhere to Simplicity/YAGNI principles and maintain control over transactions.",
+            "source_section": "1. Repository Pattern with SQLite in Python",
+            "attributes": {}
+        },
+        {
+            "type": "functional_requirement",
+            "identifier": "EXCEPTION-STRAT",
+            "content": "Bottom-Up Exception strategy: Repository (low-level) -> Service (business) -> CLI (user-friendly strings).",
+            "source_section": "2. 3-Layer Architecture Communication",
+            "attributes": {}
+        },
+        {
+            "type": "non_functional_requirement",
+            "identifier": "ATOMIC-TX",
+            "content": "Ensure data integrity through atomic transactions using Python's context manager or explicit commit/rollback blocks.",
+            "source_section": "3. Atomic Transactions",
+            "attributes": {
+                "property": "Data Integrity"
+            }
+        },
+        {
+            "type": "non_functional_requirement",
+            "identifier": "TDD-WORKFLOW",
+            "content": "Implementation of a tiered testing strategy: in-memory SQLite for Repositories, Mocks for Services, and file-based SQLite for Integration tests.",
+            "source_section": "4. TDD Workflow with Pytest",
+            "attributes": {
+                "tool": "Pytest"
+            }
+        }
+    ],
+    "relationships": [
+        {
+            "source": "EXCEPTION-STRAT",
+            "to": "REPO-PATTERN",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "ATOMIC-TX",
+            "to": "REPO-PATTERN",
+            "relation_type": "implements"
+        },
+        {
+            "source": "TDD-WORKFLOW",
+            "to": "REPO-PATTERN",
+            "relation_type": "relates_to"
+        }
+    ],
+    "structural_gaps": [
+        {
+            "missing_section": "Goals & Objectives",
+            "priority": "HIGH",
+            "remediation_advice": "Define the business purpose and high-level goals of the Enhanced Expense Tracker."
+        },
+        {
+            "missing_section": "Scope & Out-of-Scope",
+            "priority": "MEDIUM",
+            "remediation_advice": "Explicitly state which features are included in the enhancement and which are intentionally excluded."
+        },
+        {
+            "missing_section": "Open Questions & Uncertainties",
+            "priority": "LOW",
+            "remediation_advice": "List any unresolved technical doubts regarding the SQLite implementation or CLI interface."
+        }
+    ],
+    "open_questions": []
+}

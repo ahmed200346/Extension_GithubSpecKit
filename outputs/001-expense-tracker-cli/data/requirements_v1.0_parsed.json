@@ -1,0 +1,105 @@
+{
+    "parsing_rationale": "The provided document is not a functional specification itself, but rather a 'Quality Checklist' designed to validate a specification (likely 'spec.md'). I have parsed the checklist items as constraints and assumptions since they define the quality standards and boundaries the project must adhere to, while noting that the actual functional requirements are missing from this specific file.",
+    "project_info": {
+        "project_name": "Expense Tracker CLI",
+        "source_type": "refining",
+        "brief_explanation": "Quality validation checklist for the Expense Tracker CLI specification.",
+        "source_context": "Checklist used to ensure that the main specification document is complete, testable, and free of implementation details."
+    },
+    "doc_type": "spec",
+    "sections": [
+        {
+            "title": "Specification Quality Checklist: Expense Tracker CLI",
+            "level": 1,
+            "raw_content": "**Purpose**: Validate specification completeness and quality before proceeding to planning\n**Created**: 2026-07-24\n**Feature**: [spec.md](../spec.md)",
+            "mapped_to_template_field": "Goals & Objectives"
+        },
+        {
+            "title": "Content Quality",
+            "level": 2,
+            "raw_content": "- [x] No implementation details (languages, frameworks, APIs)\n- [x] Focused on user value and business needs\n- [x] Written for non-technical stakeholders\n- [x] All mandatory sections completed",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "Requirement Completeness",
+            "level": 2,
+            "raw_content": "- [x] No [NEEDS CLARIFICATION] markers remain\n- [x] Requirements are testable and unambiguous\n- [x] Success criteria are measurable\n- [x] Success criteria are technology-agnostic (no implementation details)\n- [x] All acceptance scenarios are defined\n- [x] Edge cases are identified\n- [x] Scope is clearly bounded\n- [x] Dependencies and assumptions identified",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "Feature Readiness",
+            "level": 2,
+            "raw_content": "- [x] All functional requirements have clear acceptance criteria\n- [x] User scenarios cover primary flows\n- [x] Feature meets measurable outcomes defined in Success Criteria\n- [x] No implementation details leak into specification",
+            "mapped_to_template_field": "Non-Functional Requirements"
+        },
+        {
+            "title": "Notes",
+            "level": 2,
+            "raw_content": "- All initial requirements for the basic add-expense feature have been captured and validated.",
+            "mapped_to_template_field": null
+        }
+    ],
+    "elements": [
+        {
+            "type": "constraint",
+            "identifier": "QUAL-NO-IMP",
+            "content": "The specification must contain no implementation details such as languages, frameworks, or APIs.",
+            "source_section": "Content Quality",
+            "attributes": {
+                "category": "standard"
+            }
+        },
+        {
+            "type": "constraint",
+            "identifier": "QUAL-TESTABLE",
+            "content": "Requirements must be testable, unambiguous, and success criteria must be measurable.",
+            "source_section": "Requirement Completeness",
+            "attributes": {
+                "category": "validation"
+            }
+        },
+        {
+            "type": "assumption",
+            "identifier": "ASSUM-ADD-EXP",
+            "content": "All initial requirements for the basic add-expense feature have been captured and validated.",
+            "source_section": "Notes",
+            "attributes": {
+                "status": "validated"
+            }
+        },
+        {
+            "type": "constraint",
+            "identifier": "QUAL-SCOPE",
+            "content": "Scope must be clearly bounded and edge cases identified.",
+            "source_section": "Requirement Completeness",
+            "attributes": {
+                "category": "boundary"
+            }
+        }
+    ],
+    "relationships": [
+        {
+            "source": "QUAL-TESTABLE",
+            "to": "QUAL-NO-IMP",
+            "relation_type": "relates_to"
+        }
+    ],
+    "structural_gaps": [
+        {
+            "missing_section": "Functional Requirements",
+            "priority": "HIGH",
+            "remediation_advice": "This document is a checklist. Please provide the 'spec.md' file to extract the actual functional requirements."
+        },
+        {
+            "missing_section": "Scope & Out-of-Scope",
+            "priority": "HIGH",
+            "remediation_advice": "The checklist mentions scope must be bounded, but the bounds are not defined here. Provide the main specification document."
+        },
+        {
+            "missing_section": "Open Questions & Uncertainties",
+            "priority": "MEDIUM",
+            "remediation_advice": "The checklist confirms no markers remain, but does not list the historical open questions."
+        }
+    ],
+    "open_questions": []
+}
