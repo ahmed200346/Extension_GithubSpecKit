@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Source+Sans+Pro:wght@400;600;700&display=swap");
 
 html,
 body,
@@ -7,29 +7,146 @@ body,
 .content {
   height: 100%;
   width: 100%;
-  font-family: "Source Sans Pro", sans-serif;
+  font-family: "Inter", "Source Sans Pro", sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 0;
 }
 
 .app {
   display: flex;
   position: relative;
+  min-height: 100vh;
 }
 
+/* Dark mode background with subtle gradient */
+body {
+  background: linear-gradient(135deg, #060a12 0%, #0e1423 50%, #080d18 100%);
+}
+
+/* Light mode background */
+@media (prefers-color-scheme: light) {
+  body {
+    background: #fcfcfc;
+  }
+}
+
+/* Custom Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
+  width: 8px;
+  height: 8px;
 }
 
-/* Track */
 ::-webkit-scrollbar-track {
-  background: #e0e0e0;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 10px;
 }
 
-/* Handle */
 ::-webkit-scrollbar-thumb {
-  background: #888;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: background 0.3s ease;
 }
 
-/* Handle on hover */
 ::-webkit-scrollbar-thumb:hover {
-  background: #555;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Smooth transitions for all interactive elements */
+* {
+  transition: background-color 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+/* Focus styles */
+*:focus {
+  outline: none;
+}
+
+/* Selection styles */
+::selection {
+  background: rgba(59, 130, 246, 0.3);
+  color: inherit;
+}
+
+/* Animation keyframes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Apply animations */
+.content > * {
+  animation: fadeIn 0.4s ease-out;
+}
+
+/* DataGrid custom styles for glassmorphism */
+.MuiDataGrid-root {
+  border: none !important;
+  background: transparent !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-cell {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.04) !important;
+  padding: 14px 16px !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-columnHeaders {
+  background: rgba(62, 67, 150, 0.9) !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08) !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-columnHeader {
+  color: #e0e0e0 !important;
+  font-weight: 600 !important;
+  font-size: 13px !important;
+  letter-spacing: 0.02em !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-columnHeaderTitle {
+  color: #e0e0e0 !important;
+  font-weight: 600 !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-footerContainer {
+  border-top: 1px solid rgba(0, 0, 0, 0.08) !important;
+  background: rgba(62, 67, 150, 0.9) !important;
+}
+
+.MuiDataGrid-root .MuiCheckbox-root {
+  color: rgba(0, 0, 0, 0.4) !important;
+}
+
+.MuiDataGrid-root .MuiCheckbox-root.Mui-checked {
+  color: #4cceac !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-row:hover {
+  background: rgba(0, 0, 0, 0.03) !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-columnSeparator {
+  color: rgba(0, 0, 0, 0.1) !important;
+}
+
+.MuiDataGrid-root .MuiDataGrid-virtualScroller {
+  background: rgba(255, 255, 255, 0.8) !important;
 }

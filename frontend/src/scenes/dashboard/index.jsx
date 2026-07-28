@@ -13,47 +13,82 @@ import BarChart from "../../components/BarChart";
 import StatBox from "../../components/StatBox";
 import ProgressCircle from "../../components/ProgressCircle";
 
+const GlassCard = ({ children, ...props }) => {
+  const theme = useTheme();
+  return (
+    <Box
+      sx={{
+        background: theme.palette.mode === "dark"
+          ? "rgba(14, 20, 35, 0.6)"
+          : "rgba(255, 255, 255, 0.7)",
+        backdropFilter: "blur(20px)",
+        WebkitBackdropFilter: "blur(20px)",
+        border: theme.palette.mode === "dark"
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.06)",
+        borderRadius: "20px",
+        transition: "all 0.3s ease",
+        "&:hover": {
+          border: theme.palette.mode === "dark"
+            ? "1px solid rgba(255, 255, 255, 0.12)"
+            : "1px solid rgba(0, 0, 0, 0.1)",
+          boxShadow: theme.palette.mode === "dark"
+            ? "0 8px 32px rgba(0, 0, 0, 0.3)"
+            : "0 8px 32px rgba(0, 0, 0, 0.08)",
+        },
+      }}
+      {...props}
+    >
+      {children}
+    </Box>
+  );
+};
+
 const Dashboard = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
   return (
-    <Box m="20px">
+    <Box m="24px">
       {/* HEADER */}
-      <Box display="flex" justifyContent="space-between" alignItems="center">
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb="24px">
         <Header title="DASHBOARD" subtitle="Welcome to your dashboard" />
 
-        <Box>
-          <Button
-            sx={{
-              backgroundColor: colors.blueAccent[700],
-              color: colors.grey[100],
-              fontSize: "14px",
-              fontWeight: "bold",
-              padding: "10px 20px",
-            }}
-          >
-            <DownloadOutlinedIcon sx={{ mr: "10px" }} />
-            Download Reports
-          </Button>
-        </Box>
+        <Button
+          sx={{
+            background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.blueAccent[600] || colors.greenAccent[700]})`,
+            color: "#fff",
+            fontSize: "14px",
+            fontWeight: 600,
+            padding: "12px 24px",
+            borderRadius: "12px",
+            boxShadow: theme.palette.mode === "dark"
+              ? "0 4px 14px rgba(28, 164, 123, 0.3)"
+              : "0 4px 14px rgba(76, 206, 172, 0.3)",
+            "&:hover": {
+              background: `linear-gradient(135deg, ${colors.greenAccent[700]}, ${colors.blueAccent[700] || colors.greenAccent[800]})`,
+              boxShadow: theme.palette.mode === "dark"
+                ? "0 6px 20px rgba(28, 164, 123, 0.4)"
+                : "0 6px 20px rgba(76, 206, 172, 0.4)",
+              transform: "translateY(-1px)",
+            },
+            transition: "all 0.2s ease",
+          }}
+        >
+          <DownloadOutlinedIcon sx={{ mr: "10px" }} />
+          Download Reports
+        </Button>
       </Box>
 
       {/* GRID & CHARTS */}
       <Box
         display="grid"
         gridTemplateColumns="repeat(12, 1fr)"
-        gridAutoRows="140px"
+        gridAutoRows="160px"
         gap="20px"
       >
         {/* ROW 1 */}
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+        <GlassCard gridColumn="span 3" display="flex" alignItems="center" justifyContent="center">
           <StatBox
             title="12,361"
             subtitle="Emails Sent"
@@ -61,18 +96,12 @@ const Dashboard = () => {
             increase="+14%"
             icon={
               <EmailIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+                sx={{ color: colors.greenAccent[500], fontSize: "26px" }}
               />
             }
           />
-        </Box>
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+        </GlassCard>
+        <GlassCard gridColumn="span 3" display="flex" alignItems="center" justifyContent="center">
           <StatBox
             title="431,225"
             subtitle="Sales Obtained"
@@ -80,18 +109,12 @@ const Dashboard = () => {
             increase="+21%"
             icon={
               <PointOfSaleIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+                sx={{ color: colors.greenAccent[500], fontSize: "26px" }}
               />
             }
           />
-        </Box>
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+        </GlassCard>
+        <GlassCard gridColumn="span 3" display="flex" alignItems="center" justifyContent="center">
           <StatBox
             title="32,441"
             subtitle="New Clients"
@@ -99,18 +122,12 @@ const Dashboard = () => {
             increase="+5%"
             icon={
               <PersonAddIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+                sx={{ color: colors.greenAccent[500], fontSize: "26px" }}
               />
             }
           />
-        </Box>
-        <Box
-          gridColumn="span 3"
-          backgroundColor={colors.primary[400]}
-          display="flex"
-          alignItems="center"
-          justifyContent="center"
-        >
+        </GlassCard>
+        <GlassCard gridColumn="span 3" display="flex" alignItems="center" justifyContent="center">
           <StatBox
             title="1,325,134"
             subtitle="Traffic Received"
@@ -118,22 +135,18 @@ const Dashboard = () => {
             increase="+43%"
             icon={
               <TrafficIcon
-                sx={{ color: colors.greenAccent[600], fontSize: "26px" }}
+                sx={{ color: colors.greenAccent[500], fontSize: "26px" }}
               />
             }
           />
-        </Box>
+        </GlassCard>
 
         {/* ROW 2 */}
-        <Box
-          gridColumn="span 8"
-          gridRow="span 2"
-          backgroundColor={colors.primary[400]}
-        >
+        <GlassCard gridColumn="span 8" gridRow="span 2">
           <Box
-            mt="25px"
-            p="0 30px"
-            display="flex "
+            mt="24px"
+            p="0 28px"
+            display="flex"
             justifyContent="space-between"
             alignItems="center"
           >
@@ -142,44 +155,61 @@ const Dashboard = () => {
                 variant="h5"
                 fontWeight="600"
                 color={colors.grey[100]}
+                sx={{ letterSpacing: "-0.01em" }}
               >
                 Revenue Generated
               </Typography>
               <Typography
-                variant="h3"
-                fontWeight="bold"
-                color={colors.greenAccent[500]}
+                variant="h2"
+                fontWeight="700"
+                sx={{
+                  background: `linear-gradient(135deg, ${colors.greenAccent[400]}, ${colors.greenAccent[600]})`,
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  mt: "4px",
+                }}
               >
                 $59,342.32
               </Typography>
             </Box>
-            <Box>
-              <IconButton>
-                <DownloadOutlinedIcon
-                  sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
-                />
-              </IconButton>
-            </Box>
+            <IconButton
+              sx={{
+                backgroundColor: theme.palette.mode === "dark"
+                  ? "rgba(28, 164, 123, 0.1)"
+                  : "rgba(76, 206, 172, 0.1)",
+                "&:hover": {
+                  backgroundColor: theme.palette.mode === "dark"
+                    ? "rgba(28, 164, 123, 0.2)"
+                    : "rgba(76, 206, 172, 0.15)",
+                },
+              }}
+            >
+              <DownloadOutlinedIcon
+                sx={{ fontSize: "26px", color: colors.greenAccent[500] }}
+              />
+            </IconButton>
           </Box>
           <Box height="250px" m="-20px 0 0 0">
             <LineChart isDashboard={true} />
           </Box>
-        </Box>
-        <Box
-          gridColumn="span 4"
-          gridRow="span 2"
-          backgroundColor={colors.primary[400]}
-          overflow="auto"
-        >
+        </GlassCard>
+
+        <GlassCard gridColumn="span 4" gridRow="span 2" overflow="auto">
           <Box
             display="flex"
             justifyContent="space-between"
             alignItems="center"
-            borderBottom={`4px solid ${colors.primary[500]}`}
-            colors={colors.grey[100]}
-            p="15px"
+            borderBottom={theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.06)"
+              : "1px solid rgba(0, 0, 0, 0.06)"}
+            p="18px 20px"
           >
-            <Typography color={colors.grey[100]} variant="h5" fontWeight="600">
+            <Typography
+              color={colors.grey[100]}
+              variant="h5"
+              fontWeight="600"
+              sx={{ letterSpacing: "-0.01em" }}
+            >
               Recent Transactions
             </Typography>
           </Box>
@@ -189,93 +219,111 @@ const Dashboard = () => {
               display="flex"
               justifyContent="space-between"
               alignItems="center"
-              borderBottom={`4px solid ${colors.primary[500]}`}
-              p="15px"
+              borderBottom={theme.palette.mode === "dark"
+                ? "1px solid rgba(255, 255, 255, 0.04)"
+                : "1px solid rgba(0, 0, 0, 0.04)"}
+              p="14px 20px"
+              sx={{
+                "&:hover": {
+                  backgroundColor: theme.palette.mode === "dark"
+                    ? "rgba(255, 255, 255, 0.02)"
+                    : "rgba(0, 0, 0, 0.02)",
+                },
+                transition: "background-color 0.2s ease",
+              }}
             >
               <Box>
                 <Typography
                   color={colors.greenAccent[500]}
                   variant="h5"
                   fontWeight="600"
+                  sx={{ letterSpacing: "-0.01em" }}
                 >
                   {transaction.txId}
                 </Typography>
-                <Typography color={colors.grey[100]}>
+                <Typography color={colors.grey[300]} sx={{ fontSize: "13px" }}>
                   {transaction.user}
                 </Typography>
               </Box>
-              <Box color={colors.grey[100]}>{transaction.date}</Box>
+              <Typography color={colors.grey[300]} sx={{ fontSize: "13px" }}>
+                {transaction.date}
+              </Typography>
               <Box
-                backgroundColor={colors.greenAccent[500]}
-                p="5px 10px"
-                borderRadius="4px"
+                sx={{
+                  background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.greenAccent[700]})`,
+                  p: "6px 14px",
+                  borderRadius: "8px",
+                  color: "#fff",
+                  fontWeight: 600,
+                  fontSize: "13px",
+                }}
               >
                 ${transaction.cost}
               </Box>
             </Box>
           ))}
-        </Box>
+        </GlassCard>
 
         {/* ROW 3 */}
-        <Box
-          gridColumn="span 4"
-          gridRow="span 2"
-          backgroundColor={colors.primary[400]}
-          p="30px"
-        >
-          <Typography variant="h5" fontWeight="600">
+        <GlassCard gridColumn="span 4" gridRow="span 2" p="28px">
+          <Typography
+            variant="h5"
+            fontWeight="600"
+            color={colors.grey[100]}
+            sx={{ letterSpacing: "-0.01em" }}
+          >
             Campaign
           </Typography>
           <Box
             display="flex"
             flexDirection="column"
             alignItems="center"
-            mt="25px"
+            mt="24px"
           >
-            <ProgressCircle size="125" />
+            <ProgressCircle size="130" />
             <Typography
               variant="h5"
               color={colors.greenAccent[500]}
-              sx={{ mt: "15px" }}
+              sx={{ mt: "16px", fontWeight: 600 }}
             >
               $48,352 revenue generated
             </Typography>
-            <Typography>Includes extra misc expenditures and costs</Typography>
+            <Typography
+              color={colors.grey[300]}
+              sx={{ mt: "4px", fontSize: "13px" }}
+            >
+              Includes extra misc expenditures and costs
+            </Typography>
           </Box>
-        </Box>
-        <Box
-          gridColumn="span 4"
-          gridRow="span 2"
-          backgroundColor={colors.primary[400]}
-        >
+        </GlassCard>
+
+        <GlassCard gridColumn="span 4" gridRow="span 2">
           <Typography
             variant="h5"
             fontWeight="600"
-            sx={{ padding: "30px 30px 0 30px" }}
+            color={colors.grey[100]}
+            sx={{ padding: "28px 28px 0 28px", letterSpacing: "-0.01em" }}
           >
             Sales Quantity
           </Typography>
           <Box height="250px" mt="-20px">
             <BarChart isDashboard={true} />
           </Box>
-        </Box>
-        <Box
-          gridColumn="span 4"
-          gridRow="span 2"
-          backgroundColor={colors.primary[400]}
-          padding="30px"
-        >
+        </GlassCard>
+
+        <GlassCard gridColumn="span 4" gridRow="span 2" p="28px">
           <Typography
             variant="h5"
             fontWeight="600"
-            sx={{ marginBottom: "15px" }}
+            color={colors.grey[100]}
+            sx={{ marginBottom: "16px", letterSpacing: "-0.01em" }}
           >
             Geography Based Traffic
           </Typography>
           <Box height="200px">
             <GeographyChart isDashboard={true} />
           </Box>
-        </Box>
+        </GlassCard>
       </Box>
     </Box>
   );

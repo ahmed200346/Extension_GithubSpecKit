@@ -191,15 +191,23 @@ const AddDocument = () => {
                 onDrop={handleDrop}
                 sx={{
                   border: `2px dashed ${selectedFile ? colors.greenAccent[500] : colors.grey[700]}`,
-                  borderRadius: "10px",
+                  borderRadius: "16px",
                   p: "40px",
                   textAlign: "center",
-                  backgroundColor: colors.primary[400],
+                  backgroundColor: theme.palette.mode === "dark"
+                    ? "rgba(14, 20, 35, 0.6)"
+                    : "rgba(255, 255, 255, 0.7)",
+                  backdropFilter: "blur(10px)",
                   cursor: "pointer",
                   transition: "all 0.3s ease",
                   "&:hover": {
                     borderColor: colors.greenAccent[500],
-                    backgroundColor: colors.primary[500] || colors.primary[400],
+                    backgroundColor: theme.palette.mode === "dark"
+                      ? "rgba(28, 164, 123, 0.05)"
+                      : "rgba(255, 255, 255, 0.9)",
+                    boxShadow: theme.palette.mode === "dark"
+                      ? "0 4px 20px rgba(0, 0, 0, 0.3)"
+                      : "0 4px 20px rgba(0, 0, 0, 0.08)",
                   },
                 }}
                 onClick={() => fileInputRef.current?.click()}
@@ -355,14 +363,27 @@ const AddDocument = () => {
                 disabled={!selectedFile || uploading}
                 startIcon={uploading ? <CircularProgress size={20} /> : <CloudUploadIcon />}
                 sx={{
-                  backgroundColor: colors.greenAccent[600],
+                  background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.blueAccent[600] || colors.greenAccent[700]})`,
+                  color: "#fff",
+                  fontWeight: 600,
+                  borderRadius: "12px",
+                  padding: "12px 24px",
+                  boxShadow: theme.palette.mode === "dark"
+                    ? "0 4px 14px rgba(28, 164, 123, 0.3)"
+                    : "0 4px 14px rgba(76, 206, 172, 0.3)",
                   "&:hover": {
-                    backgroundColor: colors.greenAccent[700],
+                    background: `linear-gradient(135deg, ${colors.greenAccent[700]}, ${colors.blueAccent[700] || colors.greenAccent[800]})`,
+                    boxShadow: theme.palette.mode === "dark"
+                      ? "0 6px 20px rgba(28, 164, 123, 0.4)"
+                      : "0 6px 20px rgba(76, 206, 172, 0.4)",
+                    transform: "translateY(-1px)",
                   },
                   "&:disabled": {
                     backgroundColor: colors.grey[600],
                     color: colors.grey[400],
+                    boxShadow: "none",
                   },
+                  transition: "all 0.2s ease",
                 }}
               >
                 {uploading ? "Uploading..." : "Upload & Process"}

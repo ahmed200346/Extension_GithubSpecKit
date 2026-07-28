@@ -64,29 +64,69 @@ const Contacts = () => {
         sx={{
           "& .MuiDataGrid-root": {
             border: "none",
+            borderRadius: "16px",
+            overflow: "hidden",
           },
           "& .MuiDataGrid-cell": {
-            borderBottom: "none",
+            borderBottom: theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.04)"
+              : "1px solid rgba(0, 0, 0, 0.04)",
+            color: colors.grey[100],
+            fontSize: "14px",
           },
           "& .name-column--cell": {
-            color: colors.greenAccent[300],
+            color: colors.greenAccent[400],
+            fontWeight: 500,
           },
           "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: colors.blueAccent[700],
-            borderBottom: "none",
+            backgroundColor: theme.palette.mode === "dark"
+              ? "rgba(30, 37, 51, 0.9)"
+              : "rgba(62, 67, 150, 0.9)",
+            borderBottom: theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.08)"
+              : "1px solid rgba(0, 0, 0, 0.08)",
+            "& .MuiDataGrid-columnHeader": {
+              color: colors.grey[100],
+              fontWeight: 600,
+              fontSize: "13px",
+              letterSpacing: "0.02em",
+              textTransform: "uppercase",
+            },
+            "& .MuiDataGrid-columnHeaderTitle": {
+              color: colors.grey[100],
+              fontWeight: 600,
+            },
           },
           "& .MuiDataGrid-virtualScroller": {
-            backgroundColor: colors.primary[400],
+            backgroundColor: theme.palette.mode === "dark"
+              ? "rgba(14, 20, 35, 0.6)"
+              : "rgba(255, 255, 255, 0.8)",
           },
           "& .MuiDataGrid-footerContainer": {
-            borderTop: "none",
-            backgroundColor: colors.blueAccent[700],
+            borderTop: theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.08)"
+              : "1px solid rgba(0, 0, 0, 0.08)",
+            backgroundColor: theme.palette.mode === "dark"
+              ? "rgba(30, 37, 51, 0.9)"
+              : "rgba(62, 67, 150, 0.9)",
           },
           "& .MuiCheckbox-root": {
-            color: `${colors.greenAccent[200]} !important`,
+            color: `${colors.greenAccent[400]} !important`,
           },
           "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
             color: `${colors.grey[100]} !important`,
+          },
+          "& .MuiDataGrid-row": {
+            "&:hover": {
+              backgroundColor: theme.palette.mode === "dark"
+                ? "rgba(255, 255, 255, 0.03)"
+                : "rgba(0, 0, 0, 0.03)",
+            },
+          },
+          "& .MuiDataGrid-columnSeparator": {
+            color: theme.palette.mode === "dark"
+              ? "rgba(255, 255, 255, 0.1)"
+              : "rgba(0, 0, 0, 0.1)",
           },
         }}
       >

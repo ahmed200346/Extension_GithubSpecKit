@@ -128,12 +128,25 @@ const Form = () => {
                 <Paper
                   variant="outlined"
                   sx={{
-                    p: 3,
-                    border: `2px dashed ${colors.grey[300]}`,
-                    backgroundColor: colors.primary[400],
+                    p: 4,
+                    border: `2px dashed ${values.file ? colors.greenAccent[500] : colors.grey[700]}`,
+                    background: theme.palette.mode === "dark"
+                      ? "rgba(14, 20, 35, 0.6)"
+                      : "rgba(255, 255, 255, 0.7)",
+                    backdropFilter: "blur(10px)",
                     textAlign: "center",
                     cursor: "pointer",
-                    "&:hover": { borderColor: colors.greenAccent[500] },
+                    borderRadius: "16px",
+                    transition: "all 0.3s ease",
+                    "&:hover": {
+                      borderColor: colors.greenAccent[500],
+                      backgroundColor: theme.palette.mode === "dark"
+                        ? "rgba(28, 164, 123, 0.05)"
+                        : "rgba(255, 255, 255, 0.9)",
+                      boxShadow: theme.palette.mode === "dark"
+                        ? "0 4px 20px rgba(0, 0, 0, 0.3)"
+                        : "0 4px 20px rgba(0, 0, 0, 0.08)",
+                    },
                   }}
                   component="label"
                 >
@@ -176,7 +189,23 @@ const Form = () => {
                 color="secondary"
                 variant="contained"
                 disabled={loading}
-                sx={{ padding: "10px 20px", fontWeight: "bold" }}
+                sx={{
+                  padding: "12px 24px",
+                  fontWeight: "bold",
+                  background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.blueAccent[600] || colors.greenAccent[700]})`,
+                  borderRadius: "12px",
+                  boxShadow: theme.palette.mode === "dark"
+                    ? "0 4px 14px rgba(28, 164, 123, 0.3)"
+                    : "0 4px 14px rgba(76, 206, 172, 0.3)",
+                  "&:hover": {
+                    background: `linear-gradient(135deg, ${colors.greenAccent[700]}, ${colors.blueAccent[700] || colors.greenAccent[800]})`,
+                    boxShadow: theme.palette.mode === "dark"
+                      ? "0 6px 20px rgba(28, 164, 123, 0.4)"
+                      : "0 6px 20px rgba(76, 206, 172, 0.4)",
+                    transform: "translateY(-1px)",
+                  },
+                  transition: "all 0.2s ease",
+                }}
               >
                 {loading ? (
                   <Box display="flex" alignItems="center" gap={1}>
