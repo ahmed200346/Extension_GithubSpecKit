@@ -65,7 +65,16 @@ Avant de démarrer les services, assurez-vous impérativement que :
 
 ### 🛠️ Procédure de Lancement
 
-**Étape 0 : Environnement Virtuel Python & Dépendances**
+**Étape 0 : Configuration des Variables d'Environnement (.env)**
+Créez un fichier .env à la racine du projet contenant la configuration suivante :
+
+Extrait de code
+```bash
+DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE_NAME>
+OLLAMA_BASE_URL=http://<HOST>:<PORT>
+OLLAMA_MODEL=<MODEL_NAME>
+```
+**Étape 1 : Environnement Virtuel Python & Dépendances**
 À la racine du projet, créez votre environnement virtuel Python, activez-le puis installez les dépendances du fichier `requirements.txt` :
 ```bash
 # Créer l'environnement virtuel
@@ -79,13 +88,13 @@ python -m venv env
 pip install -r requirements.txt
 ```
 
-**Étape 1 : Démarrer le Backend FastAPI**
+**Étape 2 : Démarrer le Backend FastAPI**
 ```bash
 cd backend
 uvicorn app.main:app --reload --port 8000
 ```
 
-**Étape 2 : Démarrer l'interface Frontend React**
+**Étape 3 : Démarrer l'interface Frontend React**
 ```bash
 cd frontend
 npm install
@@ -93,12 +102,12 @@ npm start
 ```
 > 💡 **Note de Dépannage** : Si vous rencontrez des erreurs lors de l'installation ou du lancement du frontend (conflits de dépendances, Node.js, `cross-env` ou ports), veuillez vous référer au guide de configuration détaillé : **`configFrontEnd.pdf`** situé à la racine du projet.
 
-**Étape 3 : Lancer le Watcher Temps Réel**
+**Étape 4 : Lancer le Watcher Temps Réel**
 ```bash
 python scripts/python/spec_watcher.py
 ```
 
-**Étape 4 : Exécuter Spec Kit via Claude Code**
+**Étape 5 : Exécuter Spec Kit via Claude Code**
 ```bash
 ollama launch claude
 ```
