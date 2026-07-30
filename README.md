@@ -54,6 +54,25 @@ Le système s'appuie sur une base de données PostgreSQL pour garantir l'immuabi
 
 ---
 
+## 🔌 Extension VS Code SpecKit (Nouveau)
+
+> **⚠️ En cours de développement** — Non publiée sur le Marketplace pour le moment.  
+> **Branche dédiée** : [`extension`](https://github.com/ahmed200346/Extension_GithubSpecKit/tree/extension) pour le code complet, tests et documentation détaillée.
+
+L'extension VS Code **AgentDocx SpecKit** remplace le dossier `scripts/` et offre une expérience intégrée :
+- **Deux canaux de logs séparés** : `AgentDocx Server` (FastAPI) et `AgentDocx Watcher` (Python watchdog)
+- **Démarrage automatique** au chargement de l'extension (F5)
+- **Progression temps réel** visible dans le frontend (DocVersion créée dès le début, statut `pending` → `completed`)
+- **Commandes palette** : `start_server`, `stopServer`, `startWatcher`, `stopWatcher`, `triggerPipeline`
+
+> 📸 **Captures de l'extension** :  
+> 1. **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente  
+>    ![AgentDocx Watcher](AgentDocxWatcher.png)  
+> 2. **AgentDocx Server** — logs FastAPI, progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout), KPIs  
+>    ![AgentDocx Server](AgentDocxServer.png)
+
+---
+
 ## 🚀 Quick Start (Guide de Lancement)
 
 Suivez ces étapes pour mettre en place l'environnement Spec Kit sur votre machine.
@@ -63,19 +82,18 @@ Avant de démarrer les services, assurez-vous impérativement que :
 - **PostgreSQL** est lancé en arrière-plan.
 - OU que **pgAdmin4** est ouvert avec une connexion active à la base de données du projet.
 
-### 🛠️ Procédure de Lancement
+---
 
-**Étape 0 : Configuration des Variables d'Environnement (.env)**
-Créez un fichier .env à la racine du projet contenant la configuration suivante :
+### 🛠️ Méthode 1 : Scripts Standalone (Version Actuelle — 4 Terminaux)
 
-Extrait de code
-```bash
-DATABASE_URL=postgresql://<USER>:<PASSWORD>@<HOST>:<PORT>/<DATABASE_NAME>
-OLLAMA_BASE_URL=http://<HOST>:<PORT>
-OLLAMA_MODEL=<MODEL_NAME>
-```
-**Étape 1 : Environnement Virtuel Python & Dépendances**
-À la racine du projet, créez votre environnement virtuel Python, activez-le puis installez les dépendances du fichier `requirements.txt` :
+> **Approche classique** avec scripts Python standalone. Idéale pour développement sans l'extension.
+
+#### Prérequis Base de Données
+- PostgreSQL lancé (ou pgAdmin4 connecté)
+
+#### Procédure de Lancement
+
+**Étape 0 : Environnement Virtuel Python & Dépendances**
 ```bash
 # Créer l'environnement virtuel
 python -m venv env
@@ -88,27 +106,107 @@ python -m venv env
 pip install -r requirements.txt
 ```
 
-**Étape 2 : Démarrer le Backend FastAPI**
+**Étape 1 : Démarrer le Backend FastAPI** (Terminal 1)
 ```bash
 cd backend
 uvicorn app.main:app --reload --port 8000
 ```
 
-**Étape 3 : Démarrer l'interface Frontend React**
+**Étape 2 : Démarrer l'interface Frontend React** (Terminal 2)
 ```bash
 cd frontend
 npm install
 npm start
 ```
-> 💡 **Note de Dépannage** : Si vous rencontrez des erreurs lors de l'installation ou du lancement du frontend (conflits de dépendances, Node.js, `cross-env` ou ports), veuillez vous référer au guide de configuration détaillé : **`configFrontEnd.pdf`** situé à la racine du projet.
+> 💡 Si erreurs (dépendances, Node.js, `cross-env`, ports) → voir `configFrontEnd.pdf` à la racine.
 
-**Étape 4 : Lancer le Watcher Temps Réel**
+**Étape 3 : Lancer le Watcher Temps Réel** (Terminal 3)
 ```bash
 python scripts/python/spec_watcher.py
 ```
 
-**Étape 5 : Exécuter Spec Kit via Claude Code**
+**Étape 4 : Exécuter Spec Kit via Claude Code** (Terminal 4)
 ```bash
 ollama launch claude
 ```
-*Vous pouvez maintenant utiliser les commandes Spec Kit (ex: `/speckit-specify`, `/doc-pipeline`) pour générer vos spécifications.*
+*Utilisez les commandes Spec Kit (ex: `/speckit-specify`, `/doc-pipeline`) pour générer vos spécifications.*
+
+---
+
+### 🛠️ Méthode 2 : Extension VS Code (En Développement — Branche `extension`)
+
+> **Remplace** le dossier `scripts/` par une extension VS Code intégrée.  
+> **Branche** : [`extension`](https://github.com/ahmed200346/Extension_GithubSpecKit/tree/extension) — contient le code complet, tests et doc détaillée.
+
+#### Architecture
+- **Dossier `agentdocx-speckit/`** remplace `scripts/` (extension VS Code complète)
+- **2 Terminaux pour le Frontend** : 
+  1. `cd frontend && npm start` 
+  2. `cd frontend && npm run dev` (si applicable)
+- **Fenêtre Extension (F5)** : Ouvre une fenêtre **Extension Development Host** avec :
+  - Canal **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente
+  - Canal **AgentDocx Server** — logs FastAPI, progression agents, KPIs
+- **Terminal Claude Code** : pour commandes Speckit (`/speckit-specify`, `/doc-pipeline`)
+
+#### Prérequis Supplémentaires
+- **Ollama** installé + modèle `gemma4:31b-cloud` (`ollama pull gemma4:31b-cloud`)
+- **Ollama serve** en cours d'exécution
+- **Python 3.10+**, dépendances `scripts/python/requirements.txt` si test hors extension
+
+#### Procédure de Lancement
+
+**Étape 0 : Environnement Python (optionnel pour tests hors extension)**
+```bash
+python -m venv env
+# Windows: env\Scripts\activate
+# Linux/Mac: source env/bin/activate
+pip install -r scripts/python/requirements.txt
+```
+
+**Étape 1 : Frontend React** (Terminal 1)
+```bash
+cd frontend
+npm install
+npm start
+```
+
+**Étape 2 : Ouvrir l'Extension Dev Host** (Terminal 2 — racine `agentdocx-speckit/`)
+```bash
+cd agentdocx-speckit
+npm install
+npm run compile
+# Puis F5 dans VS Code pour ouvrir l'Extension Development Host
+```
+> L'extension démarre **automatiquement** serveur + watcher au chargement (voir canaux `AgentDocx Server` / `AgentDocx Watcher`).
+
+**Étape 3 : Claude Code** (Terminal 3)
+```bash
+ollama launch claude
+```
+*Commandes disponibles : `/speckit-specify`, `/doc-pipeline`, `/speckit-plan`, etc.*
+
+---
+
+## 🔄 Résumé : Quelle méthode choisir ?
+
+| Critère | Méthode 1 (Scripts) | Méthode 2 (Extension) |
+|---------|---------------------|----------------------|
+| **Statut** | Production | Développement (branche `extension`) |
+| **Terminaux** | 4 | 3 (Frontend×2 + Claude) + Fenêtre Extension |
+| **Logs** | Unifiés dans terminaux | Séparés : `AgentDocx Watcher` / `AgentDocx Server` |
+| **Progression v2+** | Visible seulement à la fin | Temps réel (DocVersion `pending` → `completed`) |
+| **Publication** | N/A | Pas encore sur Marketplace |
+
+> Pour les détails complets sur l'extension : voir branche [`extension`](https://github.com/ahmed200346/Extension_GithubSpecKit/tree/extension) et documentation dans `agentdocx-speckit/README.md`.
+
+---
+
+### 📚 Ressources Complémentaires
+- `configFrontEnd.pdf` — Dépannage Frontend
+- `scripts/README.md` — Documentation scripts Python
+- `agentdocx-speckit/README.md` — Doc extension (branche `extension`)
+- `configFrontEnd.pdf` — Configuration Frontend détaillée
+
+---
+
+*Dernière mise à jour : 2026-07-30 — Spec Kit v0.0.2 (Extension en développement)*
