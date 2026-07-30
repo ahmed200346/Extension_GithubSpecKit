@@ -153,6 +153,20 @@ ollama launch claude
 - **Ollama serve** en cours d'exécution
 - **Python 3.10+**, dépendances `scripts/python/requirements.txt` si test hors extension
 
+#### ⚙️ Configuration VS Code Recommandée (pour l'extension)
+Créez un fichier `.vscode/settings.json` à la racine du projet `agentdocx-speckit/` pour que l'extension Python reconnaisse le module `backend` utilisé par `spec_watcher.py` :
+
+```json
+{
+  "python.analysis.extraPaths": [
+    "./backend"
+  ],
+  "python.defaultInterpreterPath": "${workspaceFolder}/env/Scripts/python.exe"
+}
+```
+
+> **Note** : Le chemin `./backend` permet à l'analyseur Python (Pylance) de résoudre les imports comme `from app.api.v1.endpoints import pipeline` utilisés dans `spec_watcher.py` qui lance le serveur via `start_server.py`.
+
 #### Procédure de Lancement
 
 **Étape 0 : Environnement Python (optionnel pour tests hors extension)**
