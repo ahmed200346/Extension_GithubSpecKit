@@ -23,17 +23,49 @@ export function activate(context: vscode.ExtensionContext) {
     serverOutputChannel.appendLine("[INIT] Canal Serveur FastAPI prêt.");
     watcherOutputChannel.appendLine("[INIT] Canal Watcher Python prêt.");
 
-    // Détermination du dossier backend s'il existe
-    const backendPath = path.join(context.extensionPath, 'backend');
-    const executionCwd = fs.existsSync(backendPath) ? backendPath : context.extensionPath;
-
-    // Options pour child_process.spawn avec CWD et PYTHONPATH configurés
+    // 🎯 Récupérer le dossier du workspace (projet ouvert)
+    const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+    if (!workspaceFolder) {
+        vscode.window.showErrorMessage("Aucun dossier de travail ouvert. Ouvrez un dossier contenant backend/ et specs/");
+        return;
+    }
+    const workspacePath = workspaceFolder.uri.fsPath;
+    
+    // 🎯 Chemins des scripts EMBARQUÉS dans l'extension (priorité) + fallback workspace
+    const extensionScriptsPath = path.join(context.extensionPath, 'scripts', 'python');
+    const workspaceScriptsPath = path.join(workspacePath, 'scripts', 'python');
+    const scriptsPath = fs.existsSync(extensionScriptsPath) ? extensionScriptsPath : workspaceScriptsPath;
+    
+    // Détermination des chemins basés sur le workspace (projet ouvert)
+    const backendPath = path.join(workspacePath, 'backend');
+    const specsPath = path.join(workspacePath, 'specs');
+    
+    // Vérifier que les dossiers requis existent
+    if (!fs.existsSync(backendPath)) {
+        vscode.window.showErrorMessage(`Dossier 'backend' introuvable dans le workspace : ${workspacePath}`);
+        return;
+    }
+    if (!fs.existsSync(specsPath)) {
+        vscode.window.showWarningMessage(`Dossier 'specs' introuvable dans le workspace : ${workspacePath}. Le watcher ne surveillera rien.`);
+    }
+    
+    if (!fs.existsSync(scriptsPath)) {
+        vscode.window.showErrorMessage(`Dossier 'scripts/python' introuvable ni dans l'extension ni dans le workspace`);
+        return;
+    }
+    
+    // Options pour child_process.spawn avec CWD et PYTHONPATH configurés sur le workspace
     const spawnOptions: child_process.SpawnOptions = {
-        cwd: executionCwd,
+        cwd: workspacePath,
         env: {
             ...process.env,
             PYTHONIOENCODING: 'utf-8',
-            PYTHONPATH: executionCwd + path.delimiter + (process.env.PYTHONPATH || '')
+            PYTHONPATH: workspacePath + path.delimiter + (process.env.PYTHONPATH || ''),
+            // 🎯 Variables pour que les scripts Python trouvent le workspace
+            SPECKIT_WORKSPACE: workspacePath,
+            SPECKIT_SPECS_DIR: specsPath,
+            SPECKIT_BACKEND_DIR: backendPath,
+            SPECKIT_SCRIPTS_DIR: scriptsPath
         }
     };
 
@@ -48,7 +80,7 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        const scriptPath = path.join(context.extensionPath, 'scripts', 'python', 'start_server.py');
+        const scriptPath = path.join(scriptsPath, 'start_server.py');
         if (!fs.existsSync(scriptPath)) {
             vscode.window.showErrorMessage(`Script Python introuvable : ${scriptPath}`);
             serverOutputChannel.appendLine(`[ERREUR SERVEUR] Fichier non trouvé : ${scriptPath}`);
@@ -107,7 +139,7 @@ export function activate(context: vscode.ExtensionContext) {
             return;
         }
 
-        const scriptPath = path.join(context.extensionPath, 'scripts', 'python', 'spec_watcher.py');
+        const scriptPath = path.join(scriptsPath, 'spec_watcher.py');
         if (!fs.existsSync(scriptPath)) {
             vscode.window.showErrorMessage(`Script Watcher introuvable : ${scriptPath}`);
             watcherOutputChannel.appendLine(`[ERREUR WATCHER] Fichier non trouvé : ${scriptPath}`);
@@ -117,7 +149,21 @@ export function activate(context: vscode.ExtensionContext) {
         const pythonCmd = getPythonExecutable();
         watcherOutputChannel.appendLine(`[WATCHER] Démarrage du Watcher (${pythonCmd} ${scriptPath})...`);
 
-        watcherProcess = child_process.spawn(pythonCmd, [scriptPath], spawnOptions);
+        // Pass workspace path to watcher via environment variable
+        const watcherEnv = {
+            ...process.env,
+            PYTHONIOENCODING: 'utf-8',
+            PYTHONPATH: workspacePath + path.delimiter + (process.env.PYTHONPATH || ''),
+            SPECKIT_WORKSPACE: workspacePath,
+            SPECKIT_SPECS_DIR: specsPath,
+            SPECKIT_BACKEND_DIR: backendPath,
+            SPECKIT_SCRIPTS_DIR: scriptsPath
+        };
+
+        watcherProcess = child_process.spawn(pythonCmd, [scriptPath], {
+            ...spawnOptions,
+            env: watcherEnv
+        });
 
         watcherProcess.stdout?.on('data', (data) => {
             watcherOutputChannel.appendLine(`[STDOUT] ${data.toString().trim()}`);

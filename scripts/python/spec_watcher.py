@@ -1,6 +1,7 @@
 import sys
 import time
 import requests
+import os
 from pathlib import Path
 from queue import Queue
 from threading import Thread, Lock
@@ -28,15 +29,29 @@ CURRENT_FILE = Path(__file__).resolve()
 STAGE_TALAN_DIR = CURRENT_FILE.parents[3] if len(CURRENT_FILE.parents) > 3 else CURRENT_FILE.parents[2]
 AGENTDOCX_DIR = CURRENT_FILE.parents[2]
 
-# 🎯 Détection prioritaire automatique du dossier 'specs'
-if (STAGE_TALAN_DIR / "specs").exists():
-    BASE_DIR = STAGE_TALAN_DIR
-elif (AGENTDOCX_DIR / "specs").exists():
-    BASE_DIR = AGENTDOCX_DIR
-else:
-    BASE_DIR = STAGE_TALAN_DIR
+# 🎯 PRIORITÉ 1 : Variable d'environnement SPECKIT_WORKSPACE (définie par l'extension VS Code)
+SPECKIT_WORKSPACE = os.environ.get("SPECKIT_WORKSPACE")
+SPECKIT_SPECS_DIR = os.environ.get("SPECKIT_SPECS_DIR")
+SPECKIT_BACKEND_DIR = os.environ.get("SPECKIT_BACKEND_DIR")
+SPECKIT_SCRIPTS_DIR = os.environ.get("SPECKIT_SCRIPTS_DIR")
 
-WATCH_DIR = BASE_DIR / "specs"
+if SPECKIT_WORKSPACE:
+    BASE_DIR = Path(SPECKIT_WORKSPACE)
+    print(f"[WATCHER] Utilisation du workspace depuis l'extension : {BASE_DIR}")
+else:
+    # Fallback : détection automatique (mode standalone)
+    print(f"[WATCHER] Mode standalone - détection automatique du workspace")
+    if (STAGE_TALAN_DIR / "specs").exists():
+        BASE_DIR = STAGE_TALAN_DIR
+    elif (AGENTDOCX_DIR / "specs").exists():
+        BASE_DIR = AGENTDOCX_DIR
+    else:
+        BASE_DIR = STAGE_TALAN_DIR
+
+if SPECKIT_SPECS_DIR:
+    WATCH_DIR = Path(SPECKIT_SPECS_DIR)
+else:
+    WATCH_DIR = BASE_DIR / "specs"
 
 # Sécurité : crée automatiquement le dossier 'specs' s'il n'existe pas encore
 WATCH_DIR.mkdir(parents=True, exist_ok=True)

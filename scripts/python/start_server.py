@@ -14,6 +14,12 @@ SCRIPT_DIR = CURRENT_FILE.parent        # .../scripts/python
 RACINE_DIR = CURRENT_FILE.parents[3] # .../StageTalan
 AGENTDOCX_DIR = CURRENT_FILE.parents[2]   # .../agentdocx-speckit
 
+# 🎯 Support de la variable d'environnement SPECKIT_WORKSPACE (définie par l'extension VS Code)
+SPECKIT_WORKSPACE = os.environ.get("SPECKIT_WORKSPACE")
+if SPECKIT_WORKSPACE:
+    RACINE_DIR = Path(SPECKIT_WORKSPACE)
+    print(f"[VERIF] Workspace depuis extension VS Code : {RACINE_DIR}", flush=True)
+
 print(f"[VERIF] Dossier StageTalan : {RACINE_DIR}", flush=True)
 
 # Détection stricte : backend situé sous StageTalan (ou secours sous agentdocx-speckit)
