@@ -71,6 +71,25 @@ L'extension VS Code **AgentDocx SpecKit** remplace le dossier `scripts/` et offr
 > 2. **AgentDocx Server** — logs FastAPI, progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout), KPIs  
 >    ![AgentDocx Server](AgentDocxServer.png)
 
+### 📦 Installation de l'Extension (via .vsix)
+
+> L'extension n'est pas encore publiée sur le Marketplace VS Code. Installez-la manuellement via le fichier `.vsix` :
+
+1. Téléchargez le fichier `agentdocx-speckit-0.0.2.vsix`  depuis le dossier racine du repo (branche `extension`).
+2. Dans VS Code : `Ctrl+Shift+P` → **Extensions: Install from VSIX...**
+3. Sélectionnez le fichier `.vsix` téléchargé.
+4. Redémarrez VS Code si nécessaire.
+
+> 📸 **Installation via .vsix** :  
+> ![Installation VSIX](ExtensionVSCode.png)  
+> *(Capture : icône Extensions → "..." → "Install from VSIX..." → sélectionner le fichier .vsix)*
+
+> 📸 **Captures de l'extension** :  
+> 1. **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente  
+>    ![AgentDocx Watcher](AgentDocxWatcher.png)  
+> 2. **AgentDocx Server** — logs FastAPI, progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout), KPIs  
+>    ![AgentDocx Server](AgentDocxServer.png)
+
 ---
 
 ## 🚀 Quick Start (Guide de Lancement)
