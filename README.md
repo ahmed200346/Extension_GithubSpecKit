@@ -13,7 +13,10 @@ Le projet est organisé de manière modulaire pour séparer l'orchestration IA, 
 - **`/backend`** : ⚙️ Pipeline d'enrichissement et d'évaluation. Propulsé par **FastAPI** et **LangGraph**, il orchestre la chaîne d'agents et gère la logique métier.
 - **`/frontend`** : 🖥️ Dashboard **React** permettant le suivi en temps réel des exécutions, la visualisation des KPIs et le téléversement de nouveaux documents.
 - **`/scripts`** : 🛠️ Watchers de fichiers et scripts d'automatisation qui font le pont entre le système de fichiers et le pipeline.
-- **`/extensions`** : 🔌 Intégrations CLI SpecKit pour déclencher automatiquement le pipeline lors de la génération d'artefacts.
+- **`/specs`** : 📄 Dossier source des spécifications Markdown à traiter.
+  - Contient des **exemples de fichiers** (`spec.md`, `requirements.md`, etc.) prêts à être traités.
+  - Le **watcher surveille ce dossier** en temps réel pour déclencher le pipeline automatiquement.
+  - Les **livrables générés** (JSON, PDF, diagrammes, évaluations) sont stockés dans `/outputs/` organisé par projet.
 - **`/outputs`** : 📦 Dossier centralisé des livrables, organisé par projet :
   - `data/` : Données structurées JSON.
   - `markdowns/` : Fichiers enrichis.
@@ -59,11 +62,13 @@ Le système s'appuie sur une base de données PostgreSQL pour garantir l'immuabi
 > **⚠️ En cours de développement** — Non publiée sur le Marketplace pour le moment.  
 > **Branche dédiée** : [`extension`](https://github.com/ahmed200346/Extension_GithubSpecKit/tree/extension) pour le code complet, tests et documentation détaillée.
 
-L'extension VS Code **AgentDocx SpecKit** remplace le dossier `scripts/` et offre une expérience intégrée :
-- **Deux canaux de logs séparés** : `AgentDocx Server` (FastAPI) et `AgentDocx Watcher` (Python watchdog)
-- **Démarrage automatique** au chargement de l'extension (F5)
+L'extension VS Code **AgentDocx SpecKit** remplace le dossier `scripts/` et offre une expérience intégrée **dans une seule fenêtre VS Code** :
+- **Deux canaux de logs dans la vue Output** (menu `View` → `Output` → dropdown pour basculer) :  
+  - **AgentDocx Server** — logs FastAPI, progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout), KPIs  
+  - **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente
+- **Démarrage automatique** au chargement de l'extension (F5 ou installation .vsix)
 - **Progression temps réel** visible dans le frontend (DocVersion créée dès le début, statut `pending` → `completed`)
-- **Commandes palette** : `start_server`, `stopServer`, `startWatcher`, `stopWatcher`, `triggerPipeline`
+- **Commandes palette** (`Ctrl+Shift+P`) : `start_server`, `stopServer`, `startWatcher`, `stopWatcher`, `triggerPipeline`
 
 > 📸 **Captures de l'extension** :  
 > 1. **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente  
@@ -75,7 +80,7 @@ L'extension VS Code **AgentDocx SpecKit** remplace le dossier `scripts/` et offr
 
 > L'extension n'est pas encore publiée sur le Marketplace VS Code. Installez-la manuellement via le fichier `.vsix` :
 
-1. Téléchargez le fichier `agentdocx-speckit-0.0.2.vsix`  depuis le dossier racine du repo (branche `extension`).
+1. Téléchargez le fichier `agentdocx-speckit-0.0.2.vsix` depuis le dossier racine du repo (branche `extension`).
 2. Dans VS Code : `Ctrl+Shift+P` → **Extensions: Install from VSIX...**
 3. Sélectionnez le fichier `.vsix` téléchargé.
 4. Redémarrez VS Code si nécessaire.
@@ -84,11 +89,13 @@ L'extension VS Code **AgentDocx SpecKit** remplace le dossier `scripts/` et offr
 > ![Installation VSIX](ExtensionVSCode.png)  
 > *(Capture : icône Extensions → "..." → "Install from VSIX..." → sélectionner le fichier .vsix)*
 
-> 📸 **Captures de l'extension** :  
+> 📸 **Captures de l'extension (onglets Output)** :  
 > 1. **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente  
 >    ![AgentDocx Watcher](AgentDocxWatcher.png)  
 > 2. **AgentDocx Server** — logs FastAPI, progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout), KPIs  
 >    ![AgentDocx Server](AgentDocxServer.png)
+
+> **ℹ️ Note importante** : Contrairement à l'ancien mode (F5 ouvrait une seconde fenêtre "Extension Development Host"), l'extension s'exécute maintenant **dans la même fenêtre VS Code**. Les logs apparaissent dans le panneau **Output** (`View > Output`) avec un dropdown pour basculer entre **AgentDocx Server** et **AgentDocx Watcher**.
 
 ---
 
