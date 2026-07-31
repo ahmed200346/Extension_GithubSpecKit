@@ -29,36 +29,126 @@ class DiagramExporterTool:
         """
         Nettoie et corrige automatiquement les erreurs de syntaxe courantes
         générées dans le code Mermaid par les LLMs.
+        Moteur multi-passe ultra-performant avec auto-encapsulation des libellés.
         """
         if not mermaid_code:
             return ""
 
         code = str(mermaid_code).strip()
 
-        # 1. Supprime les blocs de code Markdown (```mermaid ... ```) s'ils existent
+        # 1. Supprime les blocs de code Markdown (```mermaid ... ```)
         code = re.sub(r"^```(?:mermaid)?\s*\n?", "", code, flags=re.MULTILINE)
         code = re.sub(r"\n?\s*```$", "", code, flags=re.MULTILINE)
 
-        # 2. Normalisation Unicode (espaces insécables, espaces invisibles, saut de ligne Windows)
+        # 2. Normalisation Unicode (espaces insécables, guillemets typographiques)
         code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
+        code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'").replace("«", '"').replace("»", '"')
+
+        # 3. Vérification / Ajout de l'en-tête de diagramme s'il est manquant
+        valid_headers = ("flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gantt", "mindmap", "pie", "gitGraph", "C4Context")
+        lines = [line.strip() for line in code.split("\n") if line.strip()]
+        first_line = next((l for l in lines if not l.startswith("%%")), "")
+
+        if not any(first_line.startswith(hdr) for hdr in valid_headers):
+            code = f"flowchart TD\n{code}"
+
+        # 4. PRÉ-NETTOYAGE : Normaliser les espaces DANS les délimiteurs avant le moteur principal
+        # Corriger: { "Label" } -> {"Label"}, [ "Label" ] -> ["Label"], ( "Label" ) -> ("Label")
+        code = re.sub(r'\{\s+"([^"]+)"\s+\}', r'{"\1"}', code)
+        code = re.sub(r'\{\s+\'([^\']+)\'\s+\}', r"{'\1'}", code)
+        code = re.sub(r'\[\s+"([^"]+)"\s+\]', r'["\1"]', code)
+        code = re.sub(r"\[\s+'([^']+)'\s+\]", r"['\1']", code)
+        code = re.sub(r'\(\s+"([^"]+)"\s+\)', r'("\1")', code)
+        code = re.sub(r"\(\s+'([^']+)'\s+\)", r"('\1')", code)
         
-        # Normalisation des guillemets typographiques (intelligents) vers guillemets standards
-        code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
+        # Corriger les doubles délimiteurs: {{Label}} -> ["Label"], [[Label]] -> ["Label"], ((Label)) -> ("Label"), ((Label)) -> ("Label")
+        code = re.sub(r'\{\{([^}]+)\}\}', r'["\1"]', code)
+        code = re.sub(r'\[\[([^\]]+)\]\]', r'["\1"]', code)
+        code = re.sub(r'\(\(([^)]+)\)\)', r'("\1")', code)
+        code = re.sub(r'\(\[([^\]]+)\]\)', r'["\1"]', code)
 
-        # 3. Corrige les espaces entre toutes les formes Mermaid et les guillemets
-        # Exemple: { "Text" } -> {"Text"} | [ "Text" ] -> ["Text"] | ( "Text" ) -> ("Text")
-        code = re.sub(r'(\{+|\[+|\(+\|\>)\s+"', r'\1"', code)
-        code = re.sub(r'"\s+(\}+|\]+|\)+\|?)', r'"\1', code)
-        code = re.sub(r"(\{+|\[+|\(+\|\>)\s+'", r"\1'", code)
-        code = re.sub(r"'\s+(\}+|\]+|\)+\|?)", r"'\1", code)
+        # 5. Normalisation Unicode (espaces insécables, guillemets typographiques)
+        code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
+        code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'").replace("«", '"').replace("»", '"')
 
-        # Correctifs ciblés pour les losanges de décision
-        code = re.sub(r'\{\s+"', '{"', code)
-        code = re.sub(r'"\s+\}', '"}', code)
-        code = re.sub(r"\{\s+'", "{'", code)
-        code = re.sub(r"'\s+\}", "'}", code)
+        # 6. Vérification / Ajout de l'en-tête de diagramme s'il est manquant
+        valid_headers = ("flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gantt", "mindmap", "pie", "gitGraph", "C4Context")
+        lines = [line.strip() for line in code.split("\n") if line.strip()]
+        first_line = next((l for l in lines if not l.startswith("%%")), "")
 
-        # 4. Suppression des sauts de lignes multiples inutiles
+        if not any(first_line.startswith(hdr) for hdr in valid_headers):
+            code = f"flowchart TD\n{code}"
+
+        # 7. Correction des formes de nœuds invalides ou doublons (restent après pré-nettoyage)
+        code = re.sub(r'\(\[([^\]]+)\]\)', r'["\1"]', code)
+        code = re.sub(r'\(\(([^)]+)\)\)', r'["\1"]', code)
+        code = re.sub(r'\[\[([^\]]+)\]\]', r'["\1"]', code)
+        code = re.sub(r'\{\{([^}]+)\}\}', r'["\1"]', code)
+
+        # 8. Encapsulation automatique des libellés de nœuds avec guillemets (Auto-Quoting Engine)
+        def quote_node_label(match):
+            node_id = match.group(1)
+            open_symbol = match.group(2)
+            label = match.group(3).strip()
+            close_symbol = match.group(4)
+
+            if (label.startswith('"') and label.endswith('"')) or (label.startswith("'") and label.endswith("'")):
+                clean_label = label[1:-1].replace('"', "'")
+                return f'{node_id}{open_symbol}"{clean_label}"{close_symbol}'
+
+            clean_label = label.replace('"', "'")
+            return f'{node_id}{open_symbol}"{clean_label}"{close_symbol}'
+
+        node_pattern = re.compile(r'(\b[A-Za-z0-9_]+)(\[\s*|\(\s*|\{\s*)("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|[^\]\}\)]+)(\s*\]|\s*\)|\s*\})')
+
+        cleaned_lines = []
+        in_er_block = False
+
+        for line in code.split("\n"):
+            line_str = line.rstrip()
+            stripped = line_str.strip()
+
+            if not stripped or stripped.startswith("%%"):
+                cleaned_lines.append(line_str)
+                continue
+
+            if any(stripped.startswith(hdr) for hdr in valid_headers) or stripped.startswith("subgraph") or stripped == "end":
+                cleaned_lines.append(line_str)
+                continue
+
+            if "erDiagram" in code:
+                if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\s*\{', stripped):
+                    in_er_block = True
+                    cleaned_lines.append(line_str)
+                    continue
+                if stripped == "}" and in_er_block:
+                    in_er_block = False
+                    cleaned_lines.append(line_str)
+                    continue
+                if in_er_block:
+                    match_attr = re.match(r'^\+?\s*(\w+)\s*:\s*(\w+)\s*(PK|FK)?\s*$', stripped)
+                    if match_attr:
+                        field_name, type_name, key_marker = match_attr.group(1), match_attr.group(2), match_attr.group(3) or ''
+                        fixed = f"{type_name} {field_name}" + (f" {key_marker}" if key_marker else "")
+                        leading = line_str[:len(line_str) - len(line_str.lstrip())]
+                        cleaned_lines.append(leading + fixed)
+                        continue
+
+            # Correctif pour les flèches avec labels: -->|Label| ---
+            line_str = re.sub(
+                r'(-->|---|==>|-\.->)\|([^"|\n]+)\|',
+                lambda m: f'{m.group(1)}|"{m.group(2).strip().replace(chr(34), chr(39))}"|',
+                line_str
+            )
+
+            # Encapsulation automatique des nœuds standards
+            line_str = node_pattern.sub(quote_node_label, line_str)
+            cleaned_lines.append(line_str)
+
+        code = "\n".join(cleaned_lines)
+
+        # 9. Correctifs finaux sur les flèches mal fermées et espaces
+        code = re.sub(r'-->\|([^|]+)\|>', r'-->|\1|', code)
         code = re.sub(r'\n\s*\n', '\n', code)
 
         return code.strip()
@@ -351,22 +441,26 @@ class DiagramExporterTool:
 #         code = re.sub(r"^```(?:mermaid)?\s*\n?", "", code, flags=re.MULTILINE)
 #         code = re.sub(r"\n?\s*```$", "", code, flags=re.MULTILINE)
 
-#         # 2. Normalisation Unicode (suppression des espaces insécables \xa0 et guillemets intelligents)
-#         code = code.replace("\xa0", " ").replace("\u200b", "")
+#         # 2. Normalisation Unicode (espaces insécables, espaces invisibles, saut de ligne Windows)
+#         code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
+        
+#         # Normalisation des guillemets typographiques (intelligents) vers guillemets standards
 #         code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
 
 #         # 3. Corrige les espaces entre toutes les formes Mermaid et les guillemets
 #         # Exemple: { "Text" } -> {"Text"} | [ "Text" ] -> ["Text"] | ( "Text" ) -> ("Text")
 #         code = re.sub(r'(\{+|\[+|\(+\|\>)\s+"', r'\1"', code)
 #         code = re.sub(r'"\s+(\}+|\]+|\)+\|?)', r'"\1', code)
+#         code = re.sub(r"(\{+|\[+|\(+\|\>)\s+'", r"\1'", code)
+#         code = re.sub(r"'\s+(\}+|\]+|\)+\|?)", r"'\1", code)
 
-#         # Correctifs ciblés pour les losanges de décision { "..." } et { '...' }
+#         # Correctifs ciblés pour les losanges de décision
 #         code = re.sub(r'\{\s+"', '{"', code)
 #         code = re.sub(r'"\s+\}', '"}', code)
 #         code = re.sub(r"\{\s+'", "{'", code)
 #         code = re.sub(r"'\s+\}", "'}", code)
 
-#         # 4. Suppression des saut de lignes multiples inutiles
+#         # 4. Suppression des sauts de lignes multiples inutiles
 #         code = re.sub(r'\n\s*\n', '\n', code)
 
 #         return code.strip()
@@ -478,7 +572,7 @@ class DiagramExporterTool:
 
 #     @classmethod
 #     async def render_mermaid_to_png(cls, mermaid_code: str, output_path: Path) -> bool:
-#         # Nettoyage automatique avant rendu
+#         # Nettoyage automatique du code avant toute tentative de rendu
 #         clean_code = cls.sanitize_mermaid_code(mermaid_code)
         
 #         try:
@@ -572,7 +666,7 @@ class DiagramExporterTool:
 #     ) -> Path:
 #         """
 #         Génère les planches d'images PNG pour l'ensemble des diagrammes
-#         et compile le tout dans un fichier PDF sous outputs/data/diagrams/.
+#         et compile le tout dans un fichier PDF.
 #         """
 #         diagrams = diagrams_data.get("diagrams", []) if isinstance(diagrams_data, dict) else []
 #         if not diagrams:

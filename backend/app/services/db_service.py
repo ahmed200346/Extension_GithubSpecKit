@@ -14,6 +14,7 @@ from app.models import (
     PipelineStage,
     GeneratedBy,
 )
+from app.utils.path_builder import sanitize_path_string
 
 
 def compute_sha256(file_path: Path) -> str:
@@ -88,11 +89,38 @@ def get_or_create_project(
     return project
 
 
+def check_file_exists_only(
+    db: Session, file_path: Path, project_name: str
+) -> bool:
+    """Lecture seule : verifie si un fichier existe deja en BDD (par chemin OU par hash)."""
+    file_path_str = sanitize_path_string(file_path.resolve().as_posix())
+    new_hash = compute_sha256(file_path)
+    project = get_or_create_project(db, project_name)
+
+    # Verifier d'abord par chemin exact
+    artifact = (
+        db.query(Artifact)
+        .filter(Artifact.project_id == project.id, Artifact.source_path == file_path_str)
+        .first()
+    )
+    if artifact:
+        return True  # Meme si hash = None, l'artifact existe
+
+    # Fallback : verifier par hash (meme contenu, chemin different)
+    artifact = (
+        db.query(Artifact)
+        .filter(Artifact.project_id == project.id, Artifact.current_file_hash == new_hash)
+        .first()
+    )
+    return artifact is not None
+
+
 def should_process_file(
     db: Session, file_path: Path, project_name: str
 ) -> Tuple[bool, str, Artifact]:
-    """Vérifie si le fichier Markdown a été modifié (comparaison SHA-256)."""
-    file_path_str = str(file_path.resolve())
+    """Verifie si le fichier Markdown a ete modifie (comparaison SHA-256)."""
+    # Stocker le chemin en format POSIX sanatise en BDD
+    file_path_str = sanitize_path_string(file_path.resolve().as_posix())
     new_hash = compute_sha256(file_path)
 
     project = get_or_create_project(db, project_name)
@@ -104,13 +132,32 @@ def should_process_file(
     )
 
     if not artifact:
+        # Fallback : si un artifact du meme projet a deja ce hash (chemin different), on le reutilise
+        existing = (
+            db.query(Artifact)
+            .filter(Artifact.project_id == project.id, Artifact.current_file_hash == new_hash)
+            .first()
+        )
+        if existing:
+            existing.source_path = file_path_str
+            db.commit()
+            db.refresh(existing)
+            return True, new_hash, existing
+
         artifact = Artifact(
             project_id=project.id,
             source_path=file_path_str,
-            current_file_hash=None,
+            current_file_hash=new_hash,
             artifact_type=detect_artifact_type(file_path),
         )
         db.add(artifact)
+        db.commit()
+        db.refresh(artifact)
+        return True, new_hash, artifact
+
+    # Artifact trouve par chemin : si hash = None, on le met a jour au lieu d'en creer un nouveau
+    if artifact.current_file_hash is None:
+        artifact.current_file_hash = new_hash
         db.commit()
         db.refresh(artifact)
         return True, new_hash, artifact
@@ -180,12 +227,37 @@ def update_pipeline_stage_data(
         print(f"[⚠️ DB Update Error] Échec de la mise à jour pour le stage {stage.value}: {exc}")
 
 
+def create_doc_version_pending(
+    db: Session,
+    artifact: Artifact,
+    pipeline_run: PipelineRun,
+    version_label: str,
+    version_no: int,
+) -> DocVersion:
+    """Crée une DocVersion en status 'pending' au début du pipeline pour affichage immédiat."""
+    doc_version = DocVersion(
+        artifact_id=artifact.id,
+        version_no=version_no,
+        version_label=version_label,
+        pdf_path="",
+        source_file_hash=artifact.current_file_hash or "",
+        generated_by=GeneratedBy.agent,
+        pipeline_run_id=pipeline_run.id,
+        global_kpi_score=None,
+    )
+    db.add(doc_version)
+    db.commit()
+    db.refresh(doc_version)
+    return doc_version
+
+
 def save_successful_run(
     db: Session,
     artifact: Artifact,
     pipeline_run: PipelineRun,
     new_hash: str,
     pdf_path: str,
+    doc_version: Optional["DocVersion"] = None,
     # --- Outputs ---
     structured_json: Optional[Dict[str, Any]] = None,
     summary_output: Optional[str] = None,
@@ -237,22 +309,35 @@ def save_successful_run(
 
     pipeline_run.global_kpi_score = global_kpi_score
 
-    # Calcul automatique de la version (v1.0, v2.0...)
-    next_version_no, next_version_label = get_next_version(db, artifact.id)
-
-    doc_version = DocVersion(
-        artifact_id=artifact.id,
-        version_no=next_version_no,
-        version_label=next_version_label,
-        pdf_path=pdf_path,
-        source_file_hash=new_hash,
-        generated_by=GeneratedBy.agent,
-        pipeline_run_id=pipeline_run.id,
-        global_kpi_score=global_kpi_score,
-        commit_hash=commit_hash,
+    # Récupérer la DocVersion existante (créée au début du pipeline)
+    doc_version = (
+        db.query(DocVersion)
+        .filter(DocVersion.pipeline_run_id == pipeline_run.id)
+        .first()
     )
 
-    db.add(doc_version)
+    if not doc_version:
+        # Fallback : créer si n'existe pas (compatibilité ascendante)
+        next_version_no, next_version_label = get_next_version(db, artifact.id)
+        doc_version = DocVersion(
+            artifact_id=artifact.id,
+            version_no=next_version_no,
+            version_label=next_version_label,
+            pdf_path=pdf_path,
+            source_file_hash=new_hash,
+            generated_by=GeneratedBy.agent,
+            pipeline_run_id=pipeline_run.id,
+            global_kpi_score=global_kpi_score,
+            commit_hash=commit_hash,
+        )
+        db.add(doc_version)
+    else:
+        # Mettre à jour la DocVersion existante
+        doc_version.pdf_path = pdf_path
+        doc_version.source_file_hash = new_hash
+        doc_version.global_kpi_score = global_kpi_score
+        doc_version.commit_hash = commit_hash
+
     artifact.current_file_hash = new_hash
 
     db.commit()

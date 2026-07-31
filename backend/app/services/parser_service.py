@@ -7,8 +7,8 @@ from app.core.llm_client import ollama_openai_client, get_ollama_model
 from app.core.llm_utils import parse_and_validate_json
 from app.core.prompts import get_parsing_agent_prompt
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-TEMPLATES_PATH = BASE_DIR / "resources" / "sdd_templates.json"
+BASE_DIR = Path(__file__).resolve().parent.parent.parent  # backend/
+TEMPLATES_PATH = BASE_DIR / "app" / "resources" / "sdd_templates.json"
 
 def load_sdd_templates() -> dict:
     with open(TEMPLATES_PATH, "r", encoding="utf-8") as f:

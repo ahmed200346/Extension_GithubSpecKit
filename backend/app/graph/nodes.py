@@ -1,7 +1,13 @@
 import json
 import asyncio
+import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
+
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(line_buffering=True, encoding='utf-8')
+if hasattr(sys.stderr, "reconfigure"):
+    sys.stderr.reconfigure(line_buffering=True, encoding='utf-8')
 
 from app.database import SessionLocal
 from app.models import PipelineStage
@@ -87,9 +93,9 @@ def _sync_stage_to_db(
             eval_data=clean_eval
         )
         if eval_attr:
-            print(f"[💾 BDD Sync OK] Stage {stage.value} -> {eval_attr} enregistré.")
+            print(f"[💾 BDD Sync OK] Stage {stage.value} -> {eval_attr} enregistré.", flush=True)
     except Exception as exc:
-        print(f"[⚠️ BDD ERROR] Échec de synchronisation BDD pour stage {stage}: {exc}")
+        print(f"[⚠️ BDD ERROR] Échec de synchronisation BDD pour stage {stage}: {exc}", flush=True)
     finally:
         db.close()
 
@@ -98,7 +104,7 @@ def _sync_stage_to_db(
 # 1. PARSING NODE
 # ------------------------------------------------------------------------------
 def parsing_node(state: GraphState) -> Dict[str, Any]:
-    print("\n[🚀 NODE] Exécution du Parsing Agent...")
+    print("\n[🚀 NODE] Exécution du Parsing Agent...", flush=True)
     file_name = state["file_name"]
     file_content = state["file_content"]
     run_id = state.get("run_id")
@@ -120,7 +126,7 @@ def parsing_node(state: GraphState) -> Dict[str, Any]:
     # 1. Sauvegarde sur Fichier Disk
     _save_json(paths["parsed_json"], parsed_doc)
     _save_json(paths["parsing_eval"], report)
-    print(f"[💾 Disk] Enregistré : {paths['parsed_json'].name} & {paths['parsing_eval'].name}")
+    print(f"[💾 Disk] Enregistré : {paths['parsed_json'].name} & {paths['parsing_eval'].name}", flush=True)
 
     # 2. Sauvegarde en BDD PostgreSQL
     _sync_stage_to_db(
@@ -143,7 +149,7 @@ def parsing_node(state: GraphState) -> Dict[str, Any]:
 # 2. SUMMARY NODE
 # ------------------------------------------------------------------------------
 def summary_node(state: GraphState) -> Dict[str, Any]:
-    print("\n[🚀 NODE] Exécution du Summary Agent...")
+    print("\n[🚀 NODE] Exécution du Summary Agent...", flush=True)
     file_name = state["file_name"]
     parsed_json_dict = state["parsed_json_dict"]
     parsed_doc = state["parsed_doc"]
@@ -191,7 +197,7 @@ def summary_node(state: GraphState) -> Dict[str, Any]:
 # 3. GLOSSARY NODE
 # ------------------------------------------------------------------------------
 def glossary_node(state: GraphState) -> Dict[str, Any]:
-    print("\n[🚀 NODE] Exécution du Glossary Agent...")
+    print("\n[🚀 NODE] Exécution du Glossary Agent...", flush=True)
     file_name = state["file_name"]
     parsed_json_dict = state["parsed_json_dict"]
     parsed_doc = state["parsed_doc"]
@@ -243,7 +249,7 @@ def glossary_node(state: GraphState) -> Dict[str, Any]:
 # 4. DIAGRAM NODE
 # ------------------------------------------------------------------------------
 def diagram_node(state: GraphState) -> Dict[str, Any]:
-    print("\n[🚀 NODE] Exécution du Diagram Agent...")
+    print("\n[🚀 NODE] Exécution du Diagram Agent...", flush=True)
     file_name = state["file_name"]
     parsed_json_dict = state["parsed_json_dict"]
     parsed_doc = state["parsed_doc"]
@@ -267,7 +273,7 @@ def diagram_node(state: GraphState) -> Dict[str, Any]:
             diagram_spec_dict=diagram_spec_dict
         )
     except Exception as exc:
-        print(f"[⚠️ WARNING] Diagram Agent error : {exc}")
+        print(f"[⚠️ WARNING] Diagram Agent error : {exc}", flush=True)
         return {"diagram_doc": None, "diagram_metrics": {}, "diagram_pdf_path": None}
 
     pdf_path_str = None
@@ -280,7 +286,7 @@ def diagram_node(state: GraphState) -> Dict[str, Any]:
         ))
         pdf_path_str = str(pdf_path)
     except Exception as exc:
-        print(f"[⚠️ Erreur Rendu Diagramme] {exc}")
+        print(f"[⚠️ Erreur Rendu Diagramme] {exc}", flush=True)
 
     report = DiagramEvaluatorService.evaluate(
         diagram_data=diagram_output,
@@ -313,7 +319,7 @@ def diagram_node(state: GraphState) -> Dict[str, Any]:
 # 5. DOC WRITER NODE
 # ------------------------------------------------------------------------------
 def doc_writer_node(state: GraphState) -> Dict[str, Any]:
-    print("\n[🚀 NODE] Exécution du Documentation Writer Agent...")
+    print("\n[🚀 NODE] Exécution du Documentation Writer Agent...", flush=True)
     file_name = state["file_name"]
     run_id = state.get("run_id")
     version_label = state.get("version_label", "1.0")
@@ -387,10 +393,10 @@ def doc_writer_node(state: GraphState) -> Dict[str, Any]:
             eval_attr="writer_eval",
             eval_data=eval_report_dict
         )
-        print(f"[💾 BDD] Évaluation DocWriter synchronisée dans PostgreSQL (writer_eval)")
+        print(f"[💾 BDD] Évaluation DocWriter synchronisée dans PostgreSQL (writer_eval)", flush=True)
 
     except Exception as exc:
-        print(f"[❌ ERROR] Exécution DocWriterAgent : {exc}")
+        print(f"[❌ ERROR] Exécution DocWriterAgent : {exc}", flush=True)
 
     return {
         "doc_writer_doc": doc_writer_output,
@@ -404,7 +410,7 @@ def doc_writer_node(state: GraphState) -> Dict[str, Any]:
 # 6. LAYOUT NODE
 # ------------------------------------------------------------------------------
 def layout_node(state: GraphState) -> Dict[str, Any]:
-    print("\n[🚀 NODE] Exécution du Layout Agent...")
+    print("\n[🚀 NODE] Exécution du Layout Agent...", flush=True)
     file_name = state["file_name"]
     run_id = state.get("run_id")
     version_label = state.get("version_label", "1.0")
@@ -476,7 +482,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
             )
 
     except Exception as exc:
-        print(f"[❌ ERROR] Exécution LayoutAgent : {exc}")
+        print(f"[❌ ERROR] Exécution LayoutAgent : {exc}", flush=True)
 
     return {
         "layout_doc": layout_result,

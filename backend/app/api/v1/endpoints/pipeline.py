@@ -1,46 +1,73 @@
 import json
+import hashlib
+import traceback
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
+from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Depends, status
+from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File, Form
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-# Import de la session DB
+# Modèles et session BDD
 from app.database import get_db
-
-# Imports des services BDD
+from app.models import Project, Artifact, DocVersion, PipelineRun, ArtifactType, PipelineStage
 from app.services.db_service import (
     should_process_file,
+    check_file_exists_only,
     create_pipeline_run,
     get_next_version,
     save_successful_run,
     save_failed_run,
+    create_doc_version_pending,
 )
-
-from app.utils.path_builder import build_pipeline_paths, extract_project_name_from_path
+from app.utils.path_builder import build_pipeline_paths, extract_project_name_from_path, sanitize_path_string, BASE_DIR
 from app.graph.workflow import create_pipeline_workflow
 
 router = APIRouter()
 app_graph = create_pipeline_workflow()
 
-# 🎯 État global du serveur (protection contre la concurrence)
 PIPELINE_STATUS = {
     "is_running": False,
     "current_file": None
 }
 
 
-class PipelineRequest(BaseModel):
-    file_path: str
-    project_name: Optional[str] = None
+# ============================================
+# UTILITAIRES POSIX - CONVERSION DE CHEMINS
+# ============================================
+
+def to_posix_str(path_obj: Any) -> str:
+    """
+    Conversion fiable d'un chemin vers format POSIX strict, SANS caracteres de controle.
+    
+    Combine :
+    1. Nettoyage des caracteres de controle ASCII (0x00-0x1F)
+    2. Remplacement des backslashes Windows par des slashes POSIX
+    
+    C'est le noyau dur de la correction du bug Windows [Errno 22].
+    """
+    if path_obj is None:
+        return ""
+    return sanitize_path_string(Path(path_obj).as_posix())
 
 
-def load_json_if_exists(file_path: Optional[Path]) -> Optional[Dict[str, Any]]:
-    """Utilitaire pour charger un fichier JSON d'évaluation s'il existe sur le disque."""
-    if file_path and file_path.exists():
+def load_json_if_exists(file_path: Optional[Any]) -> Optional[Dict[str, Any]]:
+    """
+    📄 Charge un fichier JSON s'il existe.
+    
+    ✅ CORRECTION : Conversion POSIX avant toute opération d'E/S
+    """
+    if not file_path:
+        return None
+    
+    # 🛡️ Conversion POSIX stricte du chemin
+    p = Path(to_posix_str(file_path))
+    
+    if p.exists():
         try:
-            return json.loads(file_path.read_text(encoding="utf-8"))
+            return json.loads(p.read_text(encoding="utf-8"))
         except Exception:
             return None
     return None
@@ -48,15 +75,12 @@ def load_json_if_exists(file_path: Optional[Path]) -> Optional[Dict[str, Any]]:
 
 def calculate_global_kpi(evaluations: Dict[str, Optional[Dict[str, Any]]]) -> float:
     """
-    Calcule le KPI Global moyen à partir des vrais JSON d'évaluation des agents.
-    Extrait automatiquement les scores et taux (ex: _score, _rate, health_index, etc.).
+    📊 Calcule le KPI global moyen à partir des évaluations des agents.
     """
     scores = []
-
     for agent_eval in evaluations.values():
         if not agent_eval or not isinstance(agent_eval, dict):
             continue
-
         for section in ["technical_evaluation", "project_management_kpis"]:
             section_data = agent_eval.get(section, {})
             if isinstance(section_data, dict):
@@ -64,20 +88,94 @@ def calculate_global_kpi(evaluations: Dict[str, Optional[Dict[str, Any]]]) -> fl
                     if isinstance(val, (int, float)) and not isinstance(val, bool):
                         if any(term in key for term in ["score", "rate", "index", "adherence", "conformity", "completeness"]):
                             scores.append(float(val))
+    return round(sum(scores) / len(scores), 1) if scores else 0.0
 
-    if not scores:
-        return 0.0
 
-    return round(sum(scores) / len(scores), 1)
-
+# ============================================
+# ROUTES PIPELINE ACCESSIBLES VIA /api/v1/docs
+# ============================================
 
 @router.get("/status")
 async def get_pipeline_status():
-    """Endpoint consulté par le Watcher et la CLI pour vérifier la disponibilité."""
+    """Retourne le statut actuel du pipeline (en cours/idle)."""
     return PIPELINE_STATUS
 
 
-# 🆕 ROUTE POUR LE SCAN INITIAL DU WATCHER
+@router.get("/diagnose-path")
+async def diagnose_path(file_path: str = "", project_name: str = ""):
+    """
+    Diagnostique les operations de chemin qui causent [Errno 22].
+    Teste chaque etape une par une et retourne le detail.
+    """
+    import os
+    import sys as _sys
+    results = []
+    
+    # Etape 1: tester Path()
+    try:
+        p = Path(file_path)
+        results.append({"step": "Path(file_path)", "ok": True, "value": str(p)})
+    except Exception as e:
+        results.append({"step": "Path(file_path)", "ok": False, "error": str(e)})
+    
+    # Etape 2: tester resolve()
+    try:
+        r = p.resolve()
+        results.append({"step": "resolve()", "ok": True, "value": str(r)})
+    except Exception as e:
+        results.append({"step": "resolve()", "ok": False, "error": str(e)})
+    
+    # Etape 3: tester as_posix()
+    try:
+        posix = r.as_posix()
+        results.append({"step": "as_posix()", "ok": True, "value": posix})
+    except Exception as e:
+        results.append({"step": "as_posix()", "ok": False, "error": str(e)})
+    
+    # Etape 4: tester sanitize_path_string
+    from app.utils.path_builder import sanitize_path_string
+    try:
+        clean = sanitize_path_string(file_path)
+        results.append({"step": "sanitize_path_string()", "ok": True, "value": clean})
+    except Exception as e:
+        results.append({"step": "sanitize_path_string()", "ok": False, "error": str(e)})
+    
+    # Etape 5: tester extract_project_name_from_path
+    from app.utils.path_builder import extract_project_name_from_path
+    try:
+        pn = extract_project_name_from_path(Path(file_path))
+        results.append({"step": "extract_project_name_from_path()", "ok": True, "value": pn})
+    except Exception as e:
+        results.append({"step": "extract_project_name_from_path()", "ok": False, "error": str(e)})
+    
+    # Etape 6: tester build_pipeline_paths
+    from app.utils.path_builder import build_pipeline_paths
+    try:
+        paths = build_pipeline_paths(file_name=file_path, project_name=project_name or pn)
+        results.append({"step": "build_pipeline_paths() mkdir", "ok": True, "dirs_created": str(paths.get("base_output_dir"))})
+    except Exception as e:
+        results.append({"step": "build_pipeline_paths() mkdir", "ok": False, "error": str(e)})
+    
+    # Etape 7: tester write_bytes vers un fichier temporaire
+    try:
+        tmp_dir = Path("specs") / (project_name or "test_diag")
+        tmp_dir.mkdir(parents=True, exist_ok=True)
+        tmp_file = tmp_dir / "_diag_test_.tmp"
+        tmp_file.write_bytes(b"test")
+        results.append({"step": "write_bytes()", "ok": True, "path": str(tmp_file)})
+        tmp_file.unlink()
+    except Exception as e:
+        results.append({"step": "write_bytes()", "ok": False, "error": str(e)})
+    
+    # Etape 8: afficher CWD et BASE_DIR
+    results.append({"step": "CWD", "value": os.getcwd()})
+    from app.utils.path_builder import BASE_DIR
+    results.append({"step": "path_builder.BASE_DIR", "value": str(BASE_DIR)})
+    results.append({"step": "sys.path[0]", "value": _sys.path[0] if _sys.path else "empty"})
+    
+    return {"project_name": project_name, "file_path": file_path, "cwd": os.getcwd(), "tests": results}
+
+
 @router.get("/check-file")
 async def check_file_status(
     file_path: str,
@@ -85,89 +183,230 @@ async def check_file_status(
     db: Session = Depends(get_db)
 ):
     """
-    Interrogé par initial_scan() dans spec_watcher.py.
-    Vérifie si le fichier est déjà enregistré en BDD ET avec un contenu identique (Hash SHA-256).
+    Verifie si le fichier existe deja en BDD et si son hash n'a pas change.
     """
-    file_path_obj = Path(file_path)
+    # Nettoyage immediat des parametres HTTP pour supprimer antislashs et caracteres de controle
+    clean_path_str = to_posix_str(sanitize_path_string(file_path))
+    file_path_obj = Path(clean_path_str)
     
-    # Si le fichier n'existe pas physiquement
     if not file_path_obj.exists():
         return {"exists_in_db": False}
 
-    p_name = project_name or extract_project_name_from_path(file_path_obj)
+    # Extraction du nom du projet (nettoyage du parametre HTTP)
+    clean_project = sanitize_path_string(project_name) if project_name else None
+    p_name = clean_project or extract_project_name_from_path(file_path_obj)
+    
+    # Verification en BDD (lecture seule, ne cree pas d'artifact)
+    exists = check_file_exists_only(db, file_path_obj, p_name)
 
-    # Réutilisation directe de votre service db_service
-    # should_run = True si le fichier est NOUVEAU ou SI SON CONTENU A CHANGÉ
-    should_run, _, _ = should_process_file(db, file_path_obj, p_name)
-
-    # Si should_run est False, le fichier est DÉJÀ en BDD et À JOUR => exists_in_db = True
-    return {"exists_in_db": not should_run}
+    return {"exists_in_db": exists}
 
 
-@router.post("/run")
-async def run_pipeline(
-    request: PipelineRequest, 
+@router.get("/documents")
+async def list_documents(db: Session = Depends(get_db)):
+    """
+    📚 Alimente le composant React Documents.jsx avec TOUTES les versions de tous les fichiers.
+    
+    ✅ CORRECTION : Conversion POSIX de tous les chemins source_path
+    """
+    artifacts = db.query(Artifact).order_by(Artifact.created_at.desc()).all()
+    result = []
+
+    for artifact in artifacts:
+        versions = (
+            db.query(DocVersion)
+            .filter(DocVersion.artifact_id == artifact.id)
+            .order_by(DocVersion.version_no.desc())
+            .all()
+        )
+
+        if versions:
+            for doc_ver in versions:
+                run_for_eval = doc_ver.pipeline_run or (
+                    db.query(PipelineRun)
+                    .filter(PipelineRun.artifact_id == artifact.id)
+                    .order_by(PipelineRun.started_at.desc())
+                    .first()
+                )
+
+                stage_status = "completed"
+                if run_for_eval:
+                    stage_status = (
+                        run_for_eval.current_stage.value 
+                        if hasattr(run_for_eval.current_stage, "value") 
+                        else str(run_for_eval.current_stage)
+                    )
+
+                kpi_val = doc_ver.global_kpi_score
+                if kpi_val is None and run_for_eval:
+                    kpi_val = run_for_eval.global_kpi_score
+
+                version_display = doc_ver.version_label or f"{doc_ver.version_no}.0"
+                if not version_display.startswith("v"):
+                    version_display = f"v{version_display}"
+
+                agent_evaluations = {}
+                if run_for_eval:
+                    agent_evaluations = {
+                        "parsing": run_for_eval.parsing_eval or {},
+                        "summary": run_for_eval.summary_eval or {},
+                        "glossary": run_for_eval.glossary_eval or {},
+                        "diagram": run_for_eval.diagram_eval or {},
+                        "docWriter": run_for_eval.writer_eval or {},
+                        "layout": run_for_eval.layout_eval or {},
+                    }
+
+                # 🛡️ Conversion POSIX du source_path récupéré de la BDD
+                artifact_name = Path(to_posix_str(artifact.source_path)).stem
+
+                result.append({
+                    "id": str(doc_ver.id),
+                    "name": artifact_name,
+                    "projectName": artifact.project.name if artifact.project else "Default Project",
+                    "version": version_display,
+                    "status": stage_status,
+                    "kpi": round(kpi_val, 1) if kpi_val is not None else None,
+                    "doc_version_id": str(doc_ver.id),
+                    "pipeline_run_id": str(run_for_eval.id) if run_for_eval else None,
+                    "agentEvaluations": agent_evaluations
+                })
+        else:
+            latest_run = (
+                db.query(PipelineRun)
+                .filter(PipelineRun.artifact_id == artifact.id)
+                .order_by(PipelineRun.started_at.desc())
+                .first()
+            )
+            stage_status = "pending"
+            if latest_run:
+                stage_status = (
+                    latest_run.current_stage.value 
+                    if hasattr(latest_run.current_stage, "value") 
+                    else str(latest_run.current_stage)
+                )
+
+            kpi_val = latest_run.global_kpi_score if latest_run else None
+
+            agent_evaluations = {}
+            if latest_run:
+                agent_evaluations = {
+                    "parsing": latest_run.parsing_eval or {},
+                    "summary": latest_run.summary_eval or {},
+                    "glossary": latest_run.glossary_eval or {},
+                    "diagram": latest_run.diagram_eval or {},
+                    "docWriter": latest_run.writer_eval or {},
+                    "layout": latest_run.layout_eval or {},
+                }
+
+            # 🛡️ Conversion POSIX du source_path
+            artifact_name = Path(to_posix_str(artifact.source_path)).stem
+
+            result.append({
+                "id": str(artifact.id),
+                "name": artifact_name,
+                "projectName": artifact.project.name if artifact.project else "Default Project",
+                "version": "v1.0",
+                "status": stage_status,
+                "kpi": round(kpi_val, 1) if kpi_val is not None else None,
+                "doc_version_id": None,
+                "pipeline_run_id": str(latest_run.id) if latest_run else None,
+                "agentEvaluations": agent_evaluations
+            })
+
+    return result
+
+
+@router.post("/upload")
+async def upload_and_process_document(
+    file: UploadFile = File(...),
+    projectName: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    """Exécute le pipeline, évalue les 6 agents et sauvegarde le résultat en BDD."""
+    """
+    📤 Traite l'upload d'un fichier Markdown depuis le watcher ou l'UI.
+    
+    ✅ CORRECTION MAJEURE :
+    1. Tous les chemins de fichiers utilisent Path objects
+    2. Conversion POSIX stricte avant passage à build_pipeline_paths()
+    3. Conversion POSIX avant toute opération d'E/S disque
+    4. Conversion POSIX avant enregistrement en BDD
+    """
     global PIPELINE_STATUS
 
-    # 1. Protection contre les exécutions concurrentes
-    if PIPELINE_STATUS["is_running"]:
-        raise HTTPException(
-            status_code=429,
-            detail=f"Pipeline déjà en cours d'exécution sur : {PIPELINE_STATUS['current_file']}"
-        )
+    # ============ VALIDATION INITIALE ============
+    if not file.filename.endswith(".md"):
+        raise HTTPException(status_code=400, detail="Seuls les fichiers .md sont acceptés.")
 
-    file_path_obj = Path(request.file_path)
-    if not file_path_obj.exists():
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail=f"Fichier introuvable sur le disque : {request.file_path}"
-        )
+    # ============ ÉTAPE 1 : ENREGISTREMENT DU FICHIER SUR LE DISQUE ============
+    # Nettoyage immediat des parametres HTTP pour supprimer les antislashs Windows
+    project_clean = sanitize_path_string(projectName.strip()) if projectName and projectName.strip() else "Default Project"
+    file.filename = sanitize_path_string(file.filename)
+    
+    # Créer le répertoire cible sous <RACINE>/specs/<projectName>/ (pas backend/specs)
+    dest_dir = BASE_DIR / "specs" / project_clean
+    dest_dir.mkdir(parents=True, exist_ok=True)
 
-    # Extraire dynamiquement le vrai dossier projet mère sous specs/
-    project_name = request.project_name or extract_project_name_from_path(file_path_obj)
+    # Chemin de destination du fichier
+    file_path = dest_dir / file.filename
+    content = await file.read()
+    
+    # ✅ Écriture du fichier via Path.write_bytes() (évite les problèmes d'encoding)
+    file_path.write_bytes(content)
 
-    # 2. Vérification DB : le fichier a-t-il changé ? (Hash SHA-256)
-    should_run, new_hash, artifact = should_process_file(db, file_path_obj, project_name)
+    # ============ ÉTAPE 2 : INSCRIPTION / VÉRIFICATION EN BDD ============
+    # 🛡️ Conversion POSIX avant passage à should_process_file()
+    file_path_posix = Path(to_posix_str(file_path.resolve()))
+    
+    should_run, new_hash, artifact = should_process_file(db, file_path_posix, project_clean)
+    
     if not should_run:
         return {
             "status": "skipped",
-            "message": "Aucun changement détecté dans le fichier (Hash identique). Exécution ignorée.",
+            "message": "Fichier identique déjà existant.",
             "artifact_id": str(artifact.id)
         }
 
-    # 3. Verrouillage du serveur et création du PipelineRun en BDD
     PIPELINE_STATUS["is_running"] = True
-    PIPELINE_STATUS["current_file"] = request.file_path
+    PIPELINE_STATUS["current_file"] = to_posix_str(file_path_posix)
 
     pipeline_run = create_pipeline_run(db, artifact.id)
 
+    # Créer la DocVersion en status "pending" dès le début pour affichage immédiat dans le frontend
+    _, next_version_label = get_next_version(db, artifact.id)
+    next_version_no, _ = get_next_version(db, artifact.id)
+    doc_version = create_doc_version_pending(
+        db=db,
+        artifact=artifact,
+        pipeline_run=pipeline_run,
+        version_label=next_version_label,
+        version_no=next_version_no,
+    )
+
     try:
-        # 🎯 CALCUL AUTOMATIQUE DE LA PROCHAINE VERSION (v1.0, v2.0, ...)
-        _, next_version_label = get_next_version(db, artifact.id)
-
-        # 🎯 UTILISATION DE LA NOUVELLE STRUCTURE PAR PROJET
+        
+        # ============ ÉTAPE 3 : GÉNÉRATION DES CHEMINS DE LA PIPELINE ============
+        # 🛡️ Passage du chemin en format POSIX à build_pipeline_paths()
         paths = build_pipeline_paths(
-            file_name=request.file_path, 
-            version_label=next_version_label, 
-            project_name=project_name
+            file_name=to_posix_str(file_path_posix),
+            version_label=next_version_label,
+            project_name=project_clean
         )
-        file_content = file_path_obj.read_text(encoding="utf-8")
 
+        # Préparation de l'état initial pour LangGraph
+        # 🎯 content est décodé de bytes vers str
         initial_state = {
-            "file_name": request.file_path,
-            "file_content": file_content,
+            "file_name": to_posix_str(file_path_posix),
+            "file_content": content.decode("utf-8", errors="ignore"),
             "version_label": next_version_label,
             "run_id": pipeline_run.id,
+            "doc_version_id": str(doc_version.id),
             "prefix": paths["prefix"]
         }
 
-        # 4. Lancement du workflow LangGraph
+        # ============ ÉTAPE 4 : EXÉCUTION DU WORKFLOW LANGGRAPH ============
         final_state = await app_graph.ainvoke(initial_state)
 
-        # 5. Chargement des JSON d'évaluation des 6 Agents pour le Frontend
+        # ============ ÉTAPE 5 : CHARGEMENT DES ÉVALUATIONS ============
         evaluations = {
             "parsing": load_json_if_exists(paths.get("parsing_eval")),
             "summary": load_json_if_exists(paths.get("summary_eval")),
@@ -177,66 +416,156 @@ async def run_pipeline(
             "layout": load_json_if_exists(paths.get("layout_eval")),
         }
 
-        # Calcul du score KPI Global
         global_kpi = calculate_global_kpi(evaluations)
 
-        # 6. Enregistrement des résultats et évals dans la base de données
+        # ============ ÉTAPE 6 : SAUVEGARDE DES RÉSULTATS EN BDD ============
+        # 🛡️ Conversion POSIX du chemin final_pdf avant sauvegarde
+        final_pdf_path = to_posix_str(paths.get("final_pdf"))
+        
         doc_version = save_successful_run(
             db=db,
             artifact=artifact,
             pipeline_run=pipeline_run,
             new_hash=new_hash,
-            pdf_path=str(paths["final_pdf"]),
-            # Sorties brutes
+            pdf_path=final_pdf_path,
             structured_json=final_state.get("parsed_json_dict"),
             summary_output=str(final_state.get("summary_doc")) if final_state.get("summary_doc") else None,
             diagram_output=final_state.get("diagram_doc").model_dump() if hasattr(final_state.get("diagram_doc"), "model_dump") else final_state.get("diagram_doc"),
             glossary_output=final_state.get("glossary_doc").model_dump() if hasattr(final_state.get("glossary_doc"), "model_dump") else final_state.get("glossary_doc"),
             written_doc=final_state.get("doc_writer_doc").markdown_content if hasattr(final_state.get("doc_writer_doc"), "markdown_content") else None,
             layout_output=str(final_state.get("layout_doc")) if final_state.get("layout_doc") else None,
-            # Évaluations JSON pour le Pop-up Frontend
             parsing_eval=evaluations["parsing"],
             summary_eval=evaluations["summary"],
             glossary_eval=evaluations["glossary"],
             diagram_eval=evaluations["diagram"],
             writer_eval=evaluations["writer"],
             layout_eval=evaluations["layout"],
-            # KPI Global pour le tableau principal
             global_kpi_score=global_kpi
         )
 
         return {
-            "status": "success",
-            "version_no": doc_version.version_no,
-            "version_label": doc_version.version_label,
-            "global_kpi_score": global_kpi,
-            "pdf_path": str(paths["final_pdf"]),
-            "data": final_state
+            "status": "completed",
+            "artifact_id": str(artifact.id),
+            "doc_version_id": str(doc_version.id),
+            "message": "Upload et traitement réussis."
         }
 
     except Exception as e:
+        # En cas d'erreur, enregistrer en BDD et logger le traceback
         save_failed_run(db, pipeline_run, str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Erreur lors de l'exécution du pipeline : {str(e)}"
-        )
-
+        tb_str = traceback.format_exc()
+        # Forcer l'ecriture du traceback sur stderr (visible dans le canal Server)
+        import sys as _sys
+        _sys.stderr.write(f"❌ [PIPELINE] Erreur lors du traitement : {tb_str}\n")
+        _sys.stderr.flush()
+        # Aussi ecrire dans un fichier de diagnostic
+        _diag_log = Path("pipeline_error_traceback.log")
+        _diag_log.write_text(tb_str, encoding="utf-8")
+        print(f"❌ [PIPELINE] Traceback ecrit dans: {_diag_log.resolve()}", flush=True)
+        raise HTTPException(status_code=500, detail=f"Erreur Pipeline: {str(e)}\n{tb_str}")
+    
     finally:
-        # 7. Libération du serveur
         PIPELINE_STATUS["is_running"] = False
         PIPELINE_STATUS["current_file"] = None
-# import json
-# from pathlib import Path
-# from typing import Optional, Dict, Any
 
-# from fastapi import APIRouter, HTTPException, Depends, status
+
+@router.get("/pdf/{doc_version_id}")
+async def view_pdf(doc_version_id: UUID, db: Session = Depends(get_db)):
+    """
+    📄 Sert le fichier PDF pour le lecteur intégré.
+    
+    ✅ CORRECTION : Conversion POSIX du chemin PDF avant accès disque
+    """
+    doc_ver = db.query(DocVersion).filter(DocVersion.id == doc_version_id).first()
+    if not doc_ver or not doc_ver.pdf_path:
+        raise HTTPException(status_code=404, detail="PDF non trouvé.")
+
+    # 🛡️ Conversion POSIX stricte avant opération d'E/S
+    pdf_file = Path(to_posix_str(doc_ver.pdf_path))
+    
+    if not pdf_file.exists():
+        raise HTTPException(status_code=404, detail="Fichier PDF introuvable sur le disque.")
+
+    return FileResponse(
+        path=pdf_file,
+        media_type="application/pdf",
+        filename=pdf_file.name,
+        headers={"Content-Disposition": "inline"}
+    )
+
+
+@router.get("/download/{doc_version_id}")
+async def download_pdf(doc_version_id: UUID, db: Session = Depends(get_db)):
+    """
+    ⬇️ Télécharge le fichier PDF généré.
+    
+    ✅ CORRECTION : Conversion POSIX du chemin avant accès disque
+    """
+    doc_ver = db.query(DocVersion).filter(DocVersion.id == doc_version_id).first()
+    if not doc_ver or not doc_ver.pdf_path:
+        raise HTTPException(status_code=404, detail="PDF non trouvé.")
+
+    # 🛡️ Conversion POSIX stricte
+    pdf_file = Path(to_posix_str(doc_ver.pdf_path))
+    
+    if not pdf_file.exists():
+        raise HTTPException(status_code=404, detail="Fichier PDF introuvable sur le disque.")
+
+    return FileResponse(
+        path=pdf_file,
+        media_type="application/pdf",
+        filename=pdf_file.name,
+        headers={"Content-Disposition": f"attachment; filename={pdf_file.name}"}
+    )
+
+
+@router.get("/artifact/{artifact_id}")
+async def get_artifact_details(artifact_id: UUID, db: Session = Depends(get_db)):
+    """
+    🏷️ Retourne les détails complets d'un artefact et toutes ses versions.
+    
+    ✅ CORRECTION : Conversion POSIX de tous les chemins source_path
+    """
+    artifact = db.query(Artifact).filter(Artifact.id == artifact_id).first()
+    if not artifact:
+        raise HTTPException(status_code=404, detail="Artefact non trouvé.")
+
+    versions = db.query(DocVersion).filter(DocVersion.artifact_id == artifact.id).order_by(DocVersion.version_no.desc()).all()
+
+    version_list = []
+    for v in versions:
+        version_list.append({
+            "id": str(v.id),
+            "version_no": v.version_no,
+            "version_label": v.version_label,
+            "created_at": v.created_at.isoformat() if v.created_at else None,
+            "global_kpi_score": v.global_kpi_score
+        })
+
+    # 🛡️ Conversion POSIX du source_path
+    artifact_name = Path(to_posix_str(artifact.source_path)).stem
+
+    return {
+        "id": str(artifact.id),
+        "name": artifact_name,
+        "projectName": artifact.project.name if artifact.project else "Default Project",
+        "source_path": to_posix_str(artifact.source_path),
+        "versions": version_list
+    }
+# import json
+# import hashlib
+# from pathlib import Path
+# from typing import Optional, Dict, Any, List
+# from uuid import UUID
+
+# from fastapi import APIRouter, HTTPException, Depends, status, UploadFile, File, Form
+# from fastapi.responses import FileResponse
 # from pydantic import BaseModel
 # from sqlalchemy.orm import Session
 
-# # Import de la session DB
+# # Modèles et session BDD
 # from app.database import get_db
-
-# # Imports des services BDD
+# from app.models import Project, Artifact, DocVersion, PipelineRun, ArtifactType, PipelineStage
 # from app.services.db_service import (
 #     should_process_file,
 #     create_pipeline_run,
@@ -244,27 +573,23 @@ async def run_pipeline(
 #     save_successful_run,
 #     save_failed_run,
 # )
-
-# from app.utils.path_builder import build_pipeline_paths
+# from app.utils.path_builder import build_pipeline_paths, extract_project_name_from_path
 # from app.graph.workflow import create_pipeline_workflow
 
 # router = APIRouter()
 # app_graph = create_pipeline_workflow()
 
-# # 🎯 État global du serveur (protection contre la concurrence)
 # PIPELINE_STATUS = {
 #     "is_running": False,
 #     "current_file": None
 # }
 
 
-# class PipelineRequest(BaseModel):
-#     file_path: str
-#     project_name: Optional[str] = None
-
+# # ============================================
+# # UTILITAIRES
+# # ============================================
 
 # def load_json_if_exists(file_path: Optional[Path]) -> Optional[Dict[str, Any]]:
-#     """Utilitaire pour charger un fichier JSON d'évaluation s'il existe sur le disque."""
 #     if file_path and file_path.exists():
 #         try:
 #             return json.loads(file_path.read_text(encoding="utf-8"))
@@ -274,16 +599,10 @@ async def run_pipeline(
 
 
 # def calculate_global_kpi(evaluations: Dict[str, Optional[Dict[str, Any]]]) -> float:
-#     """
-#     Calcule le KPI Global moyen à partir des vrais JSON d'évaluation des agents.
-#     Extrait automatiquement les scores et taux (ex: _score, _rate, health_index, etc.).
-#     """
 #     scores = []
-
 #     for agent_eval in evaluations.values():
 #         if not agent_eval or not isinstance(agent_eval, dict):
 #             continue
-
 #         for section in ["technical_evaluation", "project_management_kpis"]:
 #             section_data = agent_eval.get(section, {})
 #             if isinstance(section_data, dict):
@@ -291,109 +610,187 @@ async def run_pipeline(
 #                     if isinstance(val, (int, float)) and not isinstance(val, bool):
 #                         if any(term in key for term in ["score", "rate", "index", "adherence", "conformity", "completeness"]):
 #                             scores.append(float(val))
+#     return round(sum(scores) / len(scores), 1) if scores else 0.0
 
-#     if not scores:
-#         return 0.0
 
-#     return round(sum(scores) / len(scores), 1)
-
+# # ============================================
+# # ROUTES PIPELINE ACCESSIBLES VIA /api/v1/docs
+# # ============================================
 
 # @router.get("/status")
 # async def get_pipeline_status():
-#     """Endpoint consulté par le Watcher et la CLI pour vérifier la disponibilité."""
 #     return PIPELINE_STATUS
 
 
-# # 🆕 ROUTE POUR LE SCAN INITIAL DU WATCHER
-# @router.get("/check-file")
-# async def check_file_status(
-#     file_path: str,
-#     project_name: Optional[str] = None,
+# @router.get("/documents")
+# async def list_documents(db: Session = Depends(get_db)):
+#     """Alimente le composant React Documents.jsx avec TOUTES les versions de tous les fichiers."""
+#     artifacts = db.query(Artifact).order_by(Artifact.created_at.desc()).all()
+#     result = []
+
+#     for artifact in artifacts:
+#         # 1. Récupération de TOUTES les versions de cet artifact (de la plus récente à la plus ancienne)
+#         versions = (
+#             db.query(DocVersion)
+#             .filter(DocVersion.artifact_id == artifact.id)
+#             .order_by(DocVersion.version_no.desc())
+#             .all()
+#         )
+
+#         # Si l'artifact possède des versions générées
+#         if versions:
+#             for doc_ver in versions:
+#                 # Utilisation du PipelineRun associé à cette version spécifique
+#                 run_for_eval = doc_ver.pipeline_run or (
+#                     db.query(PipelineRun)
+#                     .filter(PipelineRun.artifact_id == artifact.id)
+#                     .order_by(PipelineRun.started_at.desc())
+#                     .first()
+#                 )
+
+#                 # Extraction du statut
+#                 stage_status = "completed"
+#                 if run_for_eval:
+#                     stage_status = (
+#                         run_for_eval.current_stage.value 
+#                         if hasattr(run_for_eval.current_stage, "value") 
+#                         else str(run_for_eval.current_stage)
+#                     )
+
+#                 # Extraction du KPI Global
+#                 kpi_val = doc_ver.global_kpi_score
+#                 if kpi_val is None and run_for_eval:
+#                     kpi_val = run_for_eval.global_kpi_score
+
+#                 # Format de la version (ex: "v1.0", "v2.0")
+#                 version_display = doc_ver.version_label or f"{doc_ver.version_no}.0"
+#                 if not version_display.startswith("v"):
+#                     version_display = f"v{version_display}"
+
+#                 # Récupération des évaluations des agents pour cette version
+#                 agent_evaluations = {}
+#                 if run_for_eval:
+#                     agent_evaluations = {
+#                         "parsing": run_for_eval.parsing_eval or {},
+#                         "summary": run_for_eval.summary_eval or {},
+#                         "glossary": run_for_eval.glossary_eval or {},
+#                         "diagram": run_for_eval.diagram_eval or {},
+#                         "docWriter": run_for_eval.writer_eval or {},
+#                         "layout": run_for_eval.layout_eval or {},
+#                     }
+
+#                 artifact_name = Path(artifact.source_path).stem
+
+#                 result.append({
+#                     "id": str(doc_ver.id),  # ID unique de la version (évite les conflits dans React DataGrid)
+#                     "name": artifact_name,
+#                     "projectName": artifact.project.name if artifact.project else "Default Project",
+#                     "version": version_display,
+#                     "status": stage_status,
+#                     "kpi": round(kpi_val, 1) if kpi_val is not None else None,
+#                     "doc_version_id": str(doc_ver.id),
+#                     "pipeline_run_id": str(run_for_eval.id) if run_for_eval else None,
+#                     "agentEvaluations": agent_evaluations
+#                 })
+#         else:
+#             # Fallback : Au cas où le fichier est enregistré en BDD mais n'a pas encore de DocVersion
+#             latest_run = (
+#                 db.query(PipelineRun)
+#                 .filter(PipelineRun.artifact_id == artifact.id)
+#                 .order_by(PipelineRun.started_at.desc())
+#                 .first()
+#             )
+#             stage_status = "pending"
+#             if latest_run:
+#                 stage_status = (
+#                     latest_run.current_stage.value 
+#                     if hasattr(latest_run.current_stage, "value") 
+#                     else str(latest_run.current_stage)
+#                 )
+
+#             kpi_val = latest_run.global_kpi_score if latest_run else None
+
+#             agent_evaluations = {}
+#             if latest_run:
+#                 agent_evaluations = {
+#                     "parsing": latest_run.parsing_eval or {},
+#                     "summary": latest_run.summary_eval or {},
+#                     "glossary": latest_run.glossary_eval or {},
+#                     "diagram": latest_run.diagram_eval or {},
+#                     "docWriter": latest_run.writer_eval or {},
+#                     "layout": latest_run.layout_eval or {},
+#                 }
+
+#             artifact_name = Path(artifact.source_path).stem
+
+#             result.append({
+#                 "id": str(artifact.id),
+#                 "name": artifact_name,
+#                 "projectName": artifact.project.name if artifact.project else "Default Project",
+#                 "version": "v1.0",
+#                 "status": stage_status,
+#                 "kpi": round(kpi_val, 1) if kpi_val is not None else None,
+#                 "doc_version_id": None,
+#                 "pipeline_run_id": str(latest_run.id) if latest_run else None,
+#                 "agentEvaluations": agent_evaluations
+#             })
+
+#     return result
+
+
+# @router.post("/upload")
+# async def upload_and_process_document(
+#     file: UploadFile = File(...),
+#     projectName: str = Form(...),
 #     db: Session = Depends(get_db)
 # ):
-#     """
-#     Interrogé par initial_scan() dans spec_watcher.py.
-#     Vérifie si le fichier est déjà enregistré en BDD ET avec un contenu identique (Hash SHA-256).
-#     """
-#     file_path_obj = Path(file_path)
-    
-#     # Si le fichier n'existe pas physiquement
-#     if not file_path_obj.exists():
-#         return {"exists_in_db": False}
-
-#     p_name = project_name or file_path_obj.parent.name or "Default Project"
-
-#     # Réutilisation directe de votre service db_service
-#     # should_run = True si le fichier est NOUVEAU ou SI SON CONTENU A CHANGÉ
-#     should_run, _, _ = should_process_file(db, file_path_obj, p_name)
-
-#     # Si should_run est False, le fichier est DÉJÀ en BDD et À JOUR => exists_in_db = True
-#     return {"exists_in_db": not should_run}
-
-
-# @router.post("/run")
-# async def run_pipeline(
-#     request: PipelineRequest, 
-#     db: Session = Depends(get_db)
-# ):
-#     """Exécute le pipeline, évalue les 6 agents et sauvegarde le résultat en BDD."""
+#     """Gère l'upload depuis AddDocument.jsx."""
 #     global PIPELINE_STATUS
 
-#     # 1. Protection contre les exécutions concurrentes
-#     if PIPELINE_STATUS["is_running"]:
-#         raise HTTPException(
-#             status_code=429,
-#             detail=f"Pipeline déjà en cours d'exécution sur : {PIPELINE_STATUS['current_file']}"
-#         )
+#     if not file.filename.endswith(".md"):
+#         raise HTTPException(status_code=400, detail="Seuls les fichiers .md sont acceptés.")
 
-#     file_path_obj = Path(request.file_path)
-#     if not file_path_obj.exists():
-#         raise HTTPException(
-#             status_code=status.HTTP_404_NOT_FOUND, 
-#             detail=f"Fichier introuvable sur le disque : {request.file_path}"
-#         )
+#     # 1. Enregistrement du fichier sur le disque
+#     project_clean = projectName.strip() or "Default Project"
+#     dest_dir = Path("specs") / project_clean
+#     dest_dir.mkdir(parents=True, exist_ok=True)
 
-#     project_name = request.project_name or file_path_obj.parent.name or "Default Project"
+#     file_path = dest_dir / file.filename
+#     content = await file.read()
+#     file_path.write_bytes(content)
 
-#     # 2. Vérification DB : le fichier a-t-il changé ? (Hash SHA-256)
-#     should_run, new_hash, artifact = should_process_file(db, file_path_obj, project_name)
+#     # 2. Inscription / Vérification en BDD
+#     should_run, new_hash, artifact = should_process_file(db, file_path, project_clean)
 #     if not should_run:
 #         return {
 #             "status": "skipped",
-#             "message": "Aucun changement détecté dans le fichier (Hash identique). Exécution ignorée.",
+#             "message": "Fichier identique déjà existant.",
 #             "artifact_id": str(artifact.id)
 #         }
 
-#     # 3. Verrouillage du serveur et création du PipelineRun en BDD
 #     PIPELINE_STATUS["is_running"] = True
-#     PIPELINE_STATUS["current_file"] = request.file_path
+#     PIPELINE_STATUS["current_file"] = str(file_path)
 
 #     pipeline_run = create_pipeline_run(db, artifact.id)
 
 #     try:
-#         # 🎯 CALCUL AUTOMATIQUE DE LA PROCHAINE VERSION (v1.0, v2.0, ...)
 #         _, next_version_label = get_next_version(db, artifact.id)
-
-#         # 🎯 UTILISATION DE LA NOUVELLE STRUCTURE PAR PROJET
 #         paths = build_pipeline_paths(
-#             file_name=request.file_path, 
-#             version_label=next_version_label, 
-#             project_name=project_name
+#             file_name=str(file_path),
+#             version_label=next_version_label,
+#             project_name=project_clean
 #         )
-#         file_content = file_path_obj.read_text(encoding="utf-8")
 
 #         initial_state = {
-#             "file_name": request.file_path,
-#             "file_content": file_content,
+#             "file_name": str(file_path),
+#             "file_content": content.decode("utf-8", errors="ignore"),
 #             "version_label": next_version_label,
 #             "run_id": pipeline_run.id,
 #             "prefix": paths["prefix"]
 #         }
 
-#         # 4. Lancement du workflow LangGraph
 #         final_state = await app_graph.ainvoke(initial_state)
 
-#         # 5. Chargement des JSON d'évaluation des 6 Agents pour le Frontend
 #         evaluations = {
 #             "parsing": load_json_if_exists(paths.get("parsing_eval")),
 #             "summary": load_json_if_exists(paths.get("summary_eval")),
@@ -403,51 +800,58 @@ async def run_pipeline(
 #             "layout": load_json_if_exists(paths.get("layout_eval")),
 #         }
 
-#         # Calcul du score KPI Global
 #         global_kpi = calculate_global_kpi(evaluations)
 
-#         # 6. Enregistrement des résultats et évals dans la base de données
 #         doc_version = save_successful_run(
 #             db=db,
 #             artifact=artifact,
 #             pipeline_run=pipeline_run,
 #             new_hash=new_hash,
 #             pdf_path=str(paths["final_pdf"]),
-#             # Sorties brutes
 #             structured_json=final_state.get("parsed_json_dict"),
 #             summary_output=str(final_state.get("summary_doc")) if final_state.get("summary_doc") else None,
 #             diagram_output=final_state.get("diagram_doc").model_dump() if hasattr(final_state.get("diagram_doc"), "model_dump") else final_state.get("diagram_doc"),
 #             glossary_output=final_state.get("glossary_doc").model_dump() if hasattr(final_state.get("glossary_doc"), "model_dump") else final_state.get("glossary_doc"),
 #             written_doc=final_state.get("doc_writer_doc").markdown_content if hasattr(final_state.get("doc_writer_doc"), "markdown_content") else None,
 #             layout_output=str(final_state.get("layout_doc")) if final_state.get("layout_doc") else None,
-#             # Évaluations JSON pour le Pop-up Frontend
 #             parsing_eval=evaluations["parsing"],
 #             summary_eval=evaluations["summary"],
 #             glossary_eval=evaluations["glossary"],
 #             diagram_eval=evaluations["diagram"],
 #             writer_eval=evaluations["writer"],
 #             layout_eval=evaluations["layout"],
-#             # KPI Global pour le tableau principal
 #             global_kpi_score=global_kpi
 #         )
 
 #         return {
-#             "status": "success",
-#             "version_no": doc_version.version_no,
-#             "version_label": doc_version.version_label,
-#             "global_kpi_score": global_kpi,
-#             "pdf_path": str(paths["final_pdf"]),
-#             "data": final_state
+#             "status": "completed",
+#             "artifact_id": str(artifact.id),
+#             "doc_version_id": str(doc_version.id),
+#             "message": "Upload et traitement réussis."
 #         }
 
 #     except Exception as e:
 #         save_failed_run(db, pipeline_run, str(e))
-#         raise HTTPException(
-#             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-#             detail=f"Erreur lors de l'exécution du pipeline : {str(e)}"
-#         )
-
+#         raise HTTPException(status_code=500, detail=f"Erreur Pipeline: {str(e)}")
 #     finally:
-#         # 7. Libération du serveur
 #         PIPELINE_STATUS["is_running"] = False
 #         PIPELINE_STATUS["current_file"] = None
+
+
+# @router.get("/pdf/{doc_version_id}")
+# async def view_pdf(doc_version_id: UUID, db: Session = Depends(get_db)):
+#     """Sert le fichier PDF pour le bouton Viewer."""
+#     doc_ver = db.query(DocVersion).filter(DocVersion.id == doc_version_id).first()
+#     if not doc_ver or not doc_ver.pdf_path:
+#         raise HTTPException(status_code=404, detail="PDF non trouvé.")
+
+#     pdf_file = Path(doc_ver.pdf_path)
+#     if not pdf_file.exists():
+#         raise HTTPException(status_code=404, detail="Fichier PDF introuvable sur le disque.")
+
+#     return FileResponse(
+#         path=str(pdf_file),
+#         media_type="application/pdf",
+#         filename=pdf_file.name,
+#         headers={"Content-Disposition": "inline"}
+#     )
