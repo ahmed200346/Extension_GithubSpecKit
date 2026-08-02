@@ -17,66 +17,164 @@ class DiagramAgentService:
     """
     Service d'orchestration pour le Diagram Agent.
     Exploite le client Ollama/OpenAI-compatible centralisé pour analyser la topologie
-    du document parsé et générer des schémas d'architecture Mermaid.js valides.
+    du document parsé et générer des schémas d'architecture Mermaid.js valides
+    avec thème bleu technique professionnel.
     """
+
+    # Configuration Mermaid thème bleu technique professionnel
+    MERMAID_TECH_BLUE_THEME = """%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#1A365D',
+    'primaryTextColor': '#1A202C',
+    'primaryBorderColor': '#2B6CB0',
+    'lineColor': '#2B6CB0',
+    'secondaryColor': '#EBF8FF',
+    'tertiaryColor': '#EBF8FF',
+    'background': '#FFFFFF',
+    'mainBkg': '#FFFFFF',
+    'secondBkg': '#EBF8FF',
+    'tertiaryBkg': '#F7FAFC',
+    'secondaryTextColor': '#4A5568',
+    'fontSize': '16px',
+    'fontFamily': 'Inter, system-ui, sans-serif',
+    'nodePadding': '15px',
+    'borderRadius': '8px',
+    'edgeLabelBackground': '#EBF8FF',
+    'clusterBkg': '#F7FAFC',
+    'clusterBorder': '#2B6CB0',
+    'defaultLinkColor': '#2B6CB0',
+    'titleColor': '#1A365D',
+    'actorBorder': '#2B6CB0',
+    'actorBkg': '#EBF8FF',
+    'actorTextColor': '#1A365D',
+    'actorLineColor': '#2B6CB0',
+    'signalColor': '#2B6CB0',
+    'signalTextColor': '#1A202C',
+    'labelBoxBorderColor': '#2B6CB0',
+    'labelBoxBkgColor': '#EBF8FF',
+    'labelTextColor': '#1A202C',
+    'loopTextColor': '#1A202C',
+    'arrowHeadColor': '#2B6CB0',
+    'sequenceNumberColor': '#1A365D',
+    'sequenceActorBorder': '#2B6CB0',
+    'sequenceActorBkg': '#EBF8FF',
+    'sequenceArrowColor': '#2B6CB0',
+    'noteBkgColor': '#FFF5EB',
+    'noteBorderColor': '#DD6B20',
+    'noteTextColor': '#1A202C'
+  }
+}}%%
+"""
+    _INIT_BLOCK_PATTERN = re.compile(r"^%%\{init:.*?\}%%\s*\n?", re.DOTALL)
 
     @staticmethod
     def clean_mermaid_code(code: str) -> str:
         """
-        Applique une série de correctifs Regex déterministes sur le code Mermaid.js
-        pour éliminer les erreurs courantes de syntaxe générées par le LLM.
+        Nettoie le code Mermaid, injecte le thème bleu technique professionnel,
+        et corrige les erreurs de syntaxe courantes générées par le LLM.
+        Version idempotente : rejouable sans dupliquer en-tête ou thème.
         """
         if not code:
             return ""
 
-        # 1. Suppression des balises markdown éventuelles
-        code = code.strip()
-        if code.startswith("```"):
-            lines = code.split("\n")
-            if lines[0].startswith("```"):
-                lines = lines[1:]
-            if lines and lines[-1].strip() == "```":
-                lines = lines[:-1]
-            code = "\n".join(lines)
+        code = str(code).strip()
 
-        # 2. Correction des formes de nœuds incompatibles avec les moteurs de rendu
-        code = re.sub(r'\(\[([^\]]+)\]\)', r'[\1]', code)
-        code = re.sub(r'\(\(([^)]+)\)\)', r'[\1]', code)
-        code = re.sub(r'\[\[([^\]]+)\]\]', r'[\1]', code)
-        code = re.sub(r'\{\{([^}]+)\}\}', r'{\1}', code)
+        # 1. Supprime les blocs de code Markdown
+        code = re.sub(r"^```(?:mermaid)?\s*\n?", "", code, flags=re.MULTILINE)
+        code = re.sub(r"\n?\s*```$", "", code, flags=re.MULTILINE)
 
-        # 3. Correction des flèches mal formées (ex: -->|label|> vers -->|label|)
-        code = re.sub(r'-->\|([^|]+)\|>', r'-->|\1|', code)
+        # 2. Normalisation Unicode
+        code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
+        code = code.replace(""", '"').replace(""", '"').replace("'", "'").replace("'", "'").replace("«", '"').replace("»", '"')
 
-        # 4. Correction des attributs erDiagram en style UML (+id: int vers int id)
-        lines = code.split('\n')
-        fixed_lines = []
-        in_entity_block = False
+        # 3. Extraire et RETIRER un éventuel bloc d'init déjà présent
+        existing_init = None
+        init_match = DiagramAgentService._INIT_BLOCK_PATTERN.match(code)
+        if init_match:
+            existing_init = init_match.group(0).rstrip("\n")
+            code = code[init_match.end():].strip()
 
-        for line in lines:
-            stripped = line.strip()
+        # 4. Vérification / Ajout de l'en-tête de diagramme UNIQUEMENT sur le corps
+        valid_headers = ("flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gantt", "mindmap", "pie", "gitGraph", "C4Context")
+        lines = [line.strip() for line in code.split("\n") if line.strip()]
+        first_line = lines[0] if lines else ""
 
-            if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\s*\{', stripped):
-                in_entity_block = True
-                fixed_lines.append(line)
+        if not any(first_line.startswith(hdr) for hdr in valid_headers):
+            code = f"flowchart TD\n{code}"
+
+        # 5. Correction des formes de nœuds invalides ou doublons
+        code = re.sub(r'\(\[([^\]]+)\]\)', r'["\1"]', code)
+        code = re.sub(r'\(\(([^)]+)\)\)', r'["\1"]', code)
+        code = re.sub(r'\[\[([^\]]+)\]\]', r'["\1"]', code)
+        code = re.sub(r'\{\{([^}]+)\}\}', r'["\1"]', code)
+
+        # 6. Encapsulation automatique des libellés de nœuds avec guillemets (Auto-Quoting Engine)
+        def quote_node_label(match):
+            node_id = match.group(1)
+            open_symbol = match.group(2)
+            label = match.group(3).strip()
+            close_symbol = match.group(4)
+
+            if (label.startswith('"') and label.endswith('"')) or (label.startswith("'") and label.endswith("'")):
+                clean_label = label[1:-1].replace('"', "'")
+                return f'{node_id}{open_symbol}"{clean_label}"{close_symbol}'
+
+            clean_label = label.replace('"', "'")
+            return f'{node_id}{open_symbol}"{clean_label}"{close_symbol}'
+
+        node_pattern = re.compile(r'(\b[A-Za-z0-9_]+)(\[\s*|\(\s*|\{\s*)("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|[^\]\}\)]+)(\s*\]|\s*\)|\s*\})')
+
+        cleaned_lines = []
+        in_er_block = False
+
+        for line in code.split("\n"):
+            line_str = line.rstrip()
+            stripped = line_str.strip()
+
+            if not stripped:
+                cleaned_lines.append(line_str)
                 continue
-            if stripped == "}" and in_entity_block:
-                in_entity_block = False
-                fixed_lines.append(line)
+
+            if any(stripped.startswith(hdr) for hdr in valid_headers) or stripped.startswith("subgraph") or stripped == "end":
+                cleaned_lines.append(line_str)
                 continue
 
-            if in_entity_block:
-                match1 = re.match(r'^\+?\s*(\w+)\s*:\s*(\w+)\s*(PK|FK)?\s*$', stripped)
-                if match1:
-                    field_name, type_name, key_marker = match1.group(1), match1.group(2), match1.group(3) or ''
-                    fixed = f"{type_name} {field_name}" + (f" {key_marker}" if key_marker else "")
-                    leading = line[:len(line) - len(line.lstrip())]
-                    fixed_lines.append(leading + fixed)
+            if "erDiagram" in code:
+                if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\s*\{', stripped):
+                    in_er_block = True
+                    cleaned_lines.append(line_str)
                     continue
+                if stripped == "}" and in_er_block:
+                    in_er_block = False
+                    cleaned_lines.append(line_str)
+                    continue
+                if in_er_block:
+                    match_attr = re.match(r'^\+?\s*(\w+)\s*:\s*(\w+)\s*(PK|FK)?\s*$', stripped)
+                    if match_attr:
+                        field_name, type_name, key_marker = match_attr.group(1), match_attr.group(2), match_attr.group(3) or ''
+                        fixed = f"{type_name} {field_name}" + (f" {key_marker}" if key_marker else "")
+                        leading = line_str[:len(line_str) - len(line_str.lstrip())]
+                        cleaned_lines.append(leading + fixed)
+                        continue
 
-            fixed_lines.append(line)
+            line_str = re.sub(
+                r'(-->|---|==>|-\.->)\|([^"|\n]+)\|',
+                lambda m: f'{m.group(1)}|"{m.group(2).strip().replace(chr(34), chr(39))}"|',
+                line_str
+            )
+            line_str = node_pattern.sub(quote_node_label, line_str)
+            cleaned_lines.append(line_str)
 
-        return "\n".join(fixed_lines).strip()
+        code = "\n".join(cleaned_lines)
+        code = re.sub(r'-->\|([^|]+)\|>', r'-->|\1|', code)
+        code = re.sub(r'\n\s*\n', '\n', code)
+
+        # 7. Réinjection du thème : réutilise celui déjà présent si possible
+        theme_block = existing_init if existing_init else DiagramAgentService.MERMAID_TECH_BLUE_THEME.strip()
+        code = f"{theme_block}\n{code}"
+
+        return code.strip()
 
     def generate_diagrams(
         self, 
@@ -84,7 +182,8 @@ class DiagramAgentService:
         diagram_spec_dict: Dict[str, Any]
     ) -> DiagramOutputModel:
         """
-        Exécute le pipeline complet de génération de diagrammes d'architecture.
+        Exécute le pipeline complet de génération de diagrammes d'architecture
+        avec thème bleu technique professionnel.
         """
         # 1. Validation structurelle de l'objet d'entrée (ParsingAgentOutput)
         ParsingAgentOutput(**parsed_json_dict)

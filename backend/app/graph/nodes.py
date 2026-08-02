@@ -126,7 +126,7 @@ def parsing_node(state: GraphState) -> Dict[str, Any]:
     # 1. Sauvegarde sur Fichier Disk
     _save_json(paths["parsed_json"], parsed_doc)
     _save_json(paths["parsing_eval"], report)
-    print(f"[💾 Disk] Enregistré : {paths['parsed_json'].name} & {paths['parsing_eval'].name}", flush=True)
+    print(f"[💾 Disk] Enregistré : {paths['parsed_json'].name} & {paths['parsing_eval'].name}")
 
     # 2. Sauvegarde en BDD PostgreSQL
     _sync_stage_to_db(
@@ -415,7 +415,42 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
     run_id = state.get("run_id")
     version_label = state.get("version_label", "1.0")
 
-    paths = build_pipeline_paths(file_name, version_label=version_label)
+    # 🛡️ UTILISER LE CHEMIN PDF EXACT PASSÉ DANS L'ÉTAT (évite divergence upload/layout)
+    final_pdf_path = state.get("final_pdf_path")
+    if not final_pdf_path:
+        print("[LAYOUT][WARN] final_pdf_path absent du state, recalcul...", flush=True)
+        project_name = state.get("project_name")
+        # ⚠️ CORRECTIF : ne PAS ré-importer build_pipeline_paths ici — il est déjà
+        # importé en haut du fichier (ligne 25). Le réimporter localement dans une
+        # branche if rendait ce nom "local" à TOUTE la fonction layout_node en
+        # Python, provoquant un UnboundLocalError dès que ce bloc if n'était pas
+        # exécuté (cas normal quand final_pdf_path est déjà dans le state).
+        from app.utils.path_builder import extract_project_name_from_path, sanitize_path_string
+        from pathlib import Path
+        extracted_project = extract_project_name_from_path(Path(file_name))
+        if project_name and sanitize_path_string(project_name) != sanitize_path_string(extracted_project):
+            print(f"[LAYOUT][WARN] project_name mismatch: state='{project_name}' vs extracted='{extracted_project}' -> using extracted", flush=True)
+            project_name = extracted_project
+        elif not project_name:
+            project_name = extracted_project
+            print(f"[LAYOUT][INFO] project_name not in state, using extracted: '{project_name}'", flush=True)
+        
+        paths = build_pipeline_paths(file_name, version_label=version_label, project_name=project_name)
+        final_pdf_path = str(paths["final_pdf"])
+    else:
+        print(f"[LAYOUT][DEBUG] Utilise final_pdf_path du state: {final_pdf_path}", flush=True)
+        import os
+        os.makedirs(os.path.dirname(final_pdf_path) or ".", exist_ok=True)
+
+    # Pour les autres chemins (évaluations, etc.), on recalcule avec le project_name cohérent
+    project_name_for_paths = state.get("project_name")
+    if not project_name_for_paths:
+        from app.utils.path_builder import extract_project_name_from_path
+        from pathlib import Path
+        project_name_for_paths = extract_project_name_from_path(Path(file_name))
+    
+    paths = build_pipeline_paths(file_name, version_label=version_label, project_name=project_name_for_paths)
+    eval_json_path = paths["layout_eval"]
 
     doc_writer_doc = state.get("doc_writer_doc")
     markdown_text = ""
@@ -433,9 +468,6 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
         with open(spec_path, "r", encoding="utf-8") as f:
             layout_spec_dict = json.load(f)
 
-    output_pdf_path = paths["final_pdf"]
-    eval_json_path = paths["layout_eval"]
-
     layout_result = None
     eval_report = {}
     pdf_path_str = None
@@ -447,39 +479,41 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
             markdown_text=markdown_text,
             layout_spec_dict=layout_spec_dict,
             project_name=paths["prefix"],
-            output_pdf_path=str(output_pdf_path)
+            output_pdf_path=final_pdf_path
+        )
+
+        # TOUJOURS construire le rapport d'évaluation, même si PDF échoue
+        # Cela évite "NA" pour le layout agent dans le frontend
+        eval_report = {
+            "project_name": layout_result.project_name,
+            "layout_publication_status": str(
+                layout_result.layout_publication_status.value
+                if hasattr(layout_result.layout_publication_status, 'value')
+                else layout_result.layout_publication_status
+            ),
+            "page_count": layout_result.page_count,
+            "file_size_kb": layout_result.file_size_kb,
+            "rendered_diagrams_count": layout_result.rendered_diagrams_count,
+            "technical_evaluation": layout_result.technical_evaluation,
+            "project_management_kpis": layout_result.project_management_kpis,
+            "execution_warnings": layout_result.execution_warnings
+        }
+
+        _save_json(eval_json_path, eval_report)
+        eval_path_str = str(eval_json_path)
+
+        # Enregistrement en BDD avec le stage 'rendering' - TOUJOURS, pas seulement si PDF généré
+        _sync_stage_to_db(
+            run_id=run_id,
+            stage=PipelineStage.rendering,
+            output_attr="layout_output",
+            output_data=str(layout_result),
+            eval_attr="layout_eval",
+            eval_data=eval_report
         )
 
         if layout_result and layout_result.pdf_generated:
-            pdf_path_str = str(output_pdf_path)
-
-            eval_report = {
-                "project_name": layout_result.project_name,
-                "layout_publication_status": str(
-                    layout_result.layout_publication_status.value
-                    if hasattr(layout_result.layout_publication_status, 'value')
-                    else layout_result.layout_publication_status
-                ),
-                "page_count": layout_result.page_count,
-                "file_size_kb": layout_result.file_size_kb,
-                "rendered_diagrams_count": layout_result.rendered_diagrams_count,
-                "technical_evaluation": layout_result.technical_evaluation,
-                "project_management_kpis": layout_result.project_management_kpis,
-                "execution_warnings": layout_result.execution_warnings
-            }
-
-            _save_json(eval_json_path, eval_report)
-            eval_path_str = str(eval_json_path)
-
-            # Enregistrement en BDD avec le stage 'rendering'
-            _sync_stage_to_db(
-                run_id=run_id,
-                stage=PipelineStage.rendering,
-                output_attr="layout_output",
-                output_data=str(layout_result),
-                eval_attr="layout_eval",
-                eval_data=eval_report
-            )
+            pdf_path_str = final_pdf_path
 
     except Exception as exc:
         print(f"[❌ ERROR] Exécution LayoutAgent : {exc}", flush=True)
@@ -492,8 +526,14 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
     }
 # import json
 # import asyncio
+# import sys
 # from pathlib import Path
 # from typing import Dict, Any, Optional
+
+# if hasattr(sys.stdout, "reconfigure"):
+#     sys.stdout.reconfigure(line_buffering=True, encoding='utf-8')
+# if hasattr(sys.stderr, "reconfigure"):
+#     sys.stderr.reconfigure(line_buffering=True, encoding='utf-8')
 
 # from app.database import SessionLocal
 # from app.models import PipelineStage
@@ -537,6 +577,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #         else:
 #             json.dump(data, f, indent=4, ensure_ascii=False)
 
+
 # def _to_json_primitive(data: Any) -> Any:
 #     """Convertit n'importe quel objet/Pydantic/Dataclass en structure JSON Python pure."""
 #     if data is None:
@@ -546,7 +587,6 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #     if hasattr(data, "dict"):
 #         return data.dict()
 #     try:
-#         # Forcer la conversion via JSON pour éliminer tout type non-standard
 #         return json.loads(json.dumps(data, default=str, ensure_ascii=False))
 #     except Exception:
 #         return str(data)
@@ -564,7 +604,6 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #     if not run_id:
 #         return
     
-#     # Nettoyage systématique des données pour PostgreSQL JSONB
 #     clean_output = _to_json_primitive(output_data) if output_attr else None
 #     clean_eval = _to_json_primitive(eval_data) if eval_attr else None
 
@@ -580,44 +619,18 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #             eval_data=clean_eval
 #         )
 #         if eval_attr:
-#             print(f"[💾 BDD Sync OK] Stage {stage.value} -> {eval_attr} enregistré.")
+#             print(f"[💾 BDD Sync OK] Stage {stage.value} -> {eval_attr} enregistré.", flush=True)
 #     except Exception as exc:
-#         print(f"[⚠️ BDD ERROR] Échec de synchronisation BDD pour stage {stage}: {exc}")
+#         print(f"[⚠️ BDD ERROR] Échec de synchronisation BDD pour stage {stage}: {exc}", flush=True)
 #     finally:
 #         db.close()
-# # def _sync_stage_to_db(
-# #     run_id: Optional[Any],
-# #     stage: PipelineStage,
-# #     output_attr: Optional[str] = None,
-# #     output_data: Optional[Any] = None,
-# #     eval_attr: Optional[str] = None,
-# #     eval_data: Optional[Dict[str, Any]] = None
-# # ):
-# #     """Met à jour le statut, les sorties et l'évaluation JSON dans la BDD."""
-# #     if not run_id:
-# #         return
-# #     db = SessionLocal()
-# #     try:
-# #         update_pipeline_stage_data(
-# #             db=db,
-# #             run_id=run_id,
-# #             stage=stage,
-# #             output_attr=output_attr,
-# #             output_data=output_data,
-# #             eval_attr=eval_attr,
-# #             eval_data=eval_data
-# #         )
-# #     except Exception as exc:
-# #         print(f"[⚠️ BDD ERROR] Échec de synchronisation BDD pour stage {stage}: {exc}")
-# #     finally:
-# #         db.close()
 
 
 # # ------------------------------------------------------------------------------
 # # 1. PARSING NODE
 # # ------------------------------------------------------------------------------
 # def parsing_node(state: GraphState) -> Dict[str, Any]:
-#     print("\n[🚀 NODE] Exécution du Parsing Agent...")
+#     print("\n[🚀 NODE] Exécution du Parsing Agent...", flush=True)
 #     file_name = state["file_name"]
 #     file_content = state["file_content"]
 #     run_id = state.get("run_id")
@@ -662,7 +675,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 # # 2. SUMMARY NODE
 # # ------------------------------------------------------------------------------
 # def summary_node(state: GraphState) -> Dict[str, Any]:
-#     print("\n[🚀 NODE] Exécution du Summary Agent...")
+#     print("\n[🚀 NODE] Exécution du Summary Agent...", flush=True)
 #     file_name = state["file_name"]
 #     parsed_json_dict = state["parsed_json_dict"]
 #     parsed_doc = state["parsed_doc"]
@@ -710,7 +723,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 # # 3. GLOSSARY NODE
 # # ------------------------------------------------------------------------------
 # def glossary_node(state: GraphState) -> Dict[str, Any]:
-#     print("\n[🚀 NODE] Exécution du Glossary Agent...")
+#     print("\n[🚀 NODE] Exécution du Glossary Agent...", flush=True)
 #     file_name = state["file_name"]
 #     parsed_json_dict = state["parsed_json_dict"]
 #     parsed_doc = state["parsed_doc"]
@@ -762,7 +775,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 # # 4. DIAGRAM NODE
 # # ------------------------------------------------------------------------------
 # def diagram_node(state: GraphState) -> Dict[str, Any]:
-#     print("\n[🚀 NODE] Exécution du Diagram Agent...")
+#     print("\n[🚀 NODE] Exécution du Diagram Agent...", flush=True)
 #     file_name = state["file_name"]
 #     parsed_json_dict = state["parsed_json_dict"]
 #     parsed_doc = state["parsed_doc"]
@@ -786,7 +799,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #             diagram_spec_dict=diagram_spec_dict
 #         )
 #     except Exception as exc:
-#         print(f"[⚠️ WARNING] Diagram Agent error : {exc}")
+#         print(f"[⚠️ WARNING] Diagram Agent error : {exc}", flush=True)
 #         return {"diagram_doc": None, "diagram_metrics": {}, "diagram_pdf_path": None}
 
 #     pdf_path_str = None
@@ -799,7 +812,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #         ))
 #         pdf_path_str = str(pdf_path)
 #     except Exception as exc:
-#         print(f"[⚠️ Erreur Rendu Diagramme] {exc}")
+#         print(f"[⚠️ Erreur Rendu Diagramme] {exc}", flush=True)
 
 #     report = DiagramEvaluatorService.evaluate(
 #         diagram_data=diagram_output,
@@ -814,7 +827,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #     # 2. Sauvegarde en BDD PostgreSQL
 #     _sync_stage_to_db(
 #         run_id=run_id,
-#         stage=PipelineStage.writing,
+#         stage=PipelineStage.parallel_enrichment,
 #         output_attr="diagram_output",
 #         output_data=diagram_dict,
 #         eval_attr="diagram_eval",
@@ -832,7 +845,7 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 # # 5. DOC WRITER NODE
 # # ------------------------------------------------------------------------------
 # def doc_writer_node(state: GraphState) -> Dict[str, Any]:
-#     print("\n[🚀 NODE] Exécution du Documentation Writer Agent...")
+#     print("\n[🚀 NODE] Exécution du Documentation Writer Agent...", flush=True)
 #     file_name = state["file_name"]
 #     run_id = state.get("run_id")
 #     version_label = state.get("version_label", "1.0")
@@ -890,36 +903,26 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #             diagram_data=fallback_diagram
 #         )
 
-#         # ----------------------------------------------------------------------
-#         # 1. Conversion sérialisable en dict pur pour la BDD PostgreSQL
-#         # ----------------------------------------------------------------------
-#         if hasattr(eval_report, "model_dump"):
-#             eval_report_dict = eval_report.model_dump()
-#         elif hasattr(eval_report, "dict"):
-#             eval_report_dict = eval_report.dict()
-#         elif isinstance(eval_report, dict):
-#             eval_report_dict = eval_report
-#         else:
-#             eval_report_dict = json.loads(json.dumps(eval_report, default=str))
+#         eval_report_dict = _to_json_primitive(eval_report)
 
-#         # 2. Sauvegarde sur Fichier Disk
+#         # 1. Sauvegarde sur Fichier Disk
 #         eval_json_path = paths["doc_eval"]
 #         _save_json(eval_json_path, eval_report)
 #         eval_path_str = str(eval_json_path)
 
-#         # 3. Sauvegarde en BDD PostgreSQL avec le dictionnaire converti
+#         # 2. Sauvegarde en BDD PostgreSQL avec le stage 'writing'
 #         _sync_stage_to_db(
 #             run_id=run_id,
-#             stage=PipelineStage.layout,
+#             stage=PipelineStage.writing,
 #             output_attr="written_doc",
 #             output_data=doc_writer_output.markdown_content,
 #             eval_attr="writer_eval",
-#             eval_data=eval_report_dict  # 👈 Envoi du dictionnaire sérialisable
+#             eval_data=eval_report_dict
 #         )
-#         print(f"[💾 BDD] Évaluation DocWriter synchronisée dans PostgreSQL (writer_eval)")
+#         print(f"[💾 BDD] Évaluation DocWriter synchronisée dans PostgreSQL (writer_eval)", flush=True)
 
 #     except Exception as exc:
-#         print(f"[❌ ERROR] Exécution DocWriterAgent : {exc}")
+#         print(f"[❌ ERROR] Exécution DocWriterAgent : {exc}", flush=True)
 
 #     return {
 #         "doc_writer_doc": doc_writer_output,
@@ -929,17 +932,46 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #     }
 
 
-
 # # ------------------------------------------------------------------------------
 # # 6. LAYOUT NODE
 # # ------------------------------------------------------------------------------
 # def layout_node(state: GraphState) -> Dict[str, Any]:
-#     print("\n[🚀 NODE] Exécution du Layout Agent...")
+#     print("\n[🚀 NODE] Exécution du Layout Agent...", flush=True)
 #     file_name = state["file_name"]
 #     run_id = state.get("run_id")
 #     version_label = state.get("version_label", "1.0")
 
-#     paths = build_pipeline_paths(file_name, version_label=version_label)
+#     # 🛡️ UTILISER LE CHEMIN PDF EXACT PASSÉ DANS L'ÉTAT (évite divergence upload/layout)
+#     final_pdf_path = state.get("final_pdf_path")
+#     if not final_pdf_path:
+#         print("[LAYOUT][WARN] final_pdf_path absent du state, recalcul...", flush=True)
+#         project_name = state.get("project_name")
+#         from app.utils.path_builder import build_pipeline_paths, extract_project_name_from_path, sanitize_path_string
+#         from pathlib import Path
+#         extracted_project = extract_project_name_from_path(Path(file_name))
+#         if project_name and sanitize_path_string(project_name) != sanitize_path_string(extracted_project):
+#             print(f"[LAYOUT][WARN] project_name mismatch: state='{project_name}' vs extracted='{extracted_project}' -> using extracted", flush=True)
+#             project_name = extracted_project
+#         elif not project_name:
+#             project_name = extracted_project
+#             print(f"[LAYOUT][INFO] project_name not in state, using extracted: '{project_name}'", flush=True)
+        
+#         paths = build_pipeline_paths(file_name, version_label=version_label, project_name=project_name)
+#         final_pdf_path = str(paths["final_pdf"])
+#     else:
+#         print(f"[LAYOUT][DEBUG] Utilise final_pdf_path du state: {final_pdf_path}", flush=True)
+#         import os
+#         os.makedirs(os.path.dirname(final_pdf_path) or ".", exist_ok=True)
+
+#     # Pour les autres chemins (évaluations, etc.), on recalcule avec le project_name cohérent
+#     project_name_for_paths = state.get("project_name")
+#     if not project_name_for_paths:
+#         from app.utils.path_builder import extract_project_name_from_path
+#         from pathlib import Path
+#         project_name_for_paths = extract_project_name_from_path(Path(file_name))
+    
+#     paths = build_pipeline_paths(file_name, version_label=version_label, project_name=project_name_for_paths)
+#     eval_json_path = paths["layout_eval"]
 
 #     doc_writer_doc = state.get("doc_writer_doc")
 #     markdown_text = ""
@@ -957,9 +989,6 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #         with open(spec_path, "r", encoding="utf-8") as f:
 #             layout_spec_dict = json.load(f)
 
-#     output_pdf_path = paths["final_pdf"]
-#     eval_json_path = paths["layout_eval"]
-
 #     layout_result = None
 #     eval_report = {}
 #     pdf_path_str = None
@@ -971,42 +1000,44 @@ def layout_node(state: GraphState) -> Dict[str, Any]:
 #             markdown_text=markdown_text,
 #             layout_spec_dict=layout_spec_dict,
 #             project_name=paths["prefix"],
-#             output_pdf_path=str(output_pdf_path)
+#             output_pdf_path=final_pdf_path
+#         )
+
+#         # TOUJOURS construire le rapport d'évaluation, même si PDF échoue
+#         # Cela évite "NA" pour le layout agent dans le frontend
+#         eval_report = {
+#             "project_name": layout_result.project_name,
+#             "layout_publication_status": str(
+#                 layout_result.layout_publication_status.value
+#                 if hasattr(layout_result.layout_publication_status, 'value')
+#                 else layout_result.layout_publication_status
+#             ),
+#             "page_count": layout_result.page_count,
+#             "file_size_kb": layout_result.file_size_kb,
+#             "rendered_diagrams_count": layout_result.rendered_diagrams_count,
+#             "technical_evaluation": layout_result.technical_evaluation,
+#             "project_management_kpis": layout_result.project_management_kpis,
+#             "execution_warnings": layout_result.execution_warnings
+#         }
+
+#         _save_json(eval_json_path, eval_report)
+#         eval_path_str = str(eval_json_path)
+
+#         # Enregistrement en BDD avec le stage 'rendering' - TOUJOURS, pas seulement si PDF généré
+#         _sync_stage_to_db(
+#             run_id=run_id,
+#             stage=PipelineStage.rendering,
+#             output_attr="layout_output",
+#             output_data=str(layout_result),
+#             eval_attr="layout_eval",
+#             eval_data=eval_report
 #         )
 
 #         if layout_result and layout_result.pdf_generated:
-#             pdf_path_str = str(output_pdf_path)
-
-#             eval_report = {
-#                 "project_name": layout_result.project_name,
-#                 "layout_publication_status": str(
-#                     layout_result.layout_publication_status.value
-#                     if hasattr(layout_result.layout_publication_status, 'value')
-#                     else layout_result.layout_publication_status
-#                 ),
-#                 "page_count": layout_result.page_count,
-#                 "file_size_kb": layout_result.file_size_kb,
-#                 "rendered_diagrams_count": layout_result.rendered_diagrams_count,
-#                 "technical_evaluation": layout_result.technical_evaluation,
-#                 "project_management_kpis": layout_result.project_management_kpis,
-#                 "execution_warnings": layout_result.execution_warnings
-#             }
-
-#             _save_json(eval_json_path, eval_report)
-#             eval_path_str = str(eval_json_path)
-
-#             # Enregistrement en BDD
-#             _sync_stage_to_db(
-#                 run_id=run_id,
-#                 stage=PipelineStage.rendering,
-#                 output_attr="layout_output",
-#                 output_data=str(layout_result),
-#                 eval_attr="layout_eval",
-#                 eval_data=eval_report
-#             )
+#             pdf_path_str = final_pdf_path
 
 #     except Exception as exc:
-#         print(f"[❌ ERROR] Exécution LayoutAgent : {exc}")
+#         print(f"[❌ ERROR] Exécution LayoutAgent : {exc}", flush=True)
 
 #     return {
 #         "layout_doc": layout_result,

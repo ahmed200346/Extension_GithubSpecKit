@@ -9,15 +9,18 @@ from app.schemas.layout_agent_schema import (
     LayoutPublicationStatus
 )
 
-
 from app.services.evaluation_service import LayoutEvaluatorService
-
 
 from app.utils.layout_tools import (
     render_mermaid_diagrams,
     compile_markdown_to_pdf,
     inspect_generated_pdf
 )
+
+# ✅ Même fonction que celle utilisée par pipeline.py pour calculer paths["final_pdf"].
+# On la réutilise ici pour garantir que le PDF est TOUJOURS écrit exactement
+# là où la BDD s'attend à le trouver, quel que soit l'appelant.
+from app.utils.path_builder import build_pipeline_paths
 
 
 class LayoutAgentService:
@@ -33,10 +36,18 @@ class LayoutAgentService:
         markdown_text: str,
         layout_spec_dict: Dict[str, Any],
         project_name: str = "Technical Project",
-        output_pdf_path: Optional[str] = None
+        output_pdf_path: Optional[str] = None,
+        file_name: Optional[str] = None,
+        version_label: str = "1.0"
     ) -> LayoutOutputModel:
         """
         Exécute le pipeline complet de mise en page, conversion visuelle et compilation PDF.
+
+        file_name / version_label : mêmes valeurs que celles passées à
+        build_pipeline_paths() dans pipeline.py (typiquement disponibles dans
+        le GraphState via state["file_name"] / state["version_label"]).
+        Elles servent UNIQUEMENT à calculer le nom de fichier par défaut
+        quand output_pdf_path n'est pas fourni explicitement.
         """
         execution_warnings = []
 
@@ -53,9 +64,24 @@ class LayoutAgentService:
 
         # 2. Configuration du chemin de sortie pour le fichier PDF
         if not output_pdf_path:
-            clean_proj_name = "".join(c for c in project_name if c.isalnum() or c in ("_", "-")).strip()
-            os.makedirs("exports", exist_ok=True)
-            output_pdf_path = os.path.join("exports", f"{clean_proj_name}_Specification.pdf")
+            # ⚠️ CORRECTIF : avant, ce fallback écrivait dans "exports/xxx.pdf"
+            # (chemin relatif, convention de nom différente), totalement
+            # déconnecté du chemin paths["final_pdf"] enregistré en BDD par
+            # pipeline.py. Résultat : le bouton "Viewer" du frontend pointait
+            # vers un fichier inexistant ("Fichier PDF introuvable sur le
+            # disque"), même quand le PDF avait bien été généré... ailleurs.
+            #
+            # On utilise maintenant EXACTEMENT la même fonction que
+            # pipeline.py pour calculer le chemin, ce qui élimine toute
+            # possibilité de désynchronisation.
+            paths = build_pipeline_paths(
+                file_name=file_name or project_name,
+                version_label=version_label,
+                project_name=project_name
+            )
+            output_pdf_path = str(paths["final_pdf"])
+        else:
+            os.makedirs(os.path.dirname(output_pdf_path) or ".", exist_ok=True)
 
         # 3. ÉTAPE 1 : Conversion des diagrammes Mermaid en images PNG/SVG
         try:
@@ -68,23 +94,22 @@ class LayoutAgentService:
             execution_warnings.append(f"Avertissement lors du rendu des diagrammes Mermaid : {str(e)}")
 
         # 4. ÉTAPE 2 : Compilation du Markdown enrichi vers PDF via ReportLab
+        compilation_result = {}
+        pdf_generated = False
         try:
             compilation_result = compile_markdown_to_pdf(
                 markdown_text=updated_markdown,
                 output_pdf_path=output_pdf_path,
                 layout_spec=layout_spec_dict
             )
+            pdf_generated = compilation_result.get("output_pdf_path") is not None and os.path.exists(output_pdf_path)
         except Exception as e:
             execution_warnings.append(f"Erreur critique lors de la compilation PDF : {str(e)}")
-            return LayoutOutputModel(
-                project_name=project_name,
-                pdf_file_path=output_pdf_path,
-                pdf_generated=False,
-                layout_publication_status=LayoutPublicationStatus.BLOCKED,
-                execution_warnings=execution_warnings
-            )
+            pdf_generated = False
 
         # 5. ÉTAPE 3 : Inspection binaire du PDF produit pour extraction des métadonnées
+        # On exécute TOUJOURS l'inspection et l'évaluation, même en cas d'échec,
+        # pour que layout_eval soit peuplé en BDD (évite "NA" dans le frontend)
         rendered_pdf_metadata, layout_overflow_report = inspect_generated_pdf(
             pdf_path=output_pdf_path,
             compilation_result=compilation_result,
@@ -104,7 +129,7 @@ class LayoutAgentService:
         tech_eval = evaluation_result.get("technical_evaluation", {})
         mgmt_kpis = evaluation_result.get("project_management_kpis", {})
         raw_status = evaluation_result.get("layout_publication_status", "BLOCKED")
-        
+
         try:
             publication_status = LayoutPublicationStatus(raw_status)
         except ValueError:

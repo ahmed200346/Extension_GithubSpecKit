@@ -14,7 +14,6 @@ from app.models import (
     PipelineStage,
     GeneratedBy,
 )
-from app.utils.path_builder import sanitize_path_string
 
 
 def compute_sha256(file_path: Path) -> str:
@@ -93,6 +92,7 @@ def check_file_exists_only(
     db: Session, file_path: Path, project_name: str
 ) -> bool:
     """Lecture seule : verifie si un fichier existe deja en BDD (par chemin OU par hash)."""
+    from app.utils.path_builder import sanitize_path_string
     file_path_str = sanitize_path_string(file_path.resolve().as_posix())
     new_hash = compute_sha256(file_path)
     project = get_or_create_project(db, project_name)
@@ -119,6 +119,7 @@ def should_process_file(
     db: Session, file_path: Path, project_name: str
 ) -> Tuple[bool, str, Artifact]:
     """Verifie si le fichier Markdown a ete modifie (comparaison SHA-256)."""
+    from app.utils.path_builder import sanitize_path_string
     # Stocker le chemin en format POSIX sanatise en BDD
     file_path_str = sanitize_path_string(file_path.resolve().as_posix())
     new_hash = compute_sha256(file_path)
@@ -241,6 +242,7 @@ def create_doc_version_pending(
         version_label=version_label,
         pdf_path="",
         source_file_hash=artifact.current_file_hash or "",
+        generated_at=datetime.now(timezone.utc),
         generated_by=GeneratedBy.agent,
         pipeline_run_id=pipeline_run.id,
         global_kpi_score=None,
@@ -351,222 +353,3 @@ def save_failed_run(db: Session, pipeline_run: PipelineRun, error_message: str):
     pipeline_run.error_message = error_message
     pipeline_run.completed_at = datetime.now(timezone.utc)
     db.commit()
-# import hashlib
-# import uuid
-# from datetime import datetime, timezone
-# from pathlib import Path
-# from typing import Optional, Tuple, Dict, Any
-# from sqlalchemy.orm import Session
-
-# from app.models import (
-#     Project,
-#     Artifact,
-#     DocVersion,
-#     PipelineRun,
-#     ArtifactType,
-#     PipelineStage,
-#     GeneratedBy,
-# )
-
-
-# def compute_sha256(file_path: Path) -> str:
-#     """Calcule l'empreinte SHA-256 du contenu d'un fichier Markdown."""
-#     return hashlib.sha256(file_path.read_bytes()).hexdigest()
-
-
-# def detect_artifact_type(file_path: Path) -> ArtifactType:
-#     """Détermine dynamiquement le type d'artefact."""
-#     name = file_path.name.lower()
-
-#     if "constitution" in name:
-#         return ArtifactType.constitution
-#     elif "requirement" in name:
-#         return ArtifactType.requirements
-#     elif "contract" in name:
-#         return ArtifactType.contracts
-#     elif "plan" in name:
-#         return ArtifactType.plan
-#     elif "task" in name:
-#         return ArtifactType.task
-
-#     return ArtifactType.spec
-
-
-# def get_or_create_project(
-#     db: Session, project_name: str, repo_url: Optional[str] = None
-# ) -> Project:
-#     """Récupère un projet existant ou le crée en BDD."""
-#     project = db.query(Project).filter(Project.name == project_name).first()
-#     if not project:
-#         project = Project(name=project_name, repo_url=repo_url)
-#         db.add(project)
-#         db.commit()
-#         db.refresh(project)
-#     return project
-
-
-# def should_process_file(
-#     db: Session, file_path: Path, project_name: str
-# ) -> Tuple[bool, str, Artifact]:
-#     """Vérifie si le fichier Markdown a été modifié (comparaison SHA-256)."""
-#     file_path_str = str(file_path.resolve())
-#     new_hash = compute_sha256(file_path)
-
-#     project = get_or_create_project(db, project_name)
-
-#     artifact = (
-#         db.query(Artifact)
-#         .filter(Artifact.project_id == project.id, Artifact.source_path == file_path_str)
-#         .first()
-#     )
-
-#     if not artifact:
-#         artifact = Artifact(
-#             project_id=project.id,
-#             source_path=file_path_str,
-#             current_file_hash=None,
-#             artifact_type=detect_artifact_type(file_path),
-#         )
-#         db.add(artifact)
-#         db.commit()
-#         db.refresh(artifact)
-#         return True, new_hash, artifact
-
-#     if artifact.current_file_hash == new_hash:
-#         return False, new_hash, artifact
-
-#     return True, new_hash, artifact
-
-
-# def create_pipeline_run(db: Session, artifact_id: uuid.UUID) -> PipelineRun:
-#     """Initialise une exécution de pipeline en BDD à l'étape 'parsing'."""
-#     run = PipelineRun(artifact_id=artifact_id, current_stage=PipelineStage.parsing)
-#     db.add(run)
-#     db.commit()
-#     db.refresh(run)
-#     return run
-
-
-# def get_next_version(db: Session, artifact_id: uuid.UUID) -> Tuple[int, str]:
-#     """
-#     Calcule le numéro et le label de la prochaine version.
-#     - Si 1er passage : (1, "1.0")
-#     - Si modification : (2, "2.0"), (3, "3.0"), etc.
-#     """
-#     last_version = (
-#         db.query(DocVersion)
-#         .filter(DocVersion.artifact_id == artifact_id)
-#         .order_by(DocVersion.version_no.desc())
-#         .first()
-#     )
-
-#     if not last_version:
-#         return 1, "1.0"
-
-#     next_no = last_version.version_no + 1
-#     next_label = f"{next_no}.0"
-#     return next_no, next_label
-
-
-# def update_pipeline_stage_data(
-#     db: Session,
-#     run_id: uuid.UUID,
-#     stage: PipelineStage,
-#     output_attr: Optional[str] = None,
-#     output_data: Optional[Any] = None,
-#     eval_attr: Optional[str] = None,
-#     eval_data: Optional[Dict[str, Any]] = None,
-# ):
-#     """Met à jour le statut courant, le rendu intermédiaire et l'évaluation JSON dans PostgreSQL."""
-#     try:
-#         run = db.query(PipelineRun).filter(PipelineRun.id == run_id).first()
-#         if not run:
-#             return
-
-#         run.current_stage = stage
-
-#         if output_attr and output_data is not None and hasattr(run, output_attr):
-#             setattr(run, output_attr, output_data)
-
-#         if eval_attr and eval_data is not None and hasattr(run, eval_attr):
-#             setattr(run, eval_attr, eval_data)
-
-#         db.commit()
-#     except Exception as exc:
-#         db.rollback()
-#         print(f"[⚠️ DB Update Error] Échec de la mise à jour pour le stage {stage.value}: {exc}")
-
-
-# def save_successful_run(
-#     db: Session,
-#     artifact: Artifact,
-#     pipeline_run: PipelineRun,
-#     new_hash: str,
-#     pdf_path: str,
-#     # --- Outputs ---
-#     structured_json: Optional[Dict[str, Any]] = None,
-#     summary_output: Optional[str] = None,
-#     diagram_output: Optional[Dict[str, Any]] = None,
-#     glossary_output: Optional[Dict[str, Any]] = None,
-#     written_doc: Optional[str] = None,
-#     layout_output: Optional[str] = None,
-#     # --- Évaluations JSON ---
-#     parsing_eval: Optional[Dict[str, Any]] = None,
-#     summary_eval: Optional[Dict[str, Any]] = None,
-#     glossary_eval: Optional[Dict[str, Any]] = None,
-#     diagram_eval: Optional[Dict[str, Any]] = None,
-#     writer_eval: Optional[Dict[str, Any]] = None,
-#     layout_eval: Optional[Dict[str, Any]] = None,
-#     # --- Score KPI ---
-#     global_kpi_score: Optional[float] = None,
-#     commit_hash: Optional[str] = None,
-# ) -> DocVersion:
-#     """Marque le PipelineRun comme terminé et génère la DocVersion avec son numéro v1.0, v2.0..."""
-#     pipeline_run.current_stage = PipelineStage.completed
-#     pipeline_run.completed_at = datetime.now(timezone.utc)
-
-#     if structured_json: pipeline_run.structured_json = structured_json
-#     if summary_output: pipeline_run.summary_output = summary_output
-#     if diagram_output: pipeline_run.diagram_output = diagram_output
-#     if glossary_output: pipeline_run.glossary_output = glossary_output
-#     if written_doc: pipeline_run.written_doc = written_doc
-#     if layout_output: pipeline_run.layout_output = layout_output
-
-#     if parsing_eval: pipeline_run.parsing_eval = parsing_eval
-#     if summary_eval: pipeline_run.summary_eval = summary_eval
-#     if glossary_eval: pipeline_run.glossary_eval = glossary_eval
-#     if diagram_eval: pipeline_run.diagram_eval = diagram_eval
-#     if writer_eval: pipeline_run.writer_eval = writer_eval
-#     if layout_eval: pipeline_run.layout_eval = layout_eval
-
-#     pipeline_run.global_kpi_score = global_kpi_score
-
-#     # Calcul automatique de la version
-#     next_version_no, next_version_label = get_next_version(db, artifact.id)
-
-#     doc_version = DocVersion(
-#         artifact_id=artifact.id,
-#         version_no=next_version_no,
-#         version_label=next_version_label,
-#         pdf_path=pdf_path,
-#         source_file_hash=new_hash,
-#         generated_by=GeneratedBy.agent,
-#         pipeline_run_id=pipeline_run.id,
-#         global_kpi_score=global_kpi_score,
-#         commit_hash=commit_hash,
-#     )
-    
-#     db.add(doc_version)
-#     artifact.current_file_hash = new_hash
-
-#     db.commit()
-#     db.refresh(doc_version)
-#     return doc_version
-
-
-# def save_failed_run(db: Session, pipeline_run: PipelineRun, error_message: str):
-#     """Marque une exécution comme échouée."""
-#     pipeline_run.current_stage = PipelineStage.failed
-#     pipeline_run.error_message = error_message
-#     pipeline_run.completed_at = datetime.now(timezone.utc)
-#     db.commit()

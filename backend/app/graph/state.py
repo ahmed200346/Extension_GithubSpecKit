@@ -11,6 +11,8 @@ class GraphState(TypedDict):
     version_label: str
     run_id: Optional[Any]
     prefix: Optional[str]
+    project_name: Optional[str]  # Nom du projet pour cohérence des chemins (évite divergence PDF path)
+    final_pdf_path: Optional[str]  # Chemin exact du PDF final (calculé au upload, évite toute divergence)
 
     # 1. Parsing Agent : Résultats & Métriques
     parsed_json_dict: Optional[Dict[str, Any]]

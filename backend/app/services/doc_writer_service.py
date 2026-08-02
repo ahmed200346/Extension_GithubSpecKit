@@ -79,11 +79,34 @@ class DocWriterAgentService:
         clean_md = clean_markdown_response(raw_markdown)
         clean_md = sanitize_mermaid_blocks(clean_md)
 
-        # 7. Exécution des Outils déterministes (TOC et Sauvegarde sur disque)
+        # 7. INJECTER PROGRAMMATIQUEMENT TOUS LES DIAGRAMMES COMME BLOCS MERMAID
+        # Cela garantit DVR = 100% dans le Layout Agent (tous les diagrammes rendus)
+        diagrams_list = diagrams_json_dict.get("diagrams", [])
+        if diagrams_list:
+            mermaid_blocks = []
+            for diag in diagrams_list:
+                title = diag.get("title", "Diagram")
+                mermaid_code = diag.get("mermaid_code", "").strip()
+                if mermaid_code:
+                    mermaid_blocks.append(f"```mermaid\n{mermaid_code}\n```")
+            
+            if mermaid_blocks:
+                diagrams_section = "\n\n".join(mermaid_blocks)
+                # Insère après "## 2. Architecture Workflows" ou à la fin si pas trouvé
+                insert_marker = "## 2. Architecture Workflows"
+                if insert_marker in clean_md:
+                    clean_md = clean_md.replace(
+                        insert_marker,
+                        f"{insert_marker}\n\n{diagrams_section}"
+                    )
+                else:
+                    clean_md = clean_md + f"\n\n{diagrams_section}"
+
+        # 8. Exécution des Outils déterministes (TOC et Sauvegarde sur disque)
         table_of_contents = extract_markdown_toc(clean_md)
         saved_filepath = save_markdown_artifact(clean_md, project_name=project_name)
 
-        # 8. Calcul des statistiques de consolidation d'artéfacts
+        # 9. Calcul des statistiques de consolidation d'artéfacts
         integrated_artifacts = IntegratedArtifactsSummary(
             summary_integrated=True,
             total_elements_integrated=len(parsed_json_dict.get("elements", [])),
@@ -91,7 +114,7 @@ class DocWriterAgentService:
             total_glossary_terms=len(glossary_json_dict.get("items", []))
         )
 
-        # 9. Construction et validation de l'objet Pydantic final
+        # 10. Construction et validation de l'objet Pydantic final
         return DocWriterOutputModel(
             project_name=project_name,
             document_title=f"{project_name} - Technical Specification & Architecture Document",

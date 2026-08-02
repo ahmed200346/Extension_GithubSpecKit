@@ -23,13 +23,15 @@ class DiagramExporterTool:
     Gère la conversion du code Mermaid.js en images PNG (via mmdc ou Kroki),
     l'assainissement automatique de la syntaxe, la mise en page et la compilation en PDF.
     """
+    _INIT_BLOCK_PATTERN = re.compile(r"^%%\{init:.*?\}%%\s*\n?", re.DOTALL)
 
     @classmethod
     def sanitize_mermaid_code(cls, mermaid_code: str) -> str:
         """
         Nettoie et corrige automatiquement les erreurs de syntaxe courantes
         générées dans le code Mermaid par les LLMs.
-        Moteur multi-passe ultra-performant avec auto-encapsulation des libellés.
+        Version idempotente : ne duplique plus l'en-tête si le code est
+        déjà thémé/nettoyé en amont (ex: par DiagramAgentService).
         """
         if not mermaid_code:
             return ""
@@ -42,50 +44,41 @@ class DiagramExporterTool:
 
         # 2. Normalisation Unicode (espaces insécables, guillemets typographiques)
         code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
-        code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'").replace("«", '"').replace("»", '"')
+        code = (code.replace("\u201c", '"').replace("\u201d", '"')
+                    .replace("\u2018", "'").replace("\u2019", "'")
+                    .replace("\u00ab", '"').replace("\u00bb", '"'))
 
-        # 3. Vérification / Ajout de l'en-tête de diagramme s'il est manquant
+        # 3. Extraire et RETIRER un éventuel bloc d'init/thème déjà présent
+        #    (sinon la détection d'en-tête ci-dessous se trompe sur une ligne interne du thème)
+        existing_init = None
+        init_match = cls._INIT_BLOCK_PATTERN.match(code)
+        if init_match:
+            existing_init = init_match.group(0).rstrip("\n")
+            code = code[init_match.end():].strip()
+
         valid_headers = ("flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gantt", "mindmap", "pie", "gitGraph", "C4Context")
-        lines = [line.strip() for line in code.split("\n") if line.strip()]
-        first_line = next((l for l in lines if not l.startswith("%%")), "")
 
+        # 4. Vérification / Ajout de l'en-tête de diagramme UNIQUEMENT sur le corps
+        lines = [line.strip() for line in code.split("\n") if line.strip()]
+        first_line = lines[0] if lines else ""
         if not any(first_line.startswith(hdr) for hdr in valid_headers):
             code = f"flowchart TD\n{code}"
 
-        # 4. PRÉ-NETTOYAGE : Normaliser les espaces DANS les délimiteurs avant le moteur principal
-        # Corriger: { "Label" } -> {"Label"}, [ "Label" ] -> ["Label"], ( "Label" ) -> ("Label")
+        # 5. PRÉ-NETTOYAGE : Normaliser les espaces DANS les délimiteurs
         code = re.sub(r'\{\s+"([^"]+)"\s+\}', r'{"\1"}', code)
         code = re.sub(r'\{\s+\'([^\']+)\'\s+\}', r"{'\1'}", code)
         code = re.sub(r'\[\s+"([^"]+)"\s+\]', r'["\1"]', code)
         code = re.sub(r"\[\s+'([^']+)'\s+\]", r"['\1']", code)
         code = re.sub(r'\(\s+"([^"]+)"\s+\)', r'("\1")', code)
         code = re.sub(r"\(\s+'([^']+)'\s+\)", r"('\1')", code)
-        
-        # Corriger les doubles délimiteurs: {{Label}} -> ["Label"], [[Label]] -> ["Label"], ((Label)) -> ("Label"), ((Label)) -> ("Label")
+
+        # Corriger les doubles délimiteurs
         code = re.sub(r'\{\{([^}]+)\}\}', r'["\1"]', code)
         code = re.sub(r'\[\[([^\]]+)\]\]', r'["\1"]', code)
         code = re.sub(r'\(\(([^)]+)\)\)', r'("\1")', code)
         code = re.sub(r'\(\[([^\]]+)\]\)', r'["\1"]', code)
 
-        # 5. Normalisation Unicode (espaces insécables, guillemets typographiques)
-        code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
-        code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'").replace("«", '"').replace("»", '"')
-
-        # 6. Vérification / Ajout de l'en-tête de diagramme s'il est manquant
-        valid_headers = ("flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gantt", "mindmap", "pie", "gitGraph", "C4Context")
-        lines = [line.strip() for line in code.split("\n") if line.strip()]
-        first_line = next((l for l in lines if not l.startswith("%%")), "")
-
-        if not any(first_line.startswith(hdr) for hdr in valid_headers):
-            code = f"flowchart TD\n{code}"
-
-        # 7. Correction des formes de nœuds invalides ou doublons (restent après pré-nettoyage)
-        code = re.sub(r'\(\[([^\]]+)\]\)', r'["\1"]', code)
-        code = re.sub(r'\(\(([^)]+)\)\)', r'["\1"]', code)
-        code = re.sub(r'\[\[([^\]]+)\]\]', r'["\1"]', code)
-        code = re.sub(r'\{\{([^}]+)\}\}', r'["\1"]', code)
-
-        # 8. Encapsulation automatique des libellés de nœuds avec guillemets (Auto-Quoting Engine)
+        # 6. Encapsulation automatique des libellés de nœuds avec guillemets
         def quote_node_label(match):
             node_id = match.group(1)
             open_symbol = match.group(2)
@@ -108,7 +101,7 @@ class DiagramExporterTool:
             line_str = line.rstrip()
             stripped = line_str.strip()
 
-            if not stripped or stripped.startswith("%%"):
+            if not stripped:
                 cleaned_lines.append(line_str)
                 continue
 
@@ -134,24 +127,153 @@ class DiagramExporterTool:
                         cleaned_lines.append(leading + fixed)
                         continue
 
-            # Correctif pour les flèches avec labels: -->|Label| ---
             line_str = re.sub(
                 r'(-->|---|==>|-\.->)\|([^"|\n]+)\|',
                 lambda m: f'{m.group(1)}|"{m.group(2).strip().replace(chr(34), chr(39))}"|',
                 line_str
             )
-
-            # Encapsulation automatique des nœuds standards
             line_str = node_pattern.sub(quote_node_label, line_str)
             cleaned_lines.append(line_str)
 
         code = "\n".join(cleaned_lines)
 
-        # 9. Correctifs finaux sur les flèches mal fermées et espaces
+        # 7. Correctifs finaux sur les flèches mal fermées et espaces
         code = re.sub(r'-->\|([^|]+)\|>', r'-->|\1|', code)
         code = re.sub(r'\n\s*\n', '\n', code)
 
+        # 8. Réinjection du bloc de thème/init déjà présent (s'il y en avait un)
+        if existing_init:
+            code = f"{existing_init}\n{code}"
+
         return code.strip()
+    # @classmethod
+    # def sanitize_mermaid_code(cls, mermaid_code: str) -> str:
+    #     """
+    #     Nettoie et corrige automatiquement les erreurs de syntaxe courantes
+    #     générées dans le code Mermaid par les LLMs.
+    #     Moteur multi-passe ultra-performant avec auto-encapsulation des libellés.
+    #     """
+    #     if not mermaid_code:
+    #         return ""
+
+    #     code = str(mermaid_code).strip()
+
+    #     # 1. Supprime les blocs de code Markdown (```mermaid ... ```)
+    #     code = re.sub(r"^```(?:mermaid)?\s*\n?", "", code, flags=re.MULTILINE)
+    #     code = re.sub(r"\n?\s*```$", "", code, flags=re.MULTILINE)
+
+    #     # 2. Normalisation Unicode (espaces insécables, guillemets typographiques)
+    #     code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
+    #     code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'").replace("«", '"').replace("»", '"')
+
+    #     # 3. Vérification / Ajout de l'en-tête de diagramme s'il est manquant
+    #     valid_headers = ("flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gantt", "mindmap", "pie", "gitGraph", "C4Context")
+    #     lines = [line.strip() for line in code.split("\n") if line.strip()]
+    #     first_line = next((l for l in lines if not l.startswith("%%")), "")
+
+    #     if not any(first_line.startswith(hdr) for hdr in valid_headers):
+    #         code = f"flowchart TD\n{code}"
+
+    #     # 4. PRÉ-NETTOYAGE : Normaliser les espaces DANS les délimiteurs avant le moteur principal
+    #     # Corriger: { "Label" } -> {"Label"}, [ "Label" ] -> ["Label"], ( "Label" ) -> ("Label")
+    #     code = re.sub(r'\{\s+"([^"]+)"\s+\}', r'{"\1"}', code)
+    #     code = re.sub(r'\{\s+\'([^\']+)\'\s+\}', r"{'\1'}", code)
+    #     code = re.sub(r'\[\s+"([^"]+)"\s+\]', r'["\1"]', code)
+    #     code = re.sub(r"\[\s+'([^']+)'\s+\]", r"['\1']", code)
+    #     code = re.sub(r'\(\s+"([^"]+)"\s+\)', r'("\1")', code)
+    #     code = re.sub(r"\(\s+'([^']+)'\s+\)", r"('\1')", code)
+        
+    #     # Corriger les doubles délimiteurs: {{Label}} -> ["Label"], [[Label]] -> ["Label"], ((Label)) -> ("Label"), ((Label)) -> ("Label")
+    #     code = re.sub(r'\{\{([^}]+)\}\}', r'["\1"]', code)
+    #     code = re.sub(r'\[\[([^\]]+)\]\]', r'["\1"]', code)
+    #     code = re.sub(r'\(\(([^)]+)\)\)', r'("\1")', code)
+    #     code = re.sub(r'\(\[([^\]]+)\]\)', r'["\1"]', code)
+
+    #     # 5. Normalisation Unicode (espaces insécables, guillemets typographiques)
+    #     code = code.replace("\xa0", " ").replace("\u200b", "").replace("\r\n", "\n")
+    #     code = code.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'").replace("«", '"').replace("»", '"')
+
+    #     # 6. Vérification / Ajout de l'en-tête de diagramme s'il est manquant
+    #     valid_headers = ("flowchart", "graph", "sequenceDiagram", "classDiagram", "erDiagram", "stateDiagram", "gantt", "mindmap", "pie", "gitGraph", "C4Context")
+    #     lines = [line.strip() for line in code.split("\n") if line.strip()]
+    #     first_line = next((l for l in lines if not l.startswith("%%")), "")
+
+    #     if not any(first_line.startswith(hdr) for hdr in valid_headers):
+    #         code = f"flowchart TD\n{code}"
+
+    #     # 7. Correction des formes de nœuds invalides ou doublons (restent après pré-nettoyage)
+    #     code = re.sub(r'\(\[([^\]]+)\]\)', r'["\1"]', code)
+    #     code = re.sub(r'\(\(([^)]+)\)\)', r'["\1"]', code)
+    #     code = re.sub(r'\[\[([^\]]+)\]\]', r'["\1"]', code)
+    #     code = re.sub(r'\{\{([^}]+)\}\}', r'["\1"]', code)
+
+    #     # 8. Encapsulation automatique des libellés de nœuds avec guillemets (Auto-Quoting Engine)
+    #     def quote_node_label(match):
+    #         node_id = match.group(1)
+    #         open_symbol = match.group(2)
+    #         label = match.group(3).strip()
+    #         close_symbol = match.group(4)
+
+    #         if (label.startswith('"') and label.endswith('"')) or (label.startswith("'") and label.endswith("'")):
+    #             clean_label = label[1:-1].replace('"', "'")
+    #             return f'{node_id}{open_symbol}"{clean_label}"{close_symbol}'
+
+    #         clean_label = label.replace('"', "'")
+    #         return f'{node_id}{open_symbol}"{clean_label}"{close_symbol}'
+
+    #     node_pattern = re.compile(r'(\b[A-Za-z0-9_]+)(\[\s*|\(\s*|\{\s*)("(?:[^"\\]|\\.)*"|\'(?:[^\'\\]|\\.)*\'|[^\]\}\)]+)(\s*\]|\s*\)|\s*\})')
+
+    #     cleaned_lines = []
+    #     in_er_block = False
+
+    #     for line in code.split("\n"):
+    #         line_str = line.rstrip()
+    #         stripped = line_str.strip()
+
+    #         if not stripped or stripped.startswith("%%"):
+    #             cleaned_lines.append(line_str)
+    #             continue
+
+    #         if any(stripped.startswith(hdr) for hdr in valid_headers) or stripped.startswith("subgraph") or stripped == "end":
+    #             cleaned_lines.append(line_str)
+    #             continue
+
+    #         if "erDiagram" in code:
+    #             if re.match(r'^[A-Za-z_][A-Za-z0-9_]*\s*\{', stripped):
+    #                 in_er_block = True
+    #                 cleaned_lines.append(line_str)
+    #                 continue
+    #             if stripped == "}" and in_er_block:
+    #                 in_er_block = False
+    #                 cleaned_lines.append(line_str)
+    #                 continue
+    #             if in_er_block:
+    #                 match_attr = re.match(r'^\+?\s*(\w+)\s*:\s*(\w+)\s*(PK|FK)?\s*$', stripped)
+    #                 if match_attr:
+    #                     field_name, type_name, key_marker = match_attr.group(1), match_attr.group(2), match_attr.group(3) or ''
+    #                     fixed = f"{type_name} {field_name}" + (f" {key_marker}" if key_marker else "")
+    #                     leading = line_str[:len(line_str) - len(line_str.lstrip())]
+    #                     cleaned_lines.append(leading + fixed)
+    #                     continue
+
+    #         # Correctif pour les flèches avec labels: -->|Label| ---
+    #         line_str = re.sub(
+    #             r'(-->|---|==>|-\.->)\|([^"|\n]+)\|',
+    #             lambda m: f'{m.group(1)}|"{m.group(2).strip().replace(chr(34), chr(39))}"|',
+    #             line_str
+    #         )
+
+    #         # Encapsulation automatique des nœuds standards
+    #         line_str = node_pattern.sub(quote_node_label, line_str)
+    #         cleaned_lines.append(line_str)
+
+    #     code = "\n".join(cleaned_lines)
+
+    #     # 9. Correctifs finaux sur les flèches mal fermées et espaces
+    #     code = re.sub(r'-->\|([^|]+)\|>', r'-->|\1|', code)
+    #     code = re.sub(r'\n\s*\n', '\n', code)
+
+    #     return code.strip()
 
     @staticmethod
     def _get_npm_prefix() -> str | None:

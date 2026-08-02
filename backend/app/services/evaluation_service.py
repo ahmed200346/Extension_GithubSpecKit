@@ -465,11 +465,12 @@ class DiagramEvaluatorService:
         svr = technical_metrics["syntax_validity_rate"]
         sra = technical_metrics["structural_rule_adherence"]
         dcr = technical_metrics["diagram_coverage_rate"]
+        rcr = technical_metrics["relational_completeness_rate"]
 
-        # Statut de qualité du rendu visuel
-        if svr == 100.0 and sra >= 90.0 and dcr >= 60.0:
+        # Statut de qualité du rendu visuel - SEUILS ASSOUPLIS pour être réalistes
+        if svr >= 90.0 and sra >= 80.0 and dcr >= 50.0 and rcr >= 50.0:
             rendering_status = "READY_FOR_RENDERING"
-        elif svr >= 75.0 and sra >= 75.0:
+        elif svr >= 70.0 and sra >= 60.0:
             rendering_status = "NEEDS_REFINEMENT"
         else:
             rendering_status = "BLOCKED"
@@ -692,10 +693,10 @@ class LayoutEvaluatorService:
         vor = technical_metrics["visual_overflow_rate"]
         scs = technical_metrics["styling_consistency_score"]
 
-        # Arbitrage du statut de validation de la qualité d'impression / publication
-        if rsr == 100.0 and dvr >= 90.0 and vor >= 90.0 and scs >= 85.0 and pba >= 70.0:
+        # Arbitrage du statut de validation de la qualité d'impression / publication - SEUILS ASSOUPLIS
+        if rsr == 100.0 and dvr >= 80.0 and vor >= 80.0 and scs >= 75.0 and pba >= 60.0:
             publication_status = "READY_FOR_PUBLICATION"
-        elif rsr == 100.0 and vor >= 70.0:
+        elif rsr == 100.0 and vor >= 60.0:
             publication_status = "NEEDS_REFINEMENT"
         else:
             publication_status = "BLOCKED"

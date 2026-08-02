@@ -190,6 +190,26 @@ def get_diagram_agent_prompt(
     """
     spec_json = json.dumps(diagram_spec, indent=2, ensure_ascii=False)
     
+    # Extraire les éléments clés pour les injecter explicitement dans le prompt
+    elements = parsed_project_data.get("elements", [])
+    relationships = parsed_project_data.get("relationships", [])
+    
+    # Filtrer les éléments cibles pour les diagrammes
+    target_elements = [
+        el for el in elements 
+        if el.get("type") in ["ENTITY", "ENDPOINT", "USER_STORY", "REQUIREMENT", "DATABASE", "MODEL"]
+    ]
+    
+    elements_summary = "\n".join([
+        f"  - {el.get('identifier', 'NO-ID')}: {el.get('content', '')[:80]} (type: {el.get('type')})"
+        for el in target_elements
+    ])
+    
+    relationships_summary = "\n".join([
+        f"  - {rel.get('source', rel.get('from', ''))} --> {rel.get('to', '')} ({rel.get('relation_type', 'relates_to')})"
+        for rel in relationships
+    ])
+    
     prompt_template = """
 You are an expert Software Architecture & Technical Diagram Agent. 
 Your mission is to analyze the structured JSON extracted by the Parsing Agent and generate precise, syntactically flawless Mermaid.js diagrams.
@@ -218,6 +238,30 @@ CRITICAL RULE: STRICT IDENTIFIER PRESERVATION (100% TRACEABILITY MATCH)
    - INCORRECT: US1["Instructor Management"]
    - INCORRECT: US-01[Instructor Management]
 ================================================================================
+
+=== MANDATORY COVERAGE RULES (DCR & RCR METRICS) ===
+YOUR DIAGRAMS MUST COVER THE FOLLOWING PARSED ELEMENTS AND RELATIONSHIPS:
+
+KEY ELEMENTS TO INCLUDE IN DIAGRAMS:
+<<ELEMENTS_SUMMARY>>
+
+KEY RELATIONSHIPS TO MODEL IN DIAGRAMS:
+<<RELATIONSHIPS_SUMMARY>>
+
+COVERAGE REQUIREMENTS:
+- Each ENTITY/DATABASE/MODEL must appear in at least one erDiagram
+- Each ENDPOINT must appear in at least one sequenceDiagram or flowchart
+- Each USER_STORY/REQUIREMENT must appear in at least one flowchart showing traceability
+- ALL relationships from parsed data must be represented as edges/arrows in your diagrams
+- Use EXACT identifiers from the lists above as node IDs
+
+=== MINIMUM DIAGRAM SET (generate at least these 4) ===
+1. ER DIAGRAM (erDiagram): All ENTITY/DATABASE/MODEL elements with attributes and relationships
+2. SEQUENCE DIAGRAM (sequenceDiagram): All ENDPOINTs and multi-step USER_STORY interactions
+3. TRACEABILITY FLOWCHART (flowchart): All USER_STORY/REQUIREMENT elements with traceability links
+4. WORKFLOW FLOWCHART (flowchart): Business processes with decision diamonds and loops
+
+If parsed data lacks elements for a category, skip that diagram type.
 
 === MANDATORY DIAGRAM MAPPING RULES ===
 
@@ -283,7 +327,10 @@ You must output a single valid JSON object containing between 1 and 4 diagrams:
   ]
 }
 """
-    return prompt_template.replace("<<SPEC_JSON>>", spec_json)
+    prompt = prompt_template.replace("<<SPEC_JSON>>", spec_json)
+    prompt = prompt.replace("<<ELEMENTS_SUMMARY>>", elements_summary or "  (No target elements found)")
+    prompt = prompt.replace("<<RELATIONSHIPS_SUMMARY>>", relationships_summary or "  (No relationships found)")
+    return prompt
 
 
 def get_glossary_agent_prompt(glossary_spec: dict, candidate_terms: list, parsed_project_data: dict, valid_anchors: list) -> str:
