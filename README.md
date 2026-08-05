@@ -21,9 +21,8 @@
 | `agentdocx-speckit.stopWatcher` | `AgentDocx SpecKit: Arrêter le Watcher Python` | Arrête le watcher |
 | `agentdocx-speckit.triggerPipeline` | `AgentDocx SpecKit: Déclencher la régénération` | Déclenche le pipeline via `/health` |
 
-## 📦 Installation, Développement & Publication
+## 📦 Installation & Développement
 
-### 🛠️ Mode Développement (Lancement rapide)
 1. Clonez le dépôt dans votre répertoire local.
 2. Installez les dépendances :
    ```bash
@@ -34,31 +33,6 @@
    npm run compile
    ```
 4. Lancez l'extension en mode développement (`F5` dans VS Code).
-
-### 🏗️ Construction & Packaging (Génération du .vsix)
-Pour générer le fichier `.vsix` distribuable, vous devez utiliser l'outil `vsce` :
-
-1. Installer l'outil de packaging VS Code (une seule fois) :
-   ```bash
-   npm install -g @vscode/vsce
-   ```
-2. Générer le fichier `.vsix` :
-   ```bash
-   vsce package
-   # → Génère le fichier .vsix à la racine du projet
-   ```
-
-### 🚀 Publication sur le Marketplace
-Pour publier l'extension sur le VS Code Marketplace (nécessite un Personal Access Token Azure DevOps) :
-
-```bash
-vsce publish -p <VOTRE_PAT>
-# ou
-vsce publish  # mode interactif
-```
-> 📖 Pour créer un PAT : https://dev.azure.com/ → User Settings → Personal Access Tokens → New Token  
-> Scopes : **Marketplace > Manage (Publish, Manage)**
-
 
 ## 🐍 Prérequis Python
 

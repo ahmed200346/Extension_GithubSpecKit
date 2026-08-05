@@ -30,7 +30,7 @@ def wait_for_completion(file_path: str):
     
     try:
         response = requests.post(
-            f"{API_BASE_URL}/run",
+            f"{API_BASE_URL}/upload",
             json={"file_path": str(Path(file_path).resolve())},
             timeout=None  # Timeout de 5 minutes max pour les agents
         )
