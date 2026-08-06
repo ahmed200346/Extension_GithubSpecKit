@@ -1514,7 +1514,7 @@ export const mockLineData = [
   },
   {
     id: "france",
-    color: tokens("dark").blueAccent[300],
+    color: tokens("dark").primary[300],
     data: [
       {
         x: "plane",

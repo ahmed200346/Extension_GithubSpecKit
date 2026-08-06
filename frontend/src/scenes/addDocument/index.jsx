@@ -22,8 +22,7 @@ import InsertDriveFileIcon from "@mui/icons-material/InsertDriveFile";
 import DeleteIcon from "@mui/icons-material/Delete";
 import CheckCircleIcon from "@mui/icons-material/CheckCircle";
 import ErrorIcon from "@mui/icons-material/Error";
-
-const API_BASE = "http://localhost:8000/api/v1/docs";
+import { apiFetch } from "../../apiClient";
 
 const AddDocument = () => {
   const theme = useTheme();
@@ -109,7 +108,7 @@ const AddDocument = () => {
       formData.append("file", selectedFile);
       formData.append("projectName", values.projectName);
 
-      const response = await fetch(`${API_BASE}/upload`, {
+      const response = await apiFetch("/pipeline/upload", {
         method: "POST",
         body: formData,
       });
@@ -182,7 +181,8 @@ const AddDocument = () => {
             </Box>
 
             <Box mt="30px">
-              <Typography variant="h5" fontWeight="bold" color={colors.grey[100]} mb="15px">
+              {/* FIXED: Using theme.palette.text.primary instead of colors.grey */}
+              <Typography variant="h5" fontWeight="bold" color={theme.palette.text.primary} mb="15px">
                 Upload Markdown File
               </Typography>
 
@@ -190,7 +190,7 @@ const AddDocument = () => {
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 sx={{
-                  border: `2px dashed ${selectedFile ? colors.greenAccent[500] : colors.grey[700]}`,
+                  border: `2px dashed ${selectedFile ? (colors.greenAccent?.['500'] || '#4cceac') : (colors.grey?.['700'] || '#616161')}`,
                   borderRadius: "16px",
                   p: "40px",
                   textAlign: "center",
@@ -201,7 +201,7 @@ const AddDocument = () => {
                   cursor: "pointer",
                   transition: "all 0.3s ease",
                   "&:hover": {
-                    borderColor: colors.greenAccent[500],
+                    borderColor: colors.greenAccent?.['500'] || '#4cceac',
                     backgroundColor: theme.palette.mode === "dark"
                       ? "rgba(28, 164, 123, 0.05)"
                       : "rgba(255, 255, 255, 0.9)",
@@ -225,21 +225,22 @@ const AddDocument = () => {
                     <CloudUploadIcon
                       sx={{
                         fontSize: "60px",
-                        color: colors.greenAccent[500],
+                        color: colors.greenAccent?.['500'] || '#4cceac',
                         mb: "15px",
                       }}
                     />
-                    <Typography variant="h4" color={colors.grey[100]} mb="10px">
+                    {/* FIXED: Using theme.palette.text.primary & secondary */}
+                    <Typography variant="h4" color={theme.palette.text.primary} mb="10px">
                       Drag & Drop your Markdown file here
                     </Typography>
-                    <Typography variant="body1" color={colors.grey[300]} mb="20px">
+                    <Typography variant="body1" color={theme.palette.text.secondary} mb="20px">
                       or click to browse files
                     </Typography>
                     <Chip
                       label=".md files only"
                       sx={{
-                        backgroundColor: colors.blueAccent[700],
-                        color: colors.grey[100],
+                        backgroundColor: colors.blueAccent?.['700'] || '#1976d2',
+                        color: '#ffffff',
                       }}
                     />
                   </>
@@ -248,14 +249,15 @@ const AddDocument = () => {
                     <InsertDriveFileIcon
                       sx={{
                         fontSize: "60px",
-                        color: colors.greenAccent[500],
+                        color: colors.greenAccent?.['500'] || '#4cceac',
                         mb: "15px",
                       }}
                     />
-                    <Typography variant="h4" color={colors.grey[100]} mb="5px">
+                    {/* FIXED: Using theme.palette.text.primary & secondary */}
+                    <Typography variant="h4" color={theme.palette.text.primary} mb="5px">
                       {selectedFile.name}
                     </Typography>
-                    <Typography variant="body1" color={colors.grey[300]} mb="15px">
+                    <Typography variant="body1" color={theme.palette.text.secondary} mb="15px">
                       {formatFileSize(selectedFile.size)}
                     </Typography>
                     <Box display="flex" justifyContent="center" gap="10px">
@@ -263,8 +265,8 @@ const AddDocument = () => {
                         icon={<CheckCircleIcon />}
                         label="Ready to upload"
                         sx={{
-                          backgroundColor: colors.greenAccent[600],
-                          color: colors.grey[100],
+                          backgroundColor: colors.greenAccent?.['600'] || '#1da177',
+                          color: '#ffffff',
                         }}
                       />
                       <IconButton
@@ -273,10 +275,10 @@ const AddDocument = () => {
                           handleRemoveFile();
                         }}
                         sx={{
-                          backgroundColor: colors.redAccent ? colors.redAccent[500] : "#f44336",
-                          color: colors.grey[100],
+                          backgroundColor: colors.redAccent?.['500'] || "#f44336",
+                          color: '#ffffff',
                           "&:hover": {
-                            backgroundColor: colors.redAccent ? colors.redAccent[600] : "#d32f2f",
+                            backgroundColor: colors.redAccent?.['600'] || "#d32f2f",
                           },
                         }}
                       >
@@ -293,10 +295,10 @@ const AddDocument = () => {
                   icon={<ErrorIcon />}
                   sx={{
                     mt: "15px",
-                    backgroundColor: colors.redAccent ? colors.redAccent[900] : "#d32f2f",
-                    color: colors.grey[100],
+                    backgroundColor: colors.redAccent?.['900'] || "#fdeded",
+                    color: theme.palette.text.primary,
                     "& .MuiAlert-icon": {
-                      color: colors.redAccent ? colors.redAccent[500] : "#f44336",
+                      color: colors.redAccent?.['500'] || "#d32f2f",
                     },
                   }}
                 >
@@ -310,10 +312,10 @@ const AddDocument = () => {
                   icon={<CheckCircleIcon />}
                   sx={{
                     mt: "15px",
-                    backgroundColor: colors.greenAccent[900] || colors.greenAccent[700],
-                    color: colors.grey[100],
+                    backgroundColor: colors.greenAccent?.['900'] || "#edf7ed",
+                    color: theme.palette.text.primary,
                     "& .MuiAlert-icon": {
-                      color: colors.greenAccent[500],
+                      color: colors.greenAccent?.['500'] || '#2e7d32',
                     },
                   }}
                 >
@@ -327,10 +329,10 @@ const AddDocument = () => {
                   icon={<ErrorIcon />}
                   sx={{
                     mt: "15px",
-                    backgroundColor: colors.redAccent ? colors.redAccent[900] : "#d32f2f",
-                    color: colors.grey[100],
+                    backgroundColor: colors.redAccent?.['900'] || "#fdeded",
+                    color: theme.palette.text.primary,
                     "& .MuiAlert-icon": {
-                      color: colors.redAccent ? colors.redAccent[500] : "#f44336",
+                      color: colors.redAccent?.['500'] || "#d32f2f",
                     },
                   }}
                 >
@@ -342,13 +344,13 @@ const AddDocument = () => {
                 <Box mt="15px">
                   <LinearProgress
                     sx={{
-                      backgroundColor: colors.grey[700],
+                      backgroundColor: colors.grey?.['700'] || '#e0e0e0',
                       "& .MuiLinearProgress-bar": {
-                        backgroundColor: colors.greenAccent[500],
+                        backgroundColor: colors.greenAccent?.['500'] || '#4cceac',
                       },
                     }}
                   />
-                  <Typography variant="body2" color={colors.grey[300]} mt="10px" textAlign="center">
+                  <Typography variant="body2" color={theme.palette.text.secondary} mt="10px" textAlign="center">
                     Uploading and processing document...
                   </Typography>
                 </Box>
@@ -363,7 +365,7 @@ const AddDocument = () => {
                 disabled={!selectedFile || uploading}
                 startIcon={uploading ? <CircularProgress size={20} /> : <CloudUploadIcon />}
                 sx={{
-                  background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.blueAccent[600] || colors.greenAccent[700]})`,
+                  background: `linear-gradient(135deg, ${colors.greenAccent?.['600'] || '#1da177'}, ${colors.blueAccent?.['600'] || colors.greenAccent?.['700'] || '#1976d2'})`,
                   color: "#fff",
                   fontWeight: 600,
                   borderRadius: "12px",
@@ -372,15 +374,15 @@ const AddDocument = () => {
                     ? "0 4px 14px rgba(28, 164, 123, 0.3)"
                     : "0 4px 14px rgba(76, 206, 172, 0.3)",
                   "&:hover": {
-                    background: `linear-gradient(135deg, ${colors.greenAccent[700]}, ${colors.blueAccent[700] || colors.greenAccent[800]})`,
+                    background: `linear-gradient(135deg, ${colors.greenAccent?.['700'] || '#147a59'}, ${colors.blueAccent?.['700'] || colors.greenAccent?.['800'] || '#115293'})`,
                     boxShadow: theme.palette.mode === "dark"
                       ? "0 6px 20px rgba(28, 164, 123, 0.4)"
                       : "0 6px 20px rgba(76, 206, 172, 0.4)",
                     transform: "translateY(-1px)",
                   },
                   "&:disabled": {
-                    backgroundColor: colors.grey[600],
-                    color: colors.grey[400],
+                    backgroundColor: colors.grey?.['600'] || '#e0e0e0',
+                    color: colors.grey?.['400'] || '#9e9e9e',
                     boxShadow: "none",
                   },
                   transition: "all 0.2s ease",

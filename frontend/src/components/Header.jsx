@@ -11,7 +11,7 @@ const Header = ({ title, subtitle }) => {
         variant="h2"
         fontWeight="700"
         sx={{
-          color: colors.grey[100],
+          color: theme.palette.text.primary,
           letterSpacing: "-0.03em",
           lineHeight: 1.2,
         }}

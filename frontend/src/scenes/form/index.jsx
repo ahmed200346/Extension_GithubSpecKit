@@ -14,13 +14,12 @@ import * as yup from "yup";
 import useMediaQuery from "@mui/material/useMediaQuery";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import Header from "../../components/Header";
-import { tokens } from "../../theme";
+import { apiFetch } from "../../apiClient";
 
-const API_BASE = "http://localhost:8000/api/v1/docs";
+// NOTE: We intentionally removed the `tokens` import here to stop the crashes!
 
 const Form = () => {
   const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
   const isNonMobile = useMediaQuery("(min-width:600px)");
 
   const [loading, setLoading] = useState(false);
@@ -29,14 +28,13 @@ const Form = () => {
   const handleFormSubmit = async (values, { resetForm }) => {
     setLoading(true);
     setStatusMessage(null);
-
     try {
       const formData = new FormData();
       formData.append("file", values.file);
-      formData.append("project_name", values.projectName);
+      formData.append("projectName", values.projectName);
 
       // Envoi du formulaire au backend FastAPI
-      const response = await fetch(`${API_BASE}/upload`, {
+      const response = await apiFetch("/pipeline/upload", {
         method: "POST",
         body: formData,
       });
@@ -129,7 +127,9 @@ const Form = () => {
                   variant="outlined"
                   sx={{
                     p: 4,
-                    border: `2px dashed ${values.file ? colors.greenAccent[500] : colors.grey[700]}`,
+                    // Replaced token colors with safe theme palette colors
+                    border: "2px dashed",
+                    borderColor: values.file ? theme.palette.success.main : theme.palette.text.disabled,
                     background: theme.palette.mode === "dark"
                       ? "rgba(14, 20, 35, 0.6)"
                       : "rgba(255, 255, 255, 0.7)",
@@ -139,7 +139,7 @@ const Form = () => {
                     borderRadius: "16px",
                     transition: "all 0.3s ease",
                     "&:hover": {
-                      borderColor: colors.greenAccent[500],
+                      borderColor: theme.palette.success.main,
                       backgroundColor: theme.palette.mode === "dark"
                         ? "rgba(28, 164, 123, 0.05)"
                         : "rgba(255, 255, 255, 0.9)",
@@ -160,14 +160,14 @@ const Form = () => {
                     }}
                   />
                   <CloudUploadIcon
-                    sx={{ fontSize: 48, color: colors.greenAccent[500], mb: 1 }}
+                    sx={{ fontSize: 48, color: theme.palette.success.main, mb: 1 }}
                   />
-                  <Typography variant="h5" color={colors.grey[100]}>
+                  <Typography variant="h5" color={theme.palette.text.primary}>
                     {values.file
                       ? `Fichier sélectionné : ${values.file.name}`
                       : "Cliquez ou glissez un fichier Markdown (.md)"}
                   </Typography>
-                  <Typography variant="caption" color={colors.grey[300]}>
+                  <Typography variant="caption" color={theme.palette.text.secondary}>
                     Formats acceptés : .md (spec, requirements, constitution, etc.)
                   </Typography>
                 </Paper>
@@ -192,13 +192,15 @@ const Form = () => {
                 sx={{
                   padding: "12px 24px",
                   fontWeight: "bold",
-                  background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.blueAccent[600] || colors.greenAccent[700]})`,
+                  color: "#fff",
+                  // Hardcoded safe hex values to keep your custom gradient styling
+                  background: "linear-gradient(135deg, #1da177, #147a59)",
                   borderRadius: "12px",
                   boxShadow: theme.palette.mode === "dark"
                     ? "0 4px 14px rgba(28, 164, 123, 0.3)"
                     : "0 4px 14px rgba(76, 206, 172, 0.3)",
                   "&:hover": {
-                    background: `linear-gradient(135deg, ${colors.greenAccent[700]}, ${colors.blueAccent[700] || colors.greenAccent[800]})`,
+                    background: "linear-gradient(135deg, #147a59, #0d5940)",
                     boxShadow: theme.palette.mode === "dark"
                       ? "0 6px 20px rgba(28, 164, 123, 0.4)"
                       : "0 6px 20px rgba(76, 206, 172, 0.4)",
@@ -242,6 +244,7 @@ const initialValues = {
 };
 
 export default Form;
+
 // import { Box, Button, TextField } from "@mui/material";
 // import { Formik } from "formik";
 // import * as yup from "yup";

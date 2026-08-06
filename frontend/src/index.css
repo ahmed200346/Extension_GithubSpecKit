@@ -2,12 +2,26 @@
 
 html,
 body,
-#root,
-.app,
-.content {
-  height: 100%;
+#root {
+  min-height: 100vh;
   width: 100%;
-  font-family: "Inter", "Source Sans Pro", sans-serif;
+  margin: 0;
+}
+
+/* 1. Main app wrapper: Flex row layout, locked to the screen size */
+.app {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden; /* Prevents the whole browser window from scrolling */
+}
+
+/* 2. Main content container (Dashboard, Kanban, Forms): Independent scroll */
+.content {
+  flex: 1;
+  height: 100vh;
+  overflow-y: auto; /* Makes ONLY the main page area scrollable */
+  overflow-x: hidden;
 }
 
 body {

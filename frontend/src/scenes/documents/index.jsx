@@ -21,14 +21,13 @@ import {
   LinearProgress,
 } from "@mui/material";
 import { DataGrid } from "@mui/x-data-grid";
-import { tokens } from "../../theme";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import CloseIcon from "@mui/icons-material/Close";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Header from "../../components/Header";
-
-const API_BASE = "http://localhost:8000/api/v1/docs";
+import { tokens } from "../../theme";
+import { apiFetch, getApiBase } from "../../apiClient";
 const POLL_INTERVAL = 3000;
 
 const agentLabels = {
@@ -98,12 +97,21 @@ const calculateAgentKpi = (agentData) => {
 };
 
 const MetricTable = ({ title, data, colors }) => {
+  const theme = useTheme();
+
   if (!data || Object.keys(data).length === 0) return null;
+
+  // Safe color references with fallbacks
+  const grey100 = colors?.grey?.['100'] || theme.palette.text.primary;
+  const grey300 = colors?.grey?.['300'] || theme.palette.text.secondary;
+  const green600 = colors?.greenAccent?.['600'] || "#1da177";
+  const red500 = colors?.redAccent?.['500'] || "#f44336";
+  const blue700 = colors?.blueAccent?.['700'] || "#1976d2"; // 👈 Fixed crash here
 
   return (
     <Box mb={3}>
       {title && (
-        <Typography variant="h6" fontWeight="bold" color={colors.grey[100]} mb={1}>
+        <Typography variant="h6" fontWeight="bold" color={grey100} mb={1}>
           {title}
         </Typography>
       )}
@@ -112,23 +120,25 @@ const MetricTable = ({ title, data, colors }) => {
           background: "transparent",
           borderRadius: "12px",
           overflow: "hidden",
-          border: "1px solid rgba(255, 255, 255, 0.06)",
+          border: theme.palette.mode === "dark" 
+            ? "1px solid rgba(255, 255, 255, 0.06)" 
+            : "1px solid rgba(0, 0, 0, 0.08)",
         }}
       >
         <Table size="small">
           <TableHead>
             <TableRow>
               <TableCell sx={{
-                color: colors.grey[300],
-                borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-                backgroundColor: "rgba(30, 37, 51, 0.5)",
+                color: grey300,
+                borderBottom: theme.palette.mode === "dark" ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.08)",
+                backgroundColor: theme.palette.mode === "dark" ? "rgba(30, 37, 51, 0.5)" : "rgba(0, 0, 0, 0.04)",
               }}>
                 Metric / Indicator
               </TableCell>
               <TableCell sx={{
-                color: colors.grey[300],
-                borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
-                backgroundColor: "rgba(30, 37, 51, 0.5)",
+                color: grey300,
+                borderBottom: theme.palette.mode === "dark" ? "1px solid rgba(255, 255, 255, 0.06)" : "1px solid rgba(0, 0, 0, 0.08)",
+                backgroundColor: theme.palette.mode === "dark" ? "rgba(30, 37, 51, 0.5)" : "rgba(0, 0, 0, 0.04)",
               }} align="right">
                 Value
               </TableCell>
@@ -141,25 +151,25 @@ const MetricTable = ({ title, data, colors }) => {
               return (
                 <TableRow key={key} sx={{
                   "&:hover": {
-                    backgroundColor: "rgba(255, 255, 255, 0.02)",
+                    backgroundColor: theme.palette.mode === "dark" ? "rgba(255, 255, 255, 0.02)" : "rgba(0, 0, 0, 0.02)",
                   },
                 }}>
                   <TableCell sx={{
-                    color: colors.grey[100],
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+                    color: grey100,
+                    borderBottom: theme.palette.mode === "dark" ? "1px solid rgba(255, 255, 255, 0.04)" : "1px solid rgba(0, 0, 0, 0.04)",
                   }}>
                     {formatKey(key)}
                   </TableCell>
                   <TableCell sx={{
-                    borderBottom: "1px solid rgba(255, 255, 255, 0.04)",
+                    borderBottom: theme.palette.mode === "dark" ? "1px solid rgba(255, 255, 255, 0.04)" : "1px solid rgba(0, 0, 0, 0.04)",
                   }} align="right">
                     {typeof value === "boolean" ? (
                       <Chip
                         label={value ? "Yes" : "No"}
                         size="small"
                         sx={{
-                          backgroundColor: value ? colors.greenAccent[600] : colors.redAccent ? colors.redAccent[500] : "#f44336",
-                          color: colors.grey[100],
+                          backgroundColor: value ? green600 : red500,
+                          color: "#fff",
                           borderRadius: "8px",
                           fontWeight: 500,
                         }}
@@ -176,15 +186,13 @@ const MetricTable = ({ title, data, colors }) => {
                         sx={{
                           backgroundColor:
                             value === "READY_FOR_EXECUTION" || value === "READY_FOR_PUBLICATION" || value === "PASSED"
-                              ? colors.greenAccent[600]
-                              : value === "BLOCKED" || value === "FAILED"
-                              ? colors.redAccent ? colors.redAccent[500] : "#f44336"
-                              : value === "ÉLEVÉ"
-                              ? colors.redAccent ? colors.redAccent[500] : "#f44336"
+                              ? green600
+                              : value === "BLOCKED" || value === "FAILED" || value === "ÉLEVÉ"
+                              ? red500
                               : value === "MOYEN"
                               ? "#ff9800"
-                              : colors.blueAccent[700],
-                          color: colors.grey[100],
+                              : blue700,
+                          color: "#fff",
                           borderRadius: "8px",
                           fontWeight: 500,
                         }}
@@ -234,11 +242,11 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
     return Object.entries(agentEvaluations).map(([key, data]) => ({
       key,
       label: agentLabels[key] || formatKey(key),
-      color: agentColors[key] || colors.grey[500],
+      color: agentColors[key] || colors.grey?.['500'] || '#808080',
       score: calculateAgentKpi(data),
       hasData: data && Object.keys(data).length > 0,
     }));
-  }, [agentEvaluations]);
+  }, [agentEvaluations, colors.grey]);
 
   if (!open) return null;
 
@@ -255,19 +263,25 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+          borderBottom: theme.palette.mode === "dark" 
+            ? "1px solid rgba(255, 255, 255, 0.1)" 
+            : "1px solid rgba(0, 0, 0, 0.1)",
         }}
       >
         <Box>
-          <Typography variant="h3" fontWeight="bold" color={colors.grey[100]}>
+          <Typography variant="h3" fontWeight="bold" color={theme.palette.text.primary}>
             KPI Overview
           </Typography>
-          <Typography variant="h6" color={colors.greenAccent[400]} sx={{ mt: "5px" }}>
+          <Typography 
+            variant="h6" 
+            color={colors.greenAccent?.['400'] || '#4cceac'} 
+            sx={{ mt: "5px" }}
+          >
             {document?.name} — Global Score: {globalScore != null ? `${globalScore}%` : "N/A"}
           </Typography>
         </Box>
         <IconButton onClick={onClose}>
-          <CloseIcon sx={{ color: colors.grey[100] }} />
+          <CloseIcon sx={{ color: theme.palette.text.primary }} />
         </IconButton>
       </DialogTitle>
 
@@ -275,7 +289,7 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
         {/* Global Score Bar */}
         <Box mb={4}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-            <Typography variant="h5" fontWeight="600" color={colors.grey[100]}>
+            <Typography variant="h5" fontWeight="600" color={theme.palette.text.primary}>
               Global KPI Score
             </Typography>
             <Typography variant="h4" fontWeight="bold" sx={{ color: getScoreColor(globalScore) }}>
@@ -300,7 +314,7 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
         </Box>
 
         {/* Agent Cards Grid */}
-        <Typography variant="h5" fontWeight="600" color={colors.grey[100]} mb={2}>
+        <Typography variant="h5" fontWeight="600" color={theme.palette.text.primary} mb={2}>
           Per-Agent KPI Scores
         </Typography>
         <Box
@@ -315,7 +329,9 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
               sx={{
                 p: "20px",
                 borderRadius: "16px",
-                border: "1px solid rgba(255, 255, 255, 0.06)",
+                border: theme.palette.mode === "dark" 
+                  ? "1px solid rgba(255, 255, 255, 0.06)" 
+                  : "1px solid rgba(0, 0, 0, 0.08)",
                 background: theme.palette.mode === "dark"
                   ? "rgba(14, 20, 35, 0.6)"
                   : "rgba(245, 247, 252, 0.8)",
@@ -339,7 +355,7 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
                     boxShadow: `0 0 8px ${agent.color}66`,
                   }}
                 />
-                <Typography variant="body2" fontWeight="600" color={colors.grey[100]} sx={{ fontSize: "13px" }}>
+                <Typography variant="body2" fontWeight="600" color={theme.palette.text.primary} sx={{ fontSize: "13px" }}>
                   {agent.label}
                 </Typography>
               </Box>
@@ -351,7 +367,7 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
                 {agent.score != null ? `${agent.score}%` : "N/A"}
               </Typography>
               {agent.hasData && (
-                <Typography variant="caption" color={colors.grey[400]} sx={{ mt: 1, display: "block" }}>
+                <Typography variant="caption" color={theme.palette.text.secondary} sx={{ mt: 1, display: "block" }}>
                   Click to view details
                 </Typography>
               )}
@@ -360,17 +376,22 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
         </Box>
       </DialogContent>
 
-      <DialogActions sx={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)", p: "16px !important" }}>
+      <DialogActions sx={{ 
+        borderTop: theme.palette.mode === "dark" 
+          ? "1px solid rgba(255, 255, 255, 0.06)" 
+          : "1px solid rgba(0, 0, 0, 0.08)", 
+        p: "16px !important" 
+      }}>
         <Button
           onClick={onClose}
           sx={{
-            background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.blueAccent[600] || colors.greenAccent[700]})`,
+            background: `linear-gradient(135deg, ${colors.greenAccent?.['600'] || '#1da177'}, ${colors.blueAccent?.['600'] || colors.greenAccent?.['700'] || '#1976d2'})`,
             color: "#fff",
             fontWeight: 600,
             borderRadius: "10px",
             padding: "8px 20px",
             "&:hover": {
-              background: `linear-gradient(135deg, ${colors.greenAccent[700]}, ${colors.blueAccent[700] || colors.greenAccent[800]})`,
+              background: `linear-gradient(135deg, ${colors.greenAccent?.['700'] || '#147a59'}, ${colors.blueAccent?.['700'] || colors.greenAccent?.['800'] || '#115293'})`,
             },
           }}
         >
@@ -380,6 +401,8 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
     </Dialog>
   );
 };
+
+
 
 const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOverview }) => {
   const theme = useTheme();
@@ -444,7 +467,9 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
           display: "flex",
           justifyContent: "space-between",
           alignItems: "center",
-          borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+          borderBottom: theme.palette.mode === "dark"
+            ? "1px solid rgba(255, 255, 255, 0.06)"
+            : "1px solid rgba(0, 0, 0, 0.08)",
         }}
       >
         <Box display="flex" alignItems="center" gap={2}>
@@ -461,19 +486,19 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
               },
             }}
           >
-            <ArrowBackIcon sx={{ color: colors.grey[100], fontSize: "20px" }} />
+            <ArrowBackIcon sx={{ color: theme.palette.text.primary, fontSize: "20px" }} />
           </IconButton>
           <Box>
-            <Typography variant="h3" fontWeight="bold" color={colors.grey[100]}>
+            <Typography variant="h3" fontWeight="bold" color={theme.palette.text.primary}>
               Agent KPI Detail
             </Typography>
-            <Typography variant="h6" color={colors.greenAccent[400]} sx={{ mt: "5px" }}>
+            <Typography variant="h6" color={colors.greenAccent?.['400'] || '#70d8bd'} sx={{ mt: "5px" }}>
               {document?.name} — Global: {globalScore != null ? `${globalScore}%` : "N/A"}
             </Typography>
           </Box>
         </Box>
         <IconButton onClick={onClose}>
-          <CloseIcon sx={{ color: colors.grey[100] }} />
+          <CloseIcon sx={{ color: theme.palette.text.primary }} />
         </IconButton>
       </DialogTitle>
 
@@ -486,14 +511,18 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
               variant="scrollable"
               scrollButtons="auto"
               sx={{
-                borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
+                borderBottom: theme.palette.mode === "dark"
+                  ? "1px solid rgba(255, 255, 255, 0.06)"
+                  : "1px solid rgba(0, 0, 0, 0.08)",
                 "& .MuiTab-root": {
-                  color: colors.grey[300],
+                  color: theme.palette.text.secondary,
                   fontWeight: 500,
                 },
-                "& .Mui-selected": { color: `${colors.greenAccent[500]} !important` },
+                "& .Mui-selected": { 
+                  color: `${colors.greenAccent?.['500'] || '#4cceac'} !important` 
+                },
                 "& .MuiTabs-indicator": {
-                  backgroundColor: colors.greenAccent[500],
+                  backgroundColor: colors.greenAccent?.['500'] || '#4cceac',
                   height: "3px",
                   borderRadius: "2px",
                 },
@@ -509,7 +538,7 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
                           width: 10,
                           height: 10,
                           borderRadius: "50%",
-                          backgroundColor: agentColors[key] || colors.grey[500],
+                          backgroundColor: agentColors[key] || colors.grey?.['500'] || '#808080',
                         }}
                       />
                       {agentLabels[key] || formatKey(key)}
@@ -521,7 +550,7 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
 
             <Box p={3}>
               <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h5" fontWeight="bold" color={colors.greenAccent[400]}>
+                <Typography variant="h5" fontWeight="bold" color={colors.greenAccent?.['400'] || '#70d8bd'}>
                   {agentLabels[currentAgentKey] || formatKey(currentAgentKey)}
                 </Typography>
                 {agentScore != null && (
@@ -553,7 +582,7 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
               ))}
 
               {!hasContent && (
-                <Typography color={colors.grey[300]}>
+                <Typography color={theme.palette.text.secondary}>
                   Aucune donnée d'évaluation enregistrée pour cet agent.
                 </Typography>
               )}
@@ -561,24 +590,29 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
           </>
         ) : (
           <Box p={3}>
-            <Typography color={colors.grey[300]}>
+            <Typography color={theme.palette.text.secondary}>
               Aucune évaluation d'agent disponible pour ce document.
             </Typography>
           </Box>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ borderTop: "1px solid rgba(255, 255, 255, 0.06)", p: "16px !important" }}>
+      <DialogActions sx={{ 
+        borderTop: theme.palette.mode === "dark"
+          ? "1px solid rgba(255, 255, 255, 0.06)"
+          : "1px solid rgba(0, 0, 0, 0.08)", 
+        p: "16px !important" 
+      }}>
         <Button
           onClick={onClose}
           sx={{
-            background: `linear-gradient(135deg, ${colors.greenAccent[600]}, ${colors.blueAccent[600] || colors.greenAccent[700]})`,
+            background: `linear-gradient(135deg, ${colors.greenAccent?.['600'] || '#1da177'}, ${colors.blueAccent?.['600'] || colors.greenAccent?.['700'] || '#1976d2'})`,
             color: "#fff",
             fontWeight: 600,
             borderRadius: "10px",
             padding: "8px 20px",
             "&:hover": {
-              background: `linear-gradient(135deg, ${colors.greenAccent[700]}, ${colors.blueAccent[700] || colors.greenAccent[800]})`,
+              background: `linear-gradient(135deg, ${colors.greenAccent?.['700'] || '#147a59'}, ${colors.blueAccent?.['700'] || colors.greenAccent?.['800'] || '#115293'})`,
             },
           }}
         >
@@ -589,17 +623,19 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
   );
 };
 
+
 const Documents = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
   const [kpiView, setKpiView] = useState({ mode: "closed", document: null, selectedAgentKey: null });
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [progress, setProgress] = useState(null);
   const pollRef = useRef(null);
 
   const fetchDocuments = async () => {
     try {
-      const response = await fetch(`${API_BASE}/documents`);
+      const response = await apiFetch("/pipeline/documents");
       if (response.ok) {
         const data = await response.json();
         setDocuments(data);
@@ -611,17 +647,30 @@ const Documents = () => {
     }
   };
 
+  const fetchProgress = async () => {
+    try {
+      const response = await apiFetch("/pipeline/progress");
+      if (response.ok) {
+        const data = await response.json();
+        setProgress(data);
+      }
+    } catch (err) {}
+  };
+
   useEffect(() => {
     fetchDocuments();
+    fetchProgress();
     pollRef.current = setInterval(() => {
       fetchDocuments();
+      fetchProgress();
     }, POLL_INTERVAL);
     return () => clearInterval(pollRef.current);
   }, []);
 
-  const handleViewPdf = (docVersionId) => {
+  const handleViewPdf = async (docVersionId) => {
     if (docVersionId) {
-      window.open(`${API_BASE}/pdf/${docVersionId}`, "_blank");
+      const base = await getApiBase();
+      window.open(`${base}/pipeline/pdf/${docVersionId}`, "_blank");
     }
   };
 
@@ -642,294 +691,375 @@ const Documents = () => {
   };
 
   const columns = [
-    { field: "id", headerName: "ID", width: 80, headerClassName: "glass-header", cellClassName: "glass-cell" },
-    {
-      field: "name",
-      headerName: "Name",
-      flex: 1,
-      cellClassName: "name-column--cell",
-      headerClassName: "glass-header",
-    },
-    {
-      field: "projectName",
-      headerName: "Project Name",
-      flex: 1,
-      cellClassName: "glass-cell",
-      headerClassName: "glass-header",
-    },
-    {
-      field: "version",
-      headerName: "Version",
-      flex: 0.5,
-      cellClassName: "glass-cell",
-      headerClassName: "glass-header",
-    },
-    {
-      field: "status",
-      headerName: "Status",
-      flex: 1,
-      headerClassName: "glass-header",
-      renderCell: ({ row: { status } }) => {
-        let bgColor;
-        switch (status) {
-          case "completed":
-            bgColor = colors.greenAccent[600];
-            break;
-          case "parsing":
-            bgColor = colors.blueAccent[700];
-            break;
-          case "summary":
-            bgColor = "#2196f3";
-            break;
-          case "glossary":
-            bgColor = "#ff9800";
-            break;
-          case "diagram":
-            bgColor = "#e91e63";
-            break;
-          case "writing":
-            bgColor = "#9c27b0";
-            break;
-          case "layout":
-          case "rendering":
-            bgColor = "#00bcd4";
-            break;
-          case "failed":
-            bgColor = colors.redAccent ? colors.redAccent[500] : "#f44336";
-            break;
-          case "pending":
-            bgColor = colors.grey[600];
-            break;
-          default:
-            bgColor = colors.grey[600];
-        }
-        return (
-          <Box
-            width="80%"
-            m="0 auto"
-            p="6px 12px"
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            backgroundColor={bgColor}
-            borderRadius="8px"
-            sx={{
-              boxShadow: `0 2px 8px ${bgColor}33`,
-            }}
-          >
-            <Typography color={colors.grey[200]} sx={{ ml: "5px", fontSize: "13px", fontWeight: 600 }}>
-              {status}
-            </Typography>
-          </Box>
-        );
-      },
-    },
-    {
-      field: "kpi",
-      headerName: "KPI",
-      flex: 0.7,
-      headerClassName: "glass-header",
-      renderCell: ({ row }) => {
-        const score = row.kpi ?? row.global_kpi_score;
-        if (score == null) {
+  {
+    field: "name",
+    headerName: "Document",
+    flex: 1.5,
+    minWidth: 250,
+    headerClassName: "glass-header",
+    cellClassName: "name-column--cell",
+    renderCell: ({ row }) => (
+      <Box display="flex" alignItems="center" gap={1} sx={{ minWidth: 0 }}>
+        <Typography
+          variant="body2"
+          fontWeight={600}
+          color={colors.greenAccent?.[400] || "#4cceac"}
+          sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
+        >
+          {row.name}
+        </Typography>
+      </Box>
+    ),
+  },
+  {
+    field: "projectName",
+    headerName: "Project",
+    flex: 1,
+    minWidth: 180,
+    headerClassName: "glass-header",
+    cellClassName: "glass-cell",
+    renderCell: ({ row }) => (
+      <Typography
+        variant="body2"
+        sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+      >
+        {row.projectName}
+      </Typography>
+    ),
+  },
+  {
+    field: "version",
+    headerName: "Version",
+    flex: 0.6,
+    minWidth: 100,
+    headerClassName: "glass-header",
+    cellClassName: "glass-cell",
+    align: "center",
+  },
+  {
+    field: "status",
+    headerName: "Status",
+    flex: 1.2,
+    minWidth: 140,
+    headerClassName: "glass-header",
+    renderCell: ({ row }) => {
+      const statusRaw = row.status || "";
+      const status = statusRaw.toLowerCase();
+      
+      const isRunning = progress && progress.is_running;
+      const currentAgent = progress?.current_agent;
+      const agentTimings = progress?.agent_timings || {};
+      const isDark = theme.palette.mode === "dark";
+
+      const agentDisplayNames = {
+        parsing: "Parsing", summary: "Summary", glossary: "Glossary",
+        diagram: "Diagram", doc_writer: "Doc Writer", layout: "Layout"
+      };
+      const agentColorsMap = {
+        parsing: colors.greenAccent?.[600] || "#2e7d32", 
+        summary: "#2196f3",
+        glossary: "#ff9800", 
+        diagram: "#e91e63",
+        doc_writer: "#9c27b0", 
+        layout: "#00bcd4"
+      };
+
+      if (isRunning && currentAgent) {
+        const currentFileName = progress.current_file?.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, "");
+        const isThisFile = row.name === currentFileName;
+        if (isThisFile) {
+          const timing = agentTimings[currentAgent];
+          const elapsed = timing?.elapsed || 0;
+          const fmt = elapsed < 60 ? `${Math.round(elapsed)}s` : `${Math.floor(elapsed/60)}m ${Math.round(elapsed%60)}s`;
           return (
-            <Box
-              width="60%"
-              m="0 auto"
-              p="6px 12px"
-              display="flex"
-              justifyContent="center"
-              alignItems="center"
-              backgroundColor={colors.grey[600]}
-              borderRadius="8px"
-            >
-              <Typography color={colors.grey[300]} sx={{ ml: "5px", fontSize: "13px", fontWeight: 600 }}>
-                --
+            <Box display="flex" alignItems="center" gap={1} width="100%" p="4px 0" sx={{ minWidth: 0 }}>
+              <Box width={8} height={8} borderRadius="50%" sx={{
+                backgroundColor: agentColorsMap[currentAgent] || "#2196f3",
+                animation: "pulse 1.5s infinite",
+                "@keyframes pulse": { "0%": { opacity: 1 }, "50%": { opacity: 0.4 }, "100%": { opacity: 1 } }
+              }} />
+              <Typography fontSize="12px" fontWeight="bold" color={agentColorsMap[currentAgent] || "#2196f3"} sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {agentDisplayNames[currentAgent] || currentAgent}
+              </Typography>
+              <Typography fontSize="11px" color={colors.grey?.[400] || "#a3a3a3"} ml="auto">
+                {fmt}
               </Typography>
             </Box>
           );
         }
-        let bgColor = colors.greenAccent[600];
-        if (score < 80) bgColor = colors.redAccent ? colors.redAccent[500] : "#f44336";
-        else if (score < 90) bgColor = "#ff9800";
+      }
 
+      let bgColor;
+      let textColor = "#ffffff";
+      let border = "none";
+
+      if (status === "completed" || status === "passed") {
+        bgColor = colors.greenAccent?.[600] || "#2e7d32";
+      } else if (status === "failed" || status === "error") {
+        bgColor = colors.redAccent?.[500] || "#d32f2f";
+      } else if (status === "pending") {
+        // Theme-aware translucent grey
+        bgColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)";
+        textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)";
+        border = isDark ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(0,0,0,0.15)";
+      } else if (status === "summary") {
+        // Theme-aware translucent blue
+        bgColor = isDark ? "rgba(33, 150, 243, 0.2)" : "rgba(33, 150, 243, 0.1)";
+        textColor = isDark ? "#64b5f6" : "#1976d2";
+      } else {
+        // Fallback for any other custom statuses
+        bgColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)";
+        textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)";
+      }
+
+      return (
+        <Box 
+          width="100%" 
+          m="0 auto" 
+          p="6px 12px" 
+          display="flex" 
+          justifyContent="center" 
+          alignItems="center"
+          backgroundColor={bgColor} 
+          borderRadius="8px" 
+          sx={{ border }}
+        >
+          <Typography 
+            color={textColor}
+            sx={{ fontSize: "12px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "capitalize" }}
+          >
+            {statusRaw}
+          </Typography>
+        </Box>
+      );
+    },
+  },
+  {
+    field: "kpi",
+    headerName: "KPI Score",
+    flex: 0.7,
+    minWidth: 100,
+    headerClassName: "glass-header",
+    renderCell: ({ row }) => {
+      const score = row.kpi ?? row.global_kpi_score;
+      const isDark = theme.palette.mode === "dark";
+
+      if (score == null) {
         return (
           <Box
-            width="60%"
+            width="100%"
             m="0 auto"
             p="6px 12px"
             display="flex"
             justifyContent="center"
             alignItems="center"
-            backgroundColor={bgColor}
+            backgroundColor={isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)"}
             borderRadius="8px"
-            sx={{
-              cursor: "pointer",
-              boxShadow: `0 2px 8px ${bgColor}33`,
-              transition: "all 0.2s ease",
-              "&:hover": {
-                transform: "scale(1.05)",
-                boxShadow: `0 4px 12px ${bgColor}44`,
-              },
-            }}
-            onClick={() => handleOpenGlobalKpi(row)}
+            border={isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)"}
           >
-            <AssessmentIcon sx={{ mr: "5px" }} />
-            <Typography color={colors.grey[200]} sx={{ ml: "5px", fontWeight: 600 }}>
-              {score}%
+            <Typography 
+              color={isDark ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.4)"} 
+              sx={{ fontSize: "13px", fontWeight: 600 }}
+            >
+              —
             </Typography>
           </Box>
         );
-      },
+      }
+
+      let bgColor = colors.greenAccent?.[600] || "#2e7d32";
+      if (score < 80) bgColor = colors.redAccent?.[500] || "#d32f2f";
+      else if (score < 90) bgColor = "#ff9800";
+
+      return (
+        <Box
+          width="100%"
+          m="0 auto"
+          p="6px 12px"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          backgroundColor={bgColor}
+          borderRadius="8px"
+          sx={{
+            cursor: "pointer",
+            boxShadow: `0 2px 8px ${bgColor}44`,
+            transition: "all 0.2s ease",
+            "&:hover": {
+              transform: "scale(1.05)",
+              boxShadow: `0 4px 12px ${bgColor}66`,
+            },
+          }}
+          onClick={() => handleOpenGlobalKpi?.(row)}
+        >
+          <AssessmentIcon sx={{ mr: "5px", fontSize: "16px", color: "#ffffff" }} />
+          <Typography color="#ffffff" sx={{ fontWeight: 600, fontSize: "12px" }}>
+            {score}%
+          </Typography>
+        </Box>
+      );
     },
-    {
-      field: "viewer",
-      headerName: "Viewer",
-      flex: 0.7,
-      headerClassName: "glass-header",
-      renderCell: ({ row }) => {
-        const hasPdf = !!row.doc_version_id;
-        return (
-          <Box
-            width="60%"
-            m="0 auto"
-            p="6px 12px"
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            backgroundColor={hasPdf ? colors.greenAccent[600] : colors.grey[600]}
-            borderRadius="8px"
-            sx={{
-              cursor: hasPdf ? "pointer" : "default",
-              transition: "all 0.2s ease",
-              "&:hover": hasPdf ? {
-                transform: "scale(1.05)",
-                boxShadow: `0 4px 12px ${colors.greenAccent[600]}44`,
-              } : {},
-            }}
-            onClick={() => hasPdf && handleViewPdf(row.doc_version_id)}
+  },
+  {
+    field: "viewer",
+    headerName: "PDF",
+    flex: 0.6,
+    minWidth: 90,
+    headerClassName: "glass-header",
+    renderCell: ({ row }) => {
+      const hasPdf = Boolean(row.doc_version_id || row.status?.toLowerCase() === "completed");
+      const isDark = theme.palette.mode === "dark";
+      
+      const buttonBg = hasPdf ? (colors.greenAccent?.[600] || "#2e7d32") : (isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)");
+      const textColor = hasPdf ? "#ffffff" : (isDark ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)");
+      const borderColor = hasPdf ? "none" : (isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)");
+
+      return (
+        <Box
+          width="100%"
+          m="0 auto"
+          p="6px 12px"
+          display="flex"
+          justifyContent="center"
+          alignItems="center"
+          backgroundColor={buttonBg}
+          borderRadius="8px"
+          border={borderColor}
+          sx={{
+            cursor: hasPdf ? "pointer" : "default",
+            transition: "all 0.2s ease",
+            "&:hover": hasPdf ? {
+              transform: "scale(1.05)",
+              boxShadow: `0 4px 12px ${buttonBg}66`,
+            } : {},
+          }}
+          onClick={() => hasPdf && handleViewPdf?.(row.doc_version_id || row.id)}
+        >
+          <VisibilityOutlinedIcon sx={{ fontSize: "16px", color: textColor }} />
+          <Typography 
+            color={textColor} 
+            sx={{ ml: "5px", fontWeight: 600, fontSize: "12px" }}
           >
-            <VisibilityOutlinedIcon />
-            <Typography color={colors.grey[200]} sx={{ ml: "5px", fontWeight: 600 }}>
-              view
-            </Typography>
-          </Box>
-        );
-      },
+            {hasPdf ? "Open" : "—"}
+          </Typography>
+        </Box>
+      );
     },
-  ];
+  },
+];
 
   return (
     <Box m="20px">
-      <Header title="DOCUMENTS" subtitle="Managing the Documents" />
-      <Box
-        m="40px 0 0 0"
-        height="75vh"
-        sx={{
-          "& .MuiDataGrid-root": {
-            border: "none",
-            borderRadius: "16px",
-            overflow: "hidden",
-          },
-          "& .MuiDataGrid-cell": {
-            borderBottom: theme.palette.mode === "dark"
-              ? "1px solid rgba(255, 255, 255, 0.04)"
-              : "1px solid rgba(0, 0, 0, 0.04)",
-            color: colors.grey[200],
-            fontSize: "14px",
-            fontWeight: 600,
-          },
-          "& .name-column--cell": {
-            color: colors.greenAccent[400],
-            fontWeight: 500,
-          },
-          "& .glass-cell": {
-            color: colors.grey[200],
-            fontWeight: 600,
-          },
-          "& .glass-header .MuiDataGrid-columnHeaderTitle": {
-            color: `${colors.grey[100]} !important`,
-            fontWeight: 700,
-          },
-          "& .MuiDataGrid-columnHeaders": {
-            backgroundColor: theme.palette.mode === "dark"
-              ? "rgba(30, 37, 51, 0.9)"
-              : "rgba(62, 67, 150, 0.9)",
-            borderBottom: theme.palette.mode === "dark"
-              ? "1px solid rgba(255, 255, 255, 0.08)"
-              : "1px solid rgba(0, 0, 0, 0.08)",
-            "& .MuiDataGrid-columnHeader": {
-              color: colors.grey[100],
-              fontWeight: 600,
-              fontSize: "13px",
-              letterSpacing: "0.02em",
-              textTransform: "uppercase",
-            },
-            "& .MuiDataGrid-columnHeaderTitle": {
-              color: colors.grey[100],
-              fontWeight: 600,
-            },
-          },
-          "& .MuiDataGrid-virtualScroller": {
-            backgroundColor: theme.palette.mode === "dark"
-              ? "rgba(14, 20, 35, 0.6)"
-              : "rgba(255, 255, 255, 0.8)",
-          },
-          "& .MuiDataGrid-footerContainer": {
-            borderTop: theme.palette.mode === "dark"
-              ? "1px solid rgba(255, 255, 255, 0.08)"
-              : "1px solid rgba(0, 0, 0, 0.08)",
-            backgroundColor: theme.palette.mode === "dark"
-              ? "rgba(30, 37, 51, 0.9)"
-              : "rgba(62, 67, 150, 0.9)",
-          },
-          "& .MuiCheckbox-root": {
-            color: `${colors.greenAccent[400]} !important`,
-          },
-          "& .MuiDataGrid-toolbarContainer .MuiButton-text": {
-            color: `${colors.grey[100]} !important`,
-          },
-          "& .MuiDataGrid-row": {
-            "&:hover": {
-              backgroundColor: theme.palette.mode === "dark"
-                ? "rgba(255, 255, 255, 0.03)"
-                : "rgba(0, 0, 0, 0.03)",
-            },
-          },
-          "& .MuiDataGrid-columnSeparator": {
-            color: theme.palette.mode === "dark"
-              ? "rgba(255, 255, 255, 0.1)"
-              : "rgba(0, 0, 0, 0.1)",
-          },
-        }}
-      >
-        <DataGrid
-          checkboxSelection
-          rows={documents}
-          columns={columns}
-          loading={loading}
-          getRowId={(row) => row.id}
-        />
-      </Box>
+  <Header title="DOCUMENTS" subtitle="Managing the Documents" />
+  <Box
+    m="40px 0 0 0"
+    height="75vh"
+    sx={{
+      "& .MuiDataGrid-root": {
+        border: "none",
+        borderRadius: "16px",
+        overflow: "hidden",
+        backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
+      },
+      "& .MuiDataGrid-cell": {
+        borderBottom: theme.palette.mode === "dark"
+          ? "1px solid rgba(255, 255, 255, 0.05)"
+          : "1px solid rgba(0, 0, 0, 0.05)",
+        color: theme.palette.mode === "dark" ? "#e0e0e0" : "#141414",
+        fontSize: "14px",
+        fontWeight: 500,
+      },
+      "& .name-column--cell": {
+        color: `${colors.greenAccent?.[400] || "#4cceac"} !important`,
+        fontWeight: 600,
+      },
+      "& .glass-cell": {
+        color: theme.palette.mode === "dark" ? "#cbd5e1" : "#333333",
+        fontWeight: 500,
+      },
+      "& .glass-header .MuiDataGrid-columnHeaderTitle": {
+        color: `${theme.palette.mode === "dark" ? "#ffffff" : "#141414"} !important`,
+        fontWeight: 700,
+      },
+      "& .MuiDataGrid-columnHeaders": {
+        backgroundColor: theme.palette.mode === "dark" ? "#1f2a40" : "#f2f0f0",
+        borderBottom: theme.palette.mode === "dark"
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.08)",
+        "& .MuiDataGrid-columnHeader": {
+          color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+          fontWeight: 600,
+          fontSize: "12px",
+          letterSpacing: "0.03em",
+          textTransform: "uppercase",
+        },
+      },
+      "& .MuiDataGrid-virtualScroller": {
+        // Deep navy background replaces the light grey block
+        backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
+      },
+      "& .MuiDataGrid-footerContainer": {
+        borderTop: theme.palette.mode === "dark"
+          ? "1px solid rgba(255, 255, 255, 0.08)"
+          : "1px solid rgba(0, 0, 0, 0.08)",
+        backgroundColor: theme.palette.mode === "dark" ? "#1f2a40" : "#f2f0f0",
+        color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+        "& .MuiTablePagination-root": {
+          color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+        },
+        "& .MuiSvgIcon-root": {
+          color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+        },
+      },
+      "& .MuiCheckbox-root": {
+        color: `${colors.greenAccent?.[400] || "#4cceac"} !important`,
+      },
+      "& .MuiDataGrid-row": {
+        backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
+        "&:hover": {
+          backgroundColor: theme.palette.mode === "dark"
+            ? "#1f2a40 !important"
+            : "rgba(0, 0, 0, 0.04) !important",
+        },
+      },
+    }}
+  >
+    <DataGrid
+      checkboxSelection
+      rows={documents}
+      columns={columns}
+      loading={loading}
+      getRowId={(row) => row.id}
+      autoHeight={false}
+      disableRowSelectionOnClick={false}
+      sx={{
+        border: "none",
+        "& .MuiDataGrid-main": {
+          backgroundColor: "transparent", 
+        },
+        "& .MuiDataGrid-filler": {
+          backgroundColor: "transparent", 
+        }
+      }}
+    />
+  </Box>
 
-      {/* Global KPI Overview */}
-      <GlobalKpiPopup
-        open={kpiView.mode === "global"}
-        onClose={handleCloseKpi}
-        document={kpiView.document}
-        onSelectAgent={handleSelectAgent}
-      />
-
-      {/* Agent Detail View */}
-      <AgentDetailPopup
-        open={kpiView.mode === "detail"}
-        onClose={handleCloseKpi}
-        document={kpiView.document}
-        initialAgentKey={kpiView.selectedAgentKey}
-        onBackToOverview={handleBackToOverview}
-      />
-    </Box>
-  );
+  <GlobalKpiPopup 
+    open={kpiView.mode === "global"} 
+    onClose={handleCloseKpi} 
+    document={kpiView.document} 
+    onSelectAgent={handleSelectAgent} 
+  />
+  
+  <AgentDetailPopup 
+    open={kpiView.mode === "detail"} 
+    onClose={handleCloseKpi} 
+    document={kpiView.document} 
+    initialAgentKey={kpiView.selectedAgentKey} 
+    onBackToOverview={handleBackToOverview} 
+  />
+</Box>
+  ); // 👇 3. CLOSE THE RETURN STATEMENT 👇
 };
 
 export default Documents;

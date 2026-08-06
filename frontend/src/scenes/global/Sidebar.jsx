@@ -18,15 +18,14 @@ import MenuOutlinedIcon from "@mui/icons-material/MenuOutlined";
 import MapOutlinedIcon from "@mui/icons-material/MapOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import AddCircleOutlineIcon from "@mui/icons-material/AddCircleOutline";
-
+import speckitLogo from "../../assets/logo_large.webp";
 const Item = ({ title, to, icon, selected, setSelected }) => {
   const theme = useTheme();
-  const colors = tokens(theme.palette.mode);
   return (
     <MenuItem
       active={selected === title}
       style={{
-        color: colors.grey[100],
+        color: theme.palette.text.primary,
       }}
       onClick={() => setSelected(title)}
       icon={icon}
@@ -47,7 +46,7 @@ const Sidebar = () => {
     <Box
       sx={{
         "& .pro-sidebar-inner": {
-          background: `${colors.primary[400]} !important`,
+          background: `${theme.palette.background.paper} !important`,
         },
         "& .pro-icon-wrapper": {
           backgroundColor: "transparent !important",
@@ -56,10 +55,10 @@ const Sidebar = () => {
           padding: "5px 35px 5px 20px !important",
         },
         "& .pro-inner-item:hover": {
-          color: "#868dfb !important",
+          color: `${theme.palette.primary.main} !important`,
         },
         "& .pro-menu-item.active": {
-          color: "#6870fa !important",
+          color: `${theme.palette.primary.main} !important`,
         },
       }}
     >
@@ -71,7 +70,7 @@ const Sidebar = () => {
             icon={isCollapsed ? <MenuOutlinedIcon /> : undefined}
             style={{
               margin: "10px 0 20px 0",
-              color: colors.grey[100],
+              color: theme.palette.text.primary,
             }}
           >
             {!isCollapsed && (
@@ -81,11 +80,11 @@ const Sidebar = () => {
                 alignItems="center"
                 ml="15px"
               >
-                <Typography variant="h3" color={colors.grey[100]}>
+                <Typography variant="h3" color={theme.palette.text.primary}>
                   ADMINIS
                 </Typography>
                 <IconButton onClick={() => setIsCollapsed(!isCollapsed)}>
-                  <MenuOutlinedIcon />
+                  <MenuOutlinedIcon sx={{ color: theme.palette.text.primary }} />
                 </IconButton>
               </Box>
             )}
@@ -95,24 +94,24 @@ const Sidebar = () => {
             <Box mb="25px">
               <Box display="flex" justifyContent="center" alignItems="center">
                 <img
-                  alt="profile-user"
+                  alt="Speckit Logo"
                   width="100px"
                   height="100px"
-                  src={`../../assets/user.png`}
+                  src={speckitLogo}
                   style={{ cursor: "pointer", borderRadius: "50%" }}
                 />
               </Box>
               <Box textAlign="center">
                 <Typography
                   variant="h2"
-                  color={colors.grey[100]}
+                  color={theme.palette.text.primary}
                   fontWeight="bold"
                   sx={{ m: "10px 0 0 0" }}
                 >
-                  Ed Roh
+                  Speckit workflow visualizer
                 </Typography>
                 <Typography variant="h5" color={colors.greenAccent[500]}>
-                  VP Fancy Admin
+                  extension
                 </Typography>
               </Box>
             </Box>
@@ -129,7 +128,7 @@ const Sidebar = () => {
 
             <Typography
               variant="h6"
-              color={colors.grey[300]}
+              color={theme.palette.text.secondary}
               sx={{ m: "15px 0 5px 20px" }}
             >
               Data
@@ -172,7 +171,7 @@ const Sidebar = () => {
 
             <Typography
               variant="h6"
-              color={colors.grey[300]}
+              color={theme.palette.text.secondary}
               sx={{ m: "15px 0 5px 20px" }}
             >
               Pages
@@ -201,7 +200,7 @@ const Sidebar = () => {
 
             <Typography
               variant="h6"
-              color={colors.grey[300]}
+              color={theme.palette.text.secondary}
               sx={{ m: "15px 0 5px 20px" }}
             >
               Charts
