@@ -10,7 +10,7 @@ Le projet est organisé de manière modulaire pour séparer l'orchestration IA, 
 
 ### 📂 Arborescence du Projet
 
-- **`/backend`** : ⚙️ Pipeline d'enrichissement et d'évaluation. Propulsé par **FastAPI** et **LangGraph**, il orchestre la chaîne d'agents et gère la logique métier.
+- **`/backend`** : ⚙️ Pipeline d'enrichissement et d'évaluation. Propulsé par **FastAPI** et **LangGraph**, il orchestre la chaîne d'agents et gère la logique métier, incluant l'**Agent JIRA** pour la gestion automatisée des tickets.
 - **`/frontend`** : 🖥️ Dashboard **React** permettant le suivi en temps réel des exécutions, la visualisation des KPIs et le téléversement de nouveaux documents.
 - **`/scripts`** : 🛠️ Watchers de fichiers et scripts d'automatisation qui font le pont entre le système de fichiers et le pipeline.
 - **`/specs`** : 📄 Dossier source des spécifications Markdown à traiter.
@@ -50,10 +50,102 @@ Le Frontend est une application React moderne utilisant **Material-UI** et **Dat
 Le système s'appuie sur une base de données PostgreSQL pour garantir l'immuabilité des versions et la traçabilité complète de chaque modification.
 
 ### 📊 Modèle de Données
+```mermaid
+erDiagram
+    projects {
+        UUID id "PK"
+        VARCHAR name
+        VARCHAR repo_url
+        DATETIME created_at
+    }
+    artifacts {
+        UUID id "PK"
+        UUID project_id "FK"
+        VARCHAR current_file_hash
+        VARCHAR source_path
+        VARCHAR artifact_type
+        DATETIME created_at
+    }
+    projects ||--o{ artifacts : references
+    doc_versions {
+        UUID id "PK"
+        UUID artifact_id "FK"
+        INTEGER version_no
+        VARCHAR version_label
+        VARCHAR pdf_path
+        VARCHAR source_file_hash
+        DATETIME generated_at
+        JSONB sections_summary
+        VARCHAR commit_hash
+        VARCHAR generated_by
+        UUID pipeline_run_id "FK"
+        FLOAT global_kpi_score
+    }
+    artifacts ||--o{ doc_versions : references
+    pipeline_runs ||--o{ doc_versions : references
+    pipeline_runs {
+        UUID id "PK"
+        UUID artifact_id "FK"
+        VARCHAR current_stage
+        JSONB structured_json
+        TEXT summary_output
+        JSONB diagram_output
+        JSONB glossary_output
+        TEXT written_doc
+        TEXT layout_output
+        JSONB parsing_eval
+        JSONB summary_eval
+        JSONB glossary_eval
+        JSONB diagram_eval
+        JSONB writer_eval
+        JSONB layout_eval
+        FLOAT global_kpi_score
+        TEXT error_message
+        DATETIME started_at
+        DATETIME completed_at
+    }
+    artifacts ||--o{ pipeline_runs : references
+    tickets {
+        UUID id "PK"
+        UUID project_id "FK"
+        UUID artifact_id "FK"
+        VARCHAR source_path
+        VARCHAR title
+        TEXT description
+        VARCHAR status
+        INTEGER position
+        VARCHAR checkbox_state
+        VARCHAR file_hash
+        DATETIME created_at
+        DATETIME updated_at
+    }
+    artifacts ||--o{ tickets : references
+    projects ||--o{ tickets : references
+    ticket_events {
+        UUID id "PK"
+        UUID ticket_id "FK"
+        VARCHAR event_type
+        VARCHAR author_type
+        JSONB payload
+        DATETIME created_at
+    }
+    tickets ||--o{ ticket_events : references
+    ticket_comments {
+        UUID id "PK"
+        UUID ticket_id "FK"
+        VARCHAR author_type
+        TEXT body
+        DATETIME created_at
+    }
+    tickets ||--o{ ticket_comments : references
+```
+### 📋 Description des Tables
 - **`projects`** : L'entité parente regroupant tous les artefacts et exécutions d'un projet spécifique.
 - **`artifacts`** : Registre des fichiers sources surveillés dans `specs/`, incluant une empreinte **SHA-256** pour détecter précisément chaque modification.
 - **`pipeline_runs`** : Journalisation exhaustive de chaque exécution, stockant les métriques **JSONB** détaillées pour chacun des 6 agents du pipeline.
 - **`doc_versions`** : Registre immuable gérant le versioning dynamique des documents et le lien vers les fichiers PDF certifiés.
+- **`tickets` & `ticket_events`** : Système de traçabilité des tâches (User Stories, Tasks) synchronisé avec l'avancement du projet via l'Agent JIRA.
+
 
 ---
 
@@ -131,6 +223,123 @@ vsce publish  # mode interactif
 > Scopes : **Marketplace > Manage (Publish, Manage)**
 
 ---
+
+---
+
+### 🧪 Guide de Test : Nouveau Projet avec l'Extension VS Code
+
+> **Objectif** : Tester l'extension AgentDocx SpecKit sur un **nouveau projet** (dossier séparé, hors du repo source).
+
+#### 1. Prérequis
+- Extension **installée via .vsix** (voir section ci-dessus)
+- **PostgreSQL** en cours d'exécution
+- Dépendances Python installées à la racine du **repo source** :
+  ```bash
+  pip install -r requirements.txt
+  ```
+
+#### 2. Créer le projet de test
+```bash
+mkdir mon-projet-test && cd mon-projet-test
+```
+
+#### 3. Configuration obligatoire : `.vscode/settings.json`
+Créez ce fichier à la racine du **projet de test** (pas dans le repo source) :
+
+```json
+{
+  "agentdocx-speckit": {
+    "projectPath": "specs",
+    "projectName": "mon-projet-test",
+    "apiPort": 8000,
+    "backendPath": "C:/Users/VOTRE_USER/chemin/vers/copy-extension-github-spec-kit/backend",
+    "reload": false
+  }
+}
+```
+
+| Clé | Obligatoire | Description |
+|-----|-------------|-------------|
+| `projectPath` | ✅ | Dossier à surveiller (relatif à la racine du projet test) |
+| `projectName` | ✅ | Identifiant envoyé au pipeline |
+| `apiPort` | ✅ | Port FastAPI (par défaut 8000) |
+| `backendPath` | ✅ | **Chemin ABSOLU** vers le dossier `backend` du **repo source** |
+| `reload` | ❌ | `false` recommandé sur Windows pour éviter erreurs uvicorn |
+
+> ⚠️ **Important** : `backendPath` doit pointer vers le `backend` du **repo source** (celui qui contient `app/main.py`), pas vers une copie locale.
+
+#### 4. Créer le dossier specs
+```bash
+mkdir specs
+```
+
+#### 5. Ouvrir dans VS Code
+```bash
+code .
+```
+L'extension démarre automatiquement :
+- **AgentDocx Server** → FastAPI sur `http://127.0.0.1:8000`
+- **AgentDocx Watcher** → Surveille `specs/`
+
+Vérifiez les logs : `View` → `Output` → dropdown `AgentDocx Server` / `AgentDocx Watcher`
+
+#### 6. Tester le pipeline
+Créez un fichier markdown dans `specs/` :
+```bash
+echo "# Exigences\n\nLe système doit gérer les utilisateurs." > specs/requirements.md
+```
+Le watcher détecte le changement → appelle `/api/v1/pipeline/upload` → pipeline s'exécute.
+
+#### 7. Vérifier les résultats
+- **Logs Server** : progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout)
+- **Frontend** (si lancé) : onglet Documents → nouvelle entrée avec KPIs
+- **Outputs** : PDF générés dans `outputs/<projectName>/pdf/`
+
+---
+
+### 📁 Structure attendue du projet de test
+
+```
+mon-projet-test/
+├── .vscode/
+│   └── settings.json       # ← Configuration obligatoire
+├── specs/                  # ← Créé manuellement
+│   ├── requirements.md
+│   ├── spec.md
+│   └── ...
+├── src/                    # Votre code applicatif (optionnel)
+└── package.json            # Votre projet (optionnel)
+```
+
+---
+
+### 🔧 Dépannage courant
+
+| Problème | Solution |
+|----------|----------|
+| Watcher ne démarre pas | Vérifiez `AgentDocx Watcher` output : erreur import `watchdog` → `pip install watchdog` |
+| Server erreur "No module named app" | `backendPath` incorrect dans settings.json → doit pointer vers `backend` du repo source |
+| Port 8000 occupé | Changez `apiPort` dans settings.json (ex: 8001) |
+| Pipeline 404/422 | Extension utilise `/upload` (multipart), pas `/run` (JSON) — déjà corrigé dans scripts installés |
+| Pas de logs dans Output | Rechargez fenêtre : `Ctrl+R` |
+
+---
+
+### 🔄 Workflow multi-projets
+
+Chaque projet de test a **sa propre config** dans son `.vscode/settings.json` :
+
+```
+projet-A/
+  .vscode/settings.json   # projectName: "projet-A", projectPath: "specs"
+  specs/
+
+projet-B/
+  .vscode/settings.json   # projectName: "projet-B", projectPath: "docs/specs"
+  docs/specs/
+```
+
+L'extension lit la config du **workspace actif** — pas de conflit entre projets.
 
 ---
 
@@ -259,3 +468,4 @@ ollama launch claude
 ---
 
 *Dernière mise à jour : 2026-07-31 — Spec Kit v0.0.2 (Extension en développement)*
+
