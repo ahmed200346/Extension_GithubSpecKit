@@ -12,7 +12,7 @@ Le projet est organisé de manière modulaire pour séparer l'orchestration IA, 
 
 - **`/backend`** : ⚙️ Pipeline d'enrichissement et d'évaluation. Propulsé par **FastAPI** et **LangGraph**, il orchestre la chaîne d'agents et gère la logique métier, incluant l'**Agent JIRA** pour la gestion automatisée des tickets.
 - **`/frontend`** : 🖥️ Dashboard **React** permettant le suivi en temps réel des exécutions, la visualisation des KPIs et le téléversement de nouveaux documents.
-- **`/scripts`** : 🛠️ Watchers de fichiers et scripts d'automatisation qui font le pont entre le système de fichiers et le pipeline.
+
 - **`/specs`** : 📄 Dossier source des spécifications Markdown à traiter.
   - Contient des **exemples de fichiers** (`spec.md`, `requirements.md`, etc.) prêts à être traités.
   - Le **watcher surveille ce dossier** en temps réel pour déclencher le pipeline automatiquement.
@@ -154,7 +154,7 @@ erDiagram
 > **⚠️ En cours de développement** — Non publiée sur le Marketplace pour le moment.  
 > **Branche dédiée** : [`extension`](https://github.com/ahmed200346/Extension_GithubSpecKit/tree/extension) pour le code complet, tests et documentation détaillée.
 
-L'extension VS Code **AgentDocx SpecKit** remplace le dossier `scripts/` et offre une expérience intégrée **dans une seule fenêtre VS Code** :
+
 - **Deux canaux de logs dans la vue Output** (menu `View` → `Output` → dropdown pour basculer) :  
   - **AgentDocx Server** — logs FastAPI, progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout), KPIs  
   - **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente
@@ -313,18 +313,6 @@ mon-projet-test/
 
 ---
 
-### 🔧 Dépannage courant
-
-| Problème | Solution |
-|----------|----------|
-| Watcher ne démarre pas | Vérifiez `AgentDocx Watcher` output : erreur import `watchdog` → `pip install watchdog` |
-| Server erreur "No module named app" | `backendPath` incorrect dans settings.json → doit pointer vers `backend` du repo source |
-| Port 8000 occupé | Changez `apiPort` dans settings.json (ex: 8001) |
-| Pipeline 404/422 | Extension utilise `/upload` (multipart), pas `/run` (JSON) — déjà corrigé dans scripts installés |
-| Pas de logs dans Output | Rechargez fenêtre : `Ctrl+R` |
-
----
-
 ### 🔄 Workflow multi-projets
 
 Chaque projet de test a **sa propre config** dans son `.vscode/settings.json` :
@@ -354,69 +342,62 @@ Avant de démarrer les services, assurez-vous impérativement que :
 
 ---
 
-### 🛠️ Méthode 1 : Scripts Standalone (Version Actuelle — 4 Terminaux)
+## ⚙️ Configuration .env (Multi-Provider LLM)
 
-> **Approche classique** avec scripts Python standalone. Idéale pour développement sans l'extension.
+Le fichier `.env` à la racine du projet configure le provider LLM et les connexions. Créez-le à partir de l'exemple ci-dessous :
 
-#### Prérequis Base de Données
-- PostgreSQL lancé (ou pgAdmin4 connecté)
-
-#### Procédure de Lancement
-
-**Étape 0 : Environnement Virtuel Python & Dépendances**
 ```bash
-# Créer l'environnement virtuel
-python -m venv env
+# Database Configuration
+DATABASE_URL=postgresql://postgres:0000@localhost:5432/AgentDocx
 
-# Activer l'environnement
-# Sur Windows : env\Scripts\activate
-# Sur Linux/Mac : source env/bin/activate
+# LLM Provider Configuration (unifié pour Ollama, Gemini, NVIDIA)
+LLM_PROVIDER=ollama  # Peut être : ollama, gemini, nvidia
 
-# Installer les dépendances
-pip install -r requirements.txt
+# Ollama Configuration
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma4:31b-cloud
+
+# Gemini Configuration (optionnel - requis si LLM_PROVIDER=gemini)
+GEMINI_API_KEY=votre_cle_api_gemini
+GEMINI_MODEL=gemini-1.5-flash
+
+# NVIDIA Configuration (optionnel - requis si LLM_PROVIDER=nvidia)
+NVIDIA_API_KEY=votre_cle_api_nvidia
+NVIDIA_MODEL=nvidia/nemotron
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+
+# Application Configuration
+PDF_STORAGE_DIR=./storage/pdfs
+LOG_LEVEL=INFO
+
+# Target Project Configuration (optionnel - pour le watcher)
+TARGET_PROJECT_PATH=/chemin/vers/votre/projet/specs
 ```
 
-**Étape 1 : Démarrer le Backend FastAPI** (Terminal 1)
-```bash
-cd backend
-uvicorn app.main:app --reload --port 8000
-```
+### 🔧 Choisir son Provider LLM
 
-**Étape 2 : Démarrer l'interface Frontend React** (Terminal 2)
-```bash
-cd frontend
-npm install
-npm start
-```
-> 💡 Si erreurs (dépendances, Node.js, `cross-env`, ports) → voir `configFrontEnd.pdf` à la racine.
+| Provider | Variable clé | Modèles recommandés | Usage |
+|----------|-------------|---------------------|-------|
+| **Ollama** (local) | `LLM_PROVIDER=ollama` | `gemma4:31b-cloud`, `llama3.1:70b`, `qwen2.5:72b` | Local, gratuit, offline |
+| **Gemini** (cloud) | `LLM_PROVIDER=gemini` + `GEMINI_API_KEY` | `gemini-1.5-flash`, `gemini-1.5-pro` | Rapide, gratuit (quota) |
+| **NVIDIA** (cloud) | `LLM_PROVIDER=nvidia` + `NVIDIA_API_KEY` | `nvidia/nemotron-3-ultra`, `nvidia/llama-3.1-nemotron-70b` | Haute performance |
 
-**Étape 3 : Lancer le Watcher Temps Réel** (Terminal 3)
-```bash
-python scripts/python/spec_watcher.py
-```
-
-**Étape 4 : Exécuter Spec Kit via Claude Code** (Terminal 4)
-```bash
-ollama launch claude
-```
-*Utilisez les commandes Spec Kit (ex: `/speckit-specify`, `/doc-pipeline`) pour générer vos spécifications.*
+> ⚠️ **Note** : Seuls `LLM_PROVIDER` et la config correspondante sont obligatoires. Les autres providers restent optionnels.
 
 ---
 
-### 🛠️ Méthode 2 : Extension VS Code (Installation .vsix — Recommandé)
+### 🛠️ Lancement avec Extension VS Code (.vsix)
 
-> **Remplace** entièrement le dossier `scripts/` par une extension VS Code intégrée.
-> **Installation** : Voir la section [📦 Installation de l'Extension (via .vsix)](#-installation-de-lextension-via-vsix).
+
 
 #### Architecture
 - **Dossiers Utilisés** : `/backend` et `/frontend`.
-- **Remplacement** : L'extension gère tout ce qui était auparavant dans `/scripts` (plus besoin de lancer manuellement le watcher).
 - **Interface** : Tout est centralisé dans une seule fenêtre VS Code (canaux `AgentDocx Server` et `AgentDocx Watcher` dans l'onglet Output).
 
 #### Procédure de Lancement
 
 **Étape 0 : Environnement Python & Dépendances**
-L'extension nécessite les dépendances du projet installées à la racine :
+L'extension nécessite les dépendances du projet installées à la racine **et** le fichier `.env` configuré (voir section [Configuration .env](#-configuration-env-multi-provider-llm)) :
 ```bash
 # Créer l'environnement virtuel
 python -m venv env
@@ -445,15 +426,16 @@ ollama launch claude
 
 ---
 
-## 🔄 Résumé : Quelle méthode choisir ?
+## 🔄 Résumé : Architecture Unique (Extension .vsix)
 
-| Critère | Méthode 1 (Scripts) | Méthode 2 (Extension .vsix) |
-|---------|---------------------|---------------------------|
-| **Statut** | Production | Recommandé (via .vsix) |
-| **Terminaux** | 4 | 2 (Frontend + Claude) + Extension |
-| **Logs** | Unifiés dans terminaux | Séparés : `AgentDocx Watcher` / `AgentDocx Server` |
-| **Progression v2+** | Visible seulement à la fin | Temps réel (DocVersion `pending` → `completed`) |
-| **Installation** | Standard (Python) | VSIX + Root requirements |
+| Composant | Description |
+|-----------|-------------|
+| **Statut** | Recommandé (via .vsix) |
+| **Terminaux** | 2 (Frontend + Claude) + Extension intégrée |
+| **Logs** | Séparés : `AgentDocx Watcher` / `AgentDocx Server` (onglet Output) |
+| **Progression v2+** | Temps réel (DocVersion `pending` → `completed`) |
+| **Installation** | VSIX + Root requirements |
+| **Backend/Watcher** | Gérés automatiquement par l'extension |
 
 > Pour les détails complets sur l'extension : voir branche [`extension`](https://github.com/ahmed200346/Extension_GithubSpecKit/tree/extension) et documentation dans `agentdocx-speckit/README.md`.
 
@@ -461,7 +443,6 @@ ollama launch claude
 
 ### 📚 Ressources Complémentaires
 - `configFrontEnd.pdf` — Dépannage Frontend
-- `scripts/README.md` — Documentation scripts Python
 - `agentdocx-speckit/README.md` — Doc extension (branche `extension`)
 - `configFrontEnd.pdf` — Configuration Frontend détaillée
 
