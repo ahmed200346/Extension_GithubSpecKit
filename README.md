@@ -6,10 +6,12 @@
 
 * **Serveur FastAPI** : Démarrage/arrêt du serveur FastAPI (port 8000) depuis VS Code
 * **Watcher Python** : Surveillance en temps réel du dossier `specs/` avec détection de changements
-* **Pipeline Spéc Kit** : Déclenchement et suivi du pipeline de documentation (LangGraph agents)
-* **Sortie en temps réel** : Deux canaux de sortie dédiés (`AgentDocx Server` et `AgentDocx Watcher`)
+* **Frontend React** : Démarrage/arrêt du frontend React (port 5000) depuis VS Code
+* **Pipeline Spec Kit** : Déclenchement et suivi du pipeline de documentation (LangGraph agents)
+* **Sortie en temps réel** : Trois canaux de sortie dédiés (`AgentDocx Server`, `AgentDocx Watcher`, `AgentDocx Frontend`)
 * **Intégration fluide** : Commandes accessibles depuis la palette de commandes (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-* **Démarrage automatique** : Serveur + Watcher lancés automatiquement au chargement de l'extension
+* **Démarrage automatique** : Serveur + Watcher + Frontend lancés automatiquement au chargement de l'extension
+* **Notification intelligente** : Détection automatique de la compilation frontend réussie avec ouverture navigateur
 
 ## 🛠️ Commandes disponibles
 
@@ -19,6 +21,8 @@
 | `agentdocx-speckit.stopServer` | `AgentDocx SpecKit: Arrêter le Serveur FastAPI` | Arrête le serveur FastAPI |
 | `agentdocx-speckit.startWatcher` | `AgentDocx SpecKit: Démarrer le Watcher Python` | Lance le watcher de fichiers `specs/` |
 | `agentdocx-speckit.stopWatcher` | `AgentDocx SpecKit: Arrêter le Watcher Python` | Arrête le watcher |
+| `agentdocx-speckit.start_frontend` | `AgentDocx SpecKit: Démarrer le Frontend React` | Lance le frontend React (port 5000) |
+| `agentdocx-speckit.stop_frontend` | `AgentDocx SpecKit: Arrêter le Frontend React` | Arrête le frontend React |
 | `agentdocx-speckit.triggerPipeline` | `AgentDocx SpecKit: Déclencher la régénération` | Déclenche le pipeline via `/health` |
 
 ## 📦 Installation & Développement
@@ -74,6 +78,7 @@ agentdocx-speckit/
     ▼
 [ Serveur FastAPI :8000 démarré ]
 [ Watcher specs/ démarré ]
+[ Frontend React :5000 démarré ]    ← NOUVEAU
     │
     ▼
 [ Édition spec.md / requirements.md dans specs/ ]

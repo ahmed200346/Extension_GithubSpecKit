@@ -6,22 +6,26 @@ import * as http from 'http';
 
 let serverProcess: child_process.ChildProcess | undefined;
 let watcherProcess: child_process.ChildProcess | undefined;
+let frontendProcess: child_process.ChildProcess | undefined;
 
-// 💡 Deux canaux de sortie distincts pour une traçabilité optimale
+// 💡 Trois canaux de sortie distincts pour une traçabilité optimale
 let serverOutputChannel: vscode.OutputChannel;
 let watcherOutputChannel: vscode.OutputChannel;
+let frontendOutputChannel: vscode.OutputChannel;
 
 function getPythonExecutable(): string {
     return process.platform === 'win32' ? 'python' : 'python3';
 }
 
 export function activate(context: vscode.ExtensionContext) {
-    // Initialisation des deux canaux d'affichage
+    // Initialisation des trois canaux d'affichage
     serverOutputChannel = vscode.window.createOutputChannel("AgentDocx Server");
     watcherOutputChannel = vscode.window.createOutputChannel("AgentDocx Watcher");
+    frontendOutputChannel = vscode.window.createOutputChannel("AgentDocx Frontend");
 
     serverOutputChannel.appendLine("[INIT] Canal Serveur FastAPI prêt.");
     watcherOutputChannel.appendLine("[INIT] Canal Watcher Python prêt.");
+    frontendOutputChannel.appendLine("[INIT] Canal Frontend React prêt.");
 
     // 🎯 Récupérer le dossier du workspace (projet ouvert)
     const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
@@ -39,6 +43,7 @@ export function activate(context: vscode.ExtensionContext) {
     // Détermination des chemins basés sur le workspace (projet ouvert)
     const backendPath = path.join(workspacePath, 'backend');
     const specsPath = path.join(workspacePath, 'specs');
+    const frontendPath = path.join(workspacePath, 'frontend');
     
     // Vérifier que les dossiers requis existent
     if (!fs.existsSync(backendPath)) {
@@ -47,6 +52,9 @@ export function activate(context: vscode.ExtensionContext) {
     }
     if (!fs.existsSync(specsPath)) {
         vscode.window.showWarningMessage(`Dossier 'specs' introuvable dans le workspace : ${workspacePath}. Le watcher ne surveillera rien.`);
+    }
+    if (!fs.existsSync(frontendPath)) {
+        vscode.window.showWarningMessage(`Dossier 'frontend' introuvable dans le workspace : ${workspacePath}. Le frontend ne sera pas lancé.`);
     }
     
     if (!fs.existsSync(scriptsPath)) {
@@ -238,19 +246,128 @@ export function activate(context: vscode.ExtensionContext) {
         req.end();
     });
 
+    // =========================================================================
+    // 6. Commande : Démarrer le Frontend React
+    // =========================================================================
+    const startFrontendCmd = vscode.commands.registerCommand('agentdocx-speckit.start_frontend', () => {
+        frontendOutputChannel.show(true);
+
+        // Tuer tout processus existant sur le port 5000 avant de démarrer
+        if (process.platform === 'win32') {
+            const { exec } = require('child_process');
+            exec('for /f "tokens=5" %a in (\'netstat -ano ^| findstr :5000\') do taskkill /F /PID %a', (err: Error | null) => {
+                if (!err) {
+                    frontendOutputChannel.appendLine("[FRONTEND] Port 5000 libéré.");
+                }
+            });
+        }
+
+        if (frontendProcess) {
+            frontendOutputChannel.appendLine("[FRONTEND] Le frontend React est déjà en cours d'exécution.");
+            return;
+        }
+
+        if (!fs.existsSync(frontendPath)) {
+            vscode.window.showErrorMessage(`Dossier 'frontend' introuvable : ${frontendPath}`);
+            return;
+        }
+
+        const packageJsonPath = path.join(frontendPath, 'package.json');
+        if (!fs.existsSync(packageJsonPath)) {
+            vscode.window.showErrorMessage(`package.json introuvable dans : ${frontendPath}`);
+            return;
+        }
+
+        const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+        frontendOutputChannel.appendLine(`[FRONTEND] Démarrage du frontend React (${npmCmd} start)...`);
+        frontendOutputChannel.appendLine(`[FRONTEND] CWD: ${frontendPath}`);
+
+        frontendProcess = child_process.spawn(npmCmd, ['start'], {
+            cwd: frontendPath,
+            shell: true,  // Important sur Windows pour npm.cmd
+            env: {
+                ...process.env,
+                PYTHONIOENCODING: 'utf-8',
+                PATH: process.env.PATH,
+            }
+        });
+
+        frontendProcess.stdout?.on('data', (data) => {
+            const output = data.toString();
+            // Préserver les sauts de ligne pour lisibilité
+            output.split('\n').forEach((line: string) => {
+                const trimmed = line.trim();
+                if (trimmed) {
+                    frontendOutputChannel.appendLine(`[FRONTEND] ${trimmed}`);
+                    // Détecter compilation réussie et afficher notification avec URL
+                    if (trimmed.includes('Compiled successfully!') || trimmed.includes('webpack compiled successfully')) {
+                        vscode.window.showInformationMessage('Frontend React compilé avec succès !', 'Ouvrir', 'Copier URL').then(selection => {
+                            if (selection === 'Ouvrir') {
+                                vscode.env.openExternal(vscode.Uri.parse('http://localhost:5000'));
+                            } else if (selection === 'Copier URL') {
+                                vscode.env.clipboard.writeText('http://localhost:5000');
+                                vscode.window.showInformationMessage('URL copiée : http://localhost:5000');
+                            }
+                        });
+                    }
+                }
+            });
+        });
+
+        frontendProcess.stderr?.on('data', (data) => {
+            const output = data.toString();
+            output.split('\n').forEach((line: string) => {
+                if (line.trim()) {
+                    frontendOutputChannel.appendLine(`[FRONTEND] ${line.trim()}`);
+                }
+            });
+        });
+
+        frontendProcess.on('close', (code) => {
+            frontendOutputChannel.appendLine(`[FRONTEND] Processus arrêté avec le code ${code}`);
+            frontendProcess = undefined;
+        });
+
+        frontendProcess.on('error', (err) => {
+            vscode.window.showErrorMessage(`Erreur lors du lancement du frontend : ${err.message}`);
+            frontendOutputChannel.appendLine(`[ERREUR] ${err.message}`);
+            frontendProcess = undefined;
+        });
+    });
+
+    // =========================================================================
+    // 7. Commande : Arrêter le Frontend React
+    // =========================================================================
+    const stopFrontendCmd = vscode.commands.registerCommand('agentdocx-speckit.stop_frontend', () => {
+        frontendOutputChannel.show(true);
+        if (!frontendProcess) {
+            vscode.window.showInformationMessage("Aucun frontend React n'est en cours d'exécution.");
+            return;
+        }
+
+        frontendProcess.kill();
+        frontendProcess = undefined;
+        frontendOutputChannel.appendLine("[FRONTEND] Frontend React arrêté.");
+        vscode.window.showInformationMessage("Frontend React arrêté.");
+    });
+
     context.subscriptions.push(
         startServerCmd,
         stopServerCmd,
         startWatcherCmd,
         stopWatcherCmd,
+        startFrontendCmd,
+        stopFrontendCmd,
         triggerPipelineCmd,
         serverOutputChannel,
-        watcherOutputChannel
+        watcherOutputChannel,
+        frontendOutputChannel
     );
 
     // Démarrage automatique au chargement
     vscode.commands.executeCommand('agentdocx-speckit.start_server');
     vscode.commands.executeCommand('agentdocx-speckit.startWatcher');
+    vscode.commands.executeCommand('agentdocx-speckit.start_frontend');
 }
 
 export function deactivate() {
@@ -261,6 +378,20 @@ export function deactivate() {
     if (watcherProcess) {
         watcherProcess.kill();
         watcherProcess = undefined;
+    }
+    if (frontendProcess) {
+        // Sur Windows, utiliser taskkill pour tuer l'arbre de processus complet
+        if (process.platform === 'win32' && frontendProcess.pid) {
+            const { exec } = require('child_process');
+            exec(`taskkill /F /T /PID ${frontendProcess.pid}`, (err: Error | null) => {
+                if (err) {
+                    frontendOutputChannel.appendLine(`[FRONTEND] Erreur taskkill: ${err.message}`);
+                }
+            });
+        } else {
+            frontendProcess.kill();
+        }
+        frontendProcess = undefined;
     }
 }
 // import * as vscode from 'vscode';

@@ -4,6 +4,26 @@ Toutes les modifications notables apportées à l'extension **AgentDocx_SpecKit*
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [0.0.3] - 2026-08-21
+
+### Ajouté
+* **Frontend React intégré** : Lancement/arrêt automatique du frontend React (port 5000) via `npm start`
+* **Canal de sortie dédié** : `AgentDocx Frontend` pour logs temps réel du frontend React
+* **Détection compilation** : Notification automatique `Compiled successfully!` avec boutons **Ouvrir** (http://localhost:5000) et **Copier URL**
+* **Commandes frontend** : `agentdocx-speckit.start_frontend` / `agentdocx-speckit.stop_frontend`
+* **Support Windows** : `shell: true` pour spawn `npm.cmd` sur Windows
+* **Auto-démarrage frontend** : Frontend lancé automatiquement avec serveur et watcher au chargement
+
+### Modifié
+* `extension.ts` : 3 canaux sortie (Server/Watcher/Frontend), spawnOptions frontend avec `shell: true` Windows
+* `package.json` : Dépendance `cross-env` pour PORT=5000
+* Auto-démarrage étendu : Serveur + Watcher + Frontend au chargement
+
+### Corrigé
+* Port 5000 occupé : Détection processus existant + logs CWD
+* Logs frontend : Capture ligne par ligne stdout/stderr, détection `Compiled successfully!`
+* Notification VS Code avec actions **Ouvrir** (navigateur) / **Copier URL**
+
 ## [0.0.2] - 2026-07-30
 
 ### Ajouté
