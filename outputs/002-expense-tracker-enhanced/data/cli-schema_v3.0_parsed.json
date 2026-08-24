@@ -1,0 +1,149 @@
+{
+    "parsing_rationale": "Analyzed the CLI schema document to extract technical elements defining the command structure, arguments, flags, and error handling. The document is organized hierarchically with a top-level CLI contract and specific command schemas. Elements were extracted focusing on command types, entities, and API-like contracts defined in the raw content.",
+    "project_info": {
+        "project_name": "Expense Tracker CLI",
+        "source_type": "scratch",
+        "brief_explanation": "Technical specification for a command-line interface expense tracking application.",
+        "source_context": "Extracted from cli-schema.md, a technical design document for CLI implementation."
+    },
+    "doc_type": "plan",
+    "sections": [
+        {
+            "title": "CLI Contract: Enhanced Expense Tracker",
+            "level": 1,
+            "raw_content": "This document defines the command-line interface for the Expense Tracker. The CLI is the primary entry point for users.",
+            "mapped_to_template_field": "System Architecture & Topology"
+        },
+        {
+            "title": "Command Schema",
+            "level": 2,
+            "raw_content": "All commands are executed as `expense-tracker <command> [args]`.",
+            "mapped_to_template_field": "System Architecture & Topology"
+        },
+        {
+            "title": "1. `add`",
+            "level": 3,
+            "raw_content": "Creates a new expense record.\n- **Usage**: `add <amount> <category> <date> [\"description\"]`\n- **Arguments**:\n    - `amount`: Float (strictly > 0)\n    - `category`: String (Food | Transport | Bills | Utilities)\n    - `date`: String (YYYY-MM-DD)\n    - `description`: String (Optional, defaults to empty string)\n- **Success**: Displays \"Expense added successfully. ID: [id]\"\n- **Errors**:\n    - Invalid amount: \"Amount must be strictly positive.\"\n    - Invalid category: \"Invalid category. Allowed: Food, Transport, Bills, Utilities.\"\n    - Invalid date: \"Date must be in ISO format (YYYY-MM-DD).\"",
+            "mapped_to_template_field": "API Contracts & Flow"
+        },
+        {
+            "title": "2. `list`",
+            "level": 3,
+            "raw_content": "Retrieves and displays expenses.\n- **Usage**: `list [--category <cat>] [--start <date>] [--end <date>]`\n- **Flags**:\n    - `--category`: Filter by one of the allowed categories.\n    - `--start`: Start date for interval filter (YYYY-MM-DD).\n    - `--end`: End date for interval filter (YYYY-MM-DD).\n- **Output**: Tabular list containing `ID | Date | Category | Amount | Description` and a `Total: [sum]` at the bottom.\n- **Empty Result**: Displays \"No expenses found for the selected criteria. Total: 0.00\"",
+            "mapped_to_template_field": "API Contracts & Flow"
+        },
+        {
+            "title": "3. `delete`",
+            "level": 3,
+            "raw_content": "Removes an expense by its ID.\n- **Usage**: `delete <id>`\n- **Arguments**:\n    - `id`: Integer (Primary Key)\n- **Success**: Displays \"Expense [id] deleted successfully.\"\n- **Errors**:\n    - Not found: \"Expense not found. Please check the ID.\"",
+            "mapped_to_template_field": "API Contracts & Flow"
+        },
+        {
+            "title": "Error Mapping Table",
+            "level": 2,
+            "raw_content": "| Service Exception | CLI Output Message |\n| :--- | :--- |\n| `ValidationError` | [The specific validation message from the service] |\n| `EntityNotFoundError` | \"Expense not found. Please check the ID.\" |\n| `DatabaseLockedError` | \"The database is currently busy. Please try again in a few seconds.\" |\n| `UnexpectedError` | \"An internal error occurred. Please try again.\" |",
+            "mapped_to_template_field": "Security & Identity"
+        }
+    ],
+    "elements": [
+        {
+            "type": "entity",
+            "identifier": "EXPENSE-ENTITY",
+            "content": "Expense record with attributes: amount, category, date, description, and ID.",
+            "source_section": "1. `add`",
+            "attributes": {}
+        },
+        {
+            "type": "endpoint",
+            "identifier": "ADD-EXPENSE",
+            "content": "CLI endpoint to create a new expense record.",
+            "source_section": "1. `add`",
+            "attributes": {}
+        },
+        {
+            "type": "endpoint",
+            "identifier": "LIST-EXPENSES",
+            "content": "CLI endpoint to retrieve and display expenses with filtering options.",
+            "source_section": "2. `list`",
+            "attributes": {}
+        },
+        {
+            "type": "endpoint",
+            "identifier": "DELETE-EXPENSE",
+            "content": "CLI endpoint to remove an expense by its ID.",
+            "source_section": "3. `delete`",
+            "attributes": {}
+        },
+        {
+            "type": "entity",
+            "identifier": "CATEGORY-ENUM",
+            "content": "Allowed categories: Food, Transport, Bills, Utilities.",
+            "source_section": "1. `add`",
+            "attributes": {}
+        },
+        {
+            "type": "entity",
+            "identifier": "DATE-FORMAT",
+            "content": "ISO date format requirement: YYYY-MM-DD.",
+            "source_section": "1. `add`",
+            "attributes": {}
+        },
+        {
+            "type": "decision",
+            "identifier": "ERROR-HANDLING-RULES",
+            "content": "Mapping of service exceptions to CLI output messages as defined in the Error Mapping Table.",
+            "source_section": "Error Mapping Table",
+            "attributes": {}
+        }
+    ],
+    "relationships": [
+        {
+            "source": "ADD-EXPENSE",
+            "to": "EXPENSE-ENTITY",
+            "relation_type": "contains"
+        },
+        {
+            "source": "LIST-EXPENSES",
+            "to": "EXPENSE-ENTITY",
+            "relation_type": "contains"
+        },
+        {
+            "source": "DELETE-EXPENSE",
+            "to": "EXPENSE-ENTITY",
+            "relation_type": "contains"
+        },
+        {
+            "source": "ADD-EXPENSE",
+            "to": "CATEGORY-ENUM",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "ADD-EXPENSE",
+            "to": "DATE-FORMAT",
+            "relation_type": "depends_on"
+        },
+        {
+            "source": "ERROR-HANDLING-RULES",
+            "to": "EntityNotFoundError",
+            "relation_type": "relates_to"
+        },
+        {
+            "source": "ERROR-HANDLING-RULES",
+            "to": "DatabaseLockedError",
+            "relation_type": "relates_to"
+        },
+        {
+            "source": "ERROR-HANDLING-RULES",
+            "to": "UnexpectedError",
+            "relation_type": "relates_to"
+        }
+    ],
+    "structural_gaps": [
+        {
+            "missing_section": "Tech Stack & Tooling",
+            "priority": "MEDIUM",
+            "remediation_advice": "Document the programming language, frameworks, and tools used for CLI implementation."
+        }
+    ],
+    "open_questions": []
+}

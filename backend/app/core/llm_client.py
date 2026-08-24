@@ -1,77 +1,141 @@
 # app/core/llm_client.py
 """
-llm_client.py — Gestionnaire centralisé des connexions LLM (multi-fournisseurs)
+llm_client.py – Orchestrateur central pour la gestion des providers LLM
 
-Ce module initialise et distribue les clients LLM selon la configuration fournie
-dans les settings. Supporte Ollama, Gemini, NVIDIA et tout autre fournisseur
-compatibles OpenAI.
-
-Il expose :
-- Un client compatible OpenAI (pour les requêtes JSON structurées avec Pydantic).
-- Des méthodes d'accès aux clients selon le fournisseur actif.
+Point d'entrée unique pour tous les clients LLM (Ollama, Gemini, NVIDIA).
+- Charge le provider configuré dans .env (LLM_PROVIDER)
+- Importe dynamiquement le client approprié
+- Expose une interface uniforme pour toute l'application
 """
 
+import logging
+from typing import Optional, Any
 from openai import OpenAI
+
 from app.config import settings
 
-# Déterminer le fournisseur actif depuis la configuration
-LLM_PROVIDER = settings.LLM_PROVIDER or "ollama"
+logger = logging.getLogger(__name__)
 
+# ============================================================================
+# LOGIQUE DE DISPATCH DU PROVIDER
+# ============================================================================
 
-def _get_openai_client() -> OpenAI:
-    """Crée un client OpenAI configuré selon le fournisseur actif."""
-    if LLM_PROVIDER == "ollama":
-        return OpenAI(
-            base_url=f"{settings.OLLAMA_BASE_URL}/v1",
-            api_key="ollama",
-        )
-    elif LLM_PROVIDER == "gemini":
-        # Google GenAI utilise le SDK google-genai
-        from google import genai
-        return genai.Client(api_key=settings.GEMINI_API_KEY)
-    elif LLM_PROVIDER == "nvidia":
-        return OpenAI(
-            base_url=f"{settings.NVIDIA_BASE_URL}/v1",
-            api_key=settings.NVIDIA_API_KEY,
-        )
-    else:
-        # Par défaut : Ollama
-        return OpenAI(
-            base_url=f"{settings.OLLAMA_BASE_URL}/v1",
-            api_key="ollama",
-        )
+_ACTIVE_PROVIDER = settings.LLM_PROVIDER.lower()
 
-# Client OpenAI compatible actif (injecté au démarrage)
-# Les services doivent utiliser get_client_active() plutôt que la variable globale
-# ollama_openai_client, mais pour garder la compatibilité, on expose tout de même
-# la variable globale initialisée ci-dessous.
-ollama_openai_client = _get_openai_client()
+if _ACTIVE_PROVIDER == "ollama":
+    from app.core.client_ollama import (
+        get_ollama_client as _get_ollama_client,
+        get_ollama_model as _get_ollama_model,
+        verify_ollama_connection as _verify_ollama_connection,
+    )
+    logger.info(f"📌 Provider LLM sélectionné: OLLAMA")
 
+elif _ACTIVE_PROVIDER == "gemini":
+    from app.core.client_gemini import (
+        get_gemini_client as _get_gemini_client,
+        get_gemini_model as _get_gemini_model,
+        verify_gemini_connection as _verify_gemini_connection,
+    )
+    logger.info(f"📌 Provider LLM sélectionné: GEMINI")
 
-# Clients natifs par fournisseur
-if LLM_PROVIDER == "ollama":
-    import ollama
-    ollama_native_client = ollama.Client(host=settings.OLLAMA_BASE_URL)
-elif LLM_PROVIDER == "gemini":
-    from google import genai
-    ollama_native_client = genai.Client(api_key=settings.GEMINI_API_KEY)
+elif _ACTIVE_PROVIDER == "nvidia":
+    from app.core.client_nvidia import (
+        get_nvidia_client as _get_nvidia_client,
+        get_nvidia_model as _get_nvidia_model,
+        verify_nvidia_connection as _verify_nvidia_connection,
+    )
+    logger.info(f"📌 Provider LLM sélectionné: NVIDIA")
+
 else:
-    ollama_native_client = None
+    logger.error(f"✗ Provider LLM inconnu: {_ACTIVE_PROVIDER}")
+    # On peut définir un fallback ou lever une erreur
+    _ACTIVE_PROVIDER = "ollama" # Fallback par défaut
 
+# ============================================================================
+# INTERFACE UNIFORME
+# ============================================================================
+
+def get_llm_client() -> Any:
+    """
+    Retourne le client LLM actif selon la configuration.
+    """
+    if _ACTIVE_PROVIDER == "ollama":
+        return _get_ollama_client()
+    elif _ACTIVE_PROVIDER == "nvidia":
+        return _get_nvidia_client()
+    elif _ACTIVE_PROVIDER == "gemini":
+        # Retourne le client compatible OpenAI pour Gemini pour maintenir l'interface uniforme
+        from app.core.clients.client_gemini import get_gemini_openai_client
+        return get_gemini_openai_client()
+    else:
+        raise ValueError(f"Provider LLM non supporté: {_ACTIVE_PROVIDER}")
 
 def get_llm_model() -> str:
-    """Retourne le nom du modèle par défaut configuré selon le fournisseur actif."""
-    if LLM_PROVIDER == "ollama":
-        return settings.OLLAMA_MODEL
-    elif LLM_PROVIDER == "gemini":
-        return settings.GEMINI_MODEL
-    elif LLM_PROVIDER == "nvidia":
-        return settings.NVIDIA_MODEL
-    return settings.OLLAMA_MODEL
+    """
+    Retourne le nom du modèle LLM actif selon la configuration.
+    """
+    if _ACTIVE_PROVIDER == "ollama":
+        return _get_ollama_model()
+    elif _ACTIVE_PROVIDER == "nvidia":
+        return _get_nvidia_model()
+    elif _ACTIVE_PROVIDER == "gemini":
+        return _get_gemini_model()
+    else:
+        raise ValueError(f"Provider LLM non supporté: {_ACTIVE_PROVIDER}")
 
+def verify_llm_connection() -> bool:
+    """
+    Vérifie que la connexion au provider LLM est fonctionnelle.
+    """
+    if _ACTIVE_PROVIDER == "ollama":
+        return _verify_ollama_connection()
+    elif _ACTIVE_PROVIDER == "nvidia":
+        return _verify_nvidia_connection()
+    elif _ACTIVE_PROVIDER == "gemini":
+        return _verify_gemini_connection()
+    else:
+        return False
 
+def get_active_provider_name() -> str:
+    """Retourne le nom du provider actif"""
+    return _ACTIVE_PROVIDER.upper()
+
+def get_provider_info() -> dict:
+    """Retourne des informations détaillées sur le provider actif"""
+    return {
+        "provider": get_active_provider_name(),
+        "model": get_llm_model(),
+        "connection_ok": verify_llm_connection(),
+    }
+
+def initialize_llm_provider():
+    """
+    Initialise le provider LLM et vérifie la connexion.
+    """
+    logger.info("="*70)
+    logger.info("Initialisation du Provider LLM")
+    logger.info("="*70)
+
+    try:
+        info = get_provider_info()
+        logger.info(f"📋 Configuration LLM: {info}")
+
+        if verify_llm_connection():
+            logger.info("✓ Provider LLM prêt et fonctionnel")
+            return True
+        else:
+            logger.error("✗ Le provider LLM n'est pas accessible")
+            return False
+    except Exception as e:
+        logger.error(f"✗ Erreur lors de l'initialisation du provider LLM: {e}")
+        return False
+
+# ============================================================================
+# COMPATIBILITÉ LEGACY (Pour éviter les ImportError dans les services)
+# ============================================================================
+# Ces alias permettent aux services qui importaient directement
+# 'ollama_openai_client' ou 'get_ollama_model' de continuer à fonctionner
+# avec n'importe quel provider actif.
+
+ollama_openai_client = get_llm_client()
 get_ollama_model = get_llm_model
-
-def get_client_active() -> OpenAI:
-    """Retourne le client OpenAI actif selon la configuration actuelle."""
-    return _get_openai_client()

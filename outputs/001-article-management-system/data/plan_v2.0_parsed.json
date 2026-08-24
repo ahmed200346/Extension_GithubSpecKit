@@ -1,0 +1,14 @@
+{
+    "parsing_rationale": "The document was analyzed as a technical implementation plan. Physical sections were mapped to the required template fields, and technical atoms (stack, architecture choices, and project structure) were extracted as graph nodes to ensure traceability from the 'What' to the 'How'.",
+    "project_info": {
+        "project_name": "Article Management System",
+        "brief_explanation": "Implementation plan for a full-stack article management system with Python backend, PostgreSQL, and JS frontend.",
+        "source_context": "Extracted from plan.md"
+    },
+    "doc_type": "plan",
+    "sections": [],
+    "elements": [],
+    "relationships": [],
+    "structural_gaps": [],
+    "open_questions": []
+}

@@ -1,0 +1,17 @@
+{
+    "agent_evaluated": "Summary Agent",
+    "project_name": "Gestion d'Articles à Vendre",
+    "technical_evaluation": {
+        "maturity_alignment_score": 0.0,
+        "conciseness_precision_score": 100.0,
+        "extraction_completeness_rate": 0.0,
+        "brief_word_count": 35,
+        "hallucinations_detected_count": 5
+    },
+    "project_management_kpis": {
+        "extracted_technologies_count": 0,
+        "architectural_constraints_count": 2,
+        "external_dependencies_count": 3,
+        "external_risk_exposure": "MODÉRÉ"
+    }
+}

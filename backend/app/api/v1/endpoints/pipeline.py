@@ -2,6 +2,7 @@ import json
 import hashlib
 import traceback
 import urllib.parse
+import re
 from pathlib import Path
 from typing import Optional, Dict, Any, List
 from uuid import UUID
@@ -14,7 +15,10 @@ from sqlalchemy.orm import Session
 
 # Modèles et session BDD
 from app.database import get_db
-from app.models import Project, Artifact, DocVersion, PipelineRun, ArtifactType, PipelineStage, GeneratedBy
+from app.models import (
+    Project, Artifact, DocVersion, PipelineRun, ArtifactType, PipelineStage, GeneratedBy,
+    Ticket, TicketStatus, TicketEvent, TicketEventType, AuthorType,
+)
 from app.services.db_service import (
     should_process_file,
     check_file_exists_only,
@@ -29,6 +33,9 @@ from app.graph.workflow import create_pipeline_workflow
 
 router = APIRouter()
 app_graph = create_pipeline_workflow()
+
+# In-memory task state store (keyed by project_name)
+_task_state_store: Dict[str, Dict[str, Any]] = {}
 
 PIPELINE_STATUS = {
     "is_running": False,
@@ -103,6 +110,161 @@ async def get_pipeline_status():
     return PIPELINE_STATUS
 
 
+@router.get("/progress")
+async def get_pipeline_progress(db: Session = Depends(get_db)):
+    """
+    GET /progress - Retourne la progression actuelle du pipeline.
+    Utilisé par le frontend pour afficher l'état en temps réel.
+    """
+    # Récupérer la dernière exécution en cours ou la plus récente
+    latest_run = (
+        db.query(PipelineRun)
+        .filter(PipelineRun.current_stage != PipelineStage.completed)
+        .filter(PipelineRun.current_stage != PipelineStage.failed)
+        .order_by(PipelineRun.started_at.desc())
+        .first()
+    )
+    
+    if not latest_run:
+        # Pas de pipeline en cours, chercher le dernier complété
+        latest_run = (
+            db.query(PipelineRun)
+            .order_by(PipelineRun.started_at.desc())
+            .first()
+        )
+    
+    if not latest_run:
+        return {
+            "is_running": False,
+            "current_stage": None,
+            "progress_percent": 0,
+            "message": "No pipeline runs found"
+        }
+    
+    # Calculer le pourcentage de progression basé sur le stage
+    stage_progress = {
+        PipelineStage.parsing: 10,
+        PipelineStage.parallel_enrichment: 25,
+        PipelineStage.summary: 35,
+        PipelineStage.glossary: 45,
+        PipelineStage.diagram: 55,
+        PipelineStage.writing: 70,
+        PipelineStage.layout: 85,
+        PipelineStage.rendering: 95,
+        PipelineStage.completed: 100,
+        PipelineStage.failed: 0,
+    }
+    
+    progress = stage_progress.get(latest_run.current_stage, 0)
+    is_running = latest_run.current_stage not in [PipelineStage.completed, PipelineStage.failed]
+    
+    return {
+        "is_running": is_running,
+        "current_stage": latest_run.current_stage.value,
+        "progress_percent": progress,
+        "run_id": str(latest_run.id),
+        "started_at": latest_run.started_at.isoformat() if latest_run.started_at else None,
+        "message": f"Pipeline {latest_run.current_stage.value}"
+    }
+
+
+@router.get("/projects")
+async def list_projects(db: Session = Depends(get_db)):
+    """GET /projects - Liste tous les projets avec leur nombre d'artefacts."""
+    projects = db.query(Project).order_by(Project.created_at.desc()).all()
+    return [
+        {
+            "id": str(p.id),
+            "name": p.name,
+            "repo_url": p.repo_url,
+            "artifact_count": len(p.artifacts),
+            "created_at": p.created_at.isoformat() if p.created_at else "",
+        }
+        for p in projects
+    ]
+
+
+@router.get("/task-state/{project_name}")
+async def get_task_state(project_name: str, db: Session = Depends(get_db)):
+    """GET /task-state/{project_name} - État courant des tâches pour le Kanban.
+    Authoritative version: reads from current-task.json and Database.
+    """
+    # 1. Read current-task.json for the active task ID
+    current_task_json_path = BASE_DIR / ".task_runtime" / "current-task.json"
+    current_task_data = {}
+    if current_task_json_path.exists():
+        try:
+            current_task_data = json.loads(current_task_json_path.read_text(encoding="utf-8"))
+        except Exception:
+            pass
+
+    # 2. Get all tickets for this project from DB to build the status map
+    from app.models import Project, Ticket
+    project = db.query(Project).filter(Project.name == project_name).first()
+    if not project:
+        return {
+            "current_task": 0,
+            "total_tasks": 0,
+            "task_status": {},
+            "started_at": None,
+            "updated_at": None,
+        }
+
+    tickets = db.query(Ticket).filter(Ticket.project_id == project.id).all()
+
+    # Map ticket_id (e.g. "T001") to its status value
+    task_status_map = {t.ticket_id: t.status.value for t in tickets if t.ticket_id}
+
+    # Determine the current task numeric index (T001 -> 1)
+    active_task_id = current_task_data.get("task_id")
+    current_task_idx = 0
+    if active_task_id:
+        match = re.match(r'T(\d+)', active_task_id)
+        if match:
+            current_task_idx = int(match.group(1))
+
+    return {
+        "current_task": current_task_idx,
+        "total_tasks": len(tickets),
+        "task_status": task_status_map,
+        "started_at": current_task_data.get("started_at"),
+        "updated_at": current_task_data.get("updated_at"),
+    }
+
+
+class TaskStateUpdate(BaseModel):
+    current_task_id: Optional[str] = None
+    current_task_file: Optional[str] = None
+    task_status: Dict[str, str] = {}
+    started_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+
+@router.post("/task-state/{project_name}")
+async def update_task_state(project_name: str, state: TaskStateUpdate, db: Session = Depends(get_db)):
+    """
+    POST /task-state/{project_name}
+    Kept for backward compatibility with the VS Code extension.
+    Status updates are now driven exclusively by current-task.json via the file watcher.
+    This endpoint only stores the state in memory for the GET endpoint to return.
+    """
+    from datetime import datetime, timezone
+
+    now = datetime.now(timezone.utc).isoformat()
+    clean_task_id = state.current_task_id.lstrip("#") if state.current_task_id else None
+
+    # Store in memory for GET /task-state/{project_name} to return
+    _task_state_store[project_name] = {
+        "current_task_id": clean_task_id or state.current_task_id,
+        "current_task_file": state.current_task_file,
+        "task_status": state.task_status,
+        "started_at": state.started_at or now,
+        "updated_at": now,
+    }
+
+    return {"status": "ok", "updated_at": now}
+
+
 @router.get("/documents")
 async def list_documents(db: Session = Depends(get_db)):
     artifacts = db.query(Artifact).order_by(Artifact.created_at.desc()).all()
@@ -163,7 +325,8 @@ async def list_documents(db: Session = Depends(get_db)):
                     "kpi": round(kpi_val, 1) if kpi_val is not None else None,
                     "doc_version_id": str(doc_ver.id),
                     "pipeline_run_id": str(run_for_eval.id) if run_for_eval else None,
-                    "agentEvaluations": agent_evaluations
+                    "agentEvaluations": agent_evaluations,
+                    "generated_at": (doc_ver.generated_at or artifact.created_at).isoformat() if (doc_ver.generated_at or artifact.created_at) else None
                 })
         else:
             latest_run = (
@@ -204,10 +367,71 @@ async def list_documents(db: Session = Depends(get_db)):
                 "kpi": round(kpi_val, 1) if kpi_val is not None else None,
                 "doc_version_id": None,
                 "pipeline_run_id": str(latest_run.id) if latest_run else None,
-                "agentEvaluations": agent_evaluations
+                "agentEvaluations": agent_evaluations,
+                "generated_at": artifact.created_at.isoformat() if artifact.created_at else None
             })
 
     return result
+
+
+@router.delete("/documents/{doc_version_id}")
+async def delete_document_version(doc_version_id: str, db: Session = Depends(get_db)):
+    """Delete a specific document version and its associated data."""
+    try:
+        doc_version = db.query(DocVersion).filter(DocVersion.id == doc_version_id).first()
+        if not doc_version:
+            raise HTTPException(status_code=404, detail="Document version not found")
+        
+        # Delete the PDF file if it exists
+        if doc_version.pdf_path and Path(doc_version.pdf_path).exists():
+            Path(doc_version.pdf_path).unlink()
+        
+        # Delete associated pipeline run if exists
+        if doc_version.pipeline_run_id:
+            db.query(PipelineRun).filter(PipelineRun.id == doc_version.pipeline_run_id).delete()
+        
+        # Delete the document version
+        db.delete(doc_version)
+        db.commit()
+        
+        return {"status": "success", "message": f"Document version {doc_version_id} deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete document: {str(e)}")
+
+
+@router.delete("/artifacts/{artifact_id}")
+async def delete_artifact(artifact_id: str, db: Session = Depends(get_db)):
+    """Delete an artifact and all its versions."""
+    try:
+        artifact = db.query(Artifact).filter(Artifact.id == artifact_id).first()
+        if not artifact:
+            raise HTTPException(status_code=404, detail="Artifact not found")
+        
+        # Delete all document versions and their files
+        versions = db.query(DocVersion).filter(DocVersion.artifact_id == artifact_id).all()
+        for version in versions:
+            if version.pdf_path and Path(version.pdf_path).exists():
+                Path(version.pdf_path).unlink()
+        
+        # Delete all pipeline runs
+        db.query(PipelineRun).filter(PipelineRun.artifact_id == artifact_id).delete()
+        
+        # Delete all document versions
+        db.query(DocVersion).filter(DocVersion.artifact_id == artifact_id).delete()
+        
+        # Delete the artifact itself
+        db.delete(artifact)
+        db.commit()
+        
+        return {"status": "success", "message": f"Artifact {artifact_id} and all versions deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete artifact: {str(e)}")
 
 
 @router.post("/upload")
@@ -224,8 +448,9 @@ async def upload_and_process_document(
     file.filename = sanitize_path_string(file.filename)
     project_clean = get_effective_project_name(Path(file.filename), projectName)
     
-    # Créer le répertoire cible sous <RACINE>/specs/<projectName>/
-    dest_dir = BASE_DIR / "specs" / project_clean
+    import tempfile
+    # Use system temporary directory instead of creating any folder in the project root
+    dest_dir = Path(tempfile.gettempdir()) / "speckit_uploads" / project_clean
     dest_dir.mkdir(parents=True, exist_ok=True)
 
     file_path = dest_dir / file.filename
@@ -451,7 +676,8 @@ async def diagnose_path(file_path: str = "", project_name: str = ""):
         results.append({"step": "build_pipeline_paths() mkdir", "ok": False, "error": str(e)})
     
     try:
-        tmp_dir = Path("specs") / (project_name or "test_diag")
+        import tempfile
+        tmp_dir = Path(tempfile.gettempdir()) / "speckit_diag" / (project_name or "test_diag")
         tmp_dir.mkdir(parents=True, exist_ok=True)
         tmp_file = tmp_dir / "_diag_test_.tmp"
         tmp_file.write_bytes(b"test")

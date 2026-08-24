@@ -1,0 +1,13 @@
+{
+    "parsing_rationale": "The document was analyzed as a technical constitution. I mapped the 'Best Practices & Standards' section to 'Coding Standards & Style' and the 'Development Workflow' section to 'Branching & PR Workflow'. The 'Technology Stack' was treated as a source for tool configurations. Since no specific testing gates (automated tests, CI/CD) or open questions were mentioned, these were flagged as structural gaps.",
+    "project_info": {
+        "project_name": "Gestion d'Articles à Vendre",
+        "brief_explanation": "Technical governance and quality standards for an article management e-commerce project."
+    },
+    "doc_type": "constitution",
+    "sections": [],
+    "elements": [],
+    "relationships": [],
+    "structural_gaps": [],
+    "open_questions": []
+}

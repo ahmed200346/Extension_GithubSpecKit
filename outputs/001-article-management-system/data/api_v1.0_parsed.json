@@ -1,0 +1,14 @@
+{
+    "parsing_rationale": "The document is a technical API contract. I have mapped the endpoints to 'Functional Requirements' as they define the system's capabilities. Each endpoint is treated as a functional requirement, and the data structures (Articles, Categories) are extracted as entities. Relationships are established to show which endpoints manipulate which entities.",
+    "project_info": {
+        "project_name": "Article Management System",
+        "brief_explanation": "API specification for managing articles and their associated categories, including CRUD operations.",
+        "source_context": "API Contract documentation (api.md)"
+    },
+    "doc_type": "autres",
+    "sections": [],
+    "elements": [],
+    "relationships": [],
+    "structural_gaps": [],
+    "open_questions": []
+}

@@ -1,3 +1,4 @@
+# app/services/parser_service.py
 import json
 from pathlib import Path
 from app.schemas.parsing_agent_schema import ParsingAgentOutput
@@ -9,16 +10,15 @@ from app.core.prompts import get_parsing_agent_prompt
 BASE_DIR = Path(__file__).resolve().parent.parent.parent  # backend/
 TEMPLATES_PATH = BASE_DIR / "app" / "resources" / "sdd_templates.json"
 
-
 def load_sdd_templates() -> dict:
     with open(TEMPLATES_PATH, "r", encoding="utf-8") as f:
         return json.load(f)
 
-
 def run_parsing_agent(file_name: str, file_content: str) -> ParsingAgentOutput:
     """
     Exécute le premier agent du pipeline (Parsing Agent) à l'aide d'une approche hybride.
-    Prend en charge l'ensemble des 10 types de documents définis dans l'Enum DocumentType.
+    Intègre désormais le routage strict du gabarit 'plan' et applique les mécanismes 
+    de validation croisée macro/micro du schéma ultime.
     """
     # 1. Analyse AST déterministe en Python
     file_hash = calculate_file_hash(file_content)
@@ -27,43 +27,29 @@ def run_parsing_agent(file_name: str, file_content: str) -> ParsingAgentOutput:
     # 2. Chargement du dictionnaire de gabarits locaux
     sdd_db = load_sdd_templates()
     
-    # Isolation stricte du nom de fichier
-    file_name_only = Path(file_name).name.lower()
+    # AIGUILLAGE INTELLIGENT ET ROBUSTE ALIGNÉ SUR L'ENUM :
+    file_name_lower = file_name.lower()
     
-    if "constitution" in file_name_only or "rule" in file_name_only:
+    if "constitution" in file_name_lower or "rule" in file_name_lower:
         inferred_type = "constitution"
         template_key = "constitution"
-    elif "task" in file_name_only or "todo" in file_name_only:
+    elif "task" in file_name_lower or "todo" in file_name_lower:
         inferred_type = "task"
         template_key = "task"
-    elif "requirement" in file_name_only:
-        inferred_type = "requirements"
-        template_key = "requirements"
-    elif "contract" in file_name_only:
-        inferred_type = "contracts"
-        template_key = "contracts"
-    elif "data-model" in file_name_only or "data_model" in file_name_only or "datamodel" in file_name_only:
-        inferred_type = "data-model"
-        template_key = "data-model"
-    elif "research" in file_name_only:
-        inferred_type = "research"
-        template_key = "research"
-    elif "quickstart" in file_name_only:
-        inferred_type = "quickstart"
-        template_key = "quickstart"
-    elif any(keyword in file_name_only for keyword in ["plan", "architect", "schema"]):
+    elif any(keyword in file_name_lower for keyword in ["plan", "architect", "data_model", "schema"]):
+        # ALIGNEMENT CRITIQUE : Changement de "architecture" vers "plan" 
+        # pour correspondre à l'Enum DocumentType et au sdd_templates.json mis à jour.
         inferred_type = "plan"
         template_key = "plan"
-    elif "spec" in file_name_only:
+    else:
+        # Repli par défaut sur les spécifications fonctionnelles
         inferred_type = "spec"
         template_key = "spec"
-    else:
-        inferred_type = "autres"
-        template_key = "spec"
         
-    # Chargement du gabarit
+    # Chargement sécurisé du gabarit sdd_templates.json
     sdd_template = sdd_db.get(template_key, {})
     if not sdd_template:
+        # Gabarit de secours minimal si la clé n'existe pas dans le JSON
         sdd_template = {
             "description": f"Gabarit générique pour document de type {inferred_type}.",
             "required_sections": [],
@@ -72,7 +58,7 @@ def run_parsing_agent(file_name: str, file_content: str) -> ParsingAgentOutput:
         
     project_indicators = sdd_db.get("project_source_indicators", {})
 
-    # 3. Récupération du Prompt Système
+    # 3. Récupération du Prompt Système délocalisé (gère l'extraction structurelle et topologique)
     system_prompt = get_parsing_agent_prompt(
         inferred_type=inferred_type,
         sdd_template=sdd_template,
@@ -81,7 +67,7 @@ def run_parsing_agent(file_name: str, file_content: str) -> ParsingAgentOutput:
 
     # 4. Payload d'entrée
     user_message = {
-        "file_name": Path(file_name).name,
+        "file_name": file_name,
         "file_hash": file_hash,
         "doc_type_suggested": inferred_type,
         "sections_to_process": pre_parsed_sections

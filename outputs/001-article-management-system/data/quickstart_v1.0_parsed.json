@@ -1,0 +1,13 @@
+{
+    "parsing_rationale": "Le document a été analysé pour extraire les scénarios de validation bout-en-bout. Chaque scénario a été décomposé en objectifs, étapes de configuration et résultats attendus pour construire le graphe de conformité.",
+    "project_info": {
+        "project_name": "Article Management System",
+        "brief_explanation": "Guide de validation rapide pour le système de gestion d'articles incluant PostgreSQL et Flask."
+    },
+    "doc_type": "quickstart",
+    "sections": [],
+    "elements": [],
+    "relationships": [],
+    "structural_gaps": [],
+    "open_questions": []
+}
