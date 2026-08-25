@@ -4,7 +4,7 @@
   <img src="https://img.shields.io/badge/version-0.0.4-blue?style=for-the-badge" alt="version" />
   <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="python" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="fastapi" />
-  <img src="https://img.shields.io/badge/PostgreSQL-StageTal-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="postgres" />
+  <img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="postgres" />
   <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="license" />
 </p>
 
@@ -176,11 +176,16 @@ Adapters fournis pour chaque IDE :
 
 ---
 
-## 🗄️ Traçabilité & Versioning BDD (PostgreSQL)
+## 🗄️ Traçabilité & Versioning BDD (PostgreSQL) 
 
-Le système s'appuie sur une base de données PostgreSQL pour garantir l'immuabilité des versions et la traçabilité complète de chaque modification.
+Le système s'appuie sur **PostgreSQL `DATABASE`** (création autonome via `Base.metadata.create_all` au lancement) pour l'immuabilité des versions et la traçabilité complète.
 
-### 📊 Modèle de Données
+**Nouveautés `0.0.4` :**
+- **`ticket_metrics`** : table dédiée `1 ticket → 0..1 metrics` (`conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, `traceability`, `last_audit_at`, `audit_metadata JSONB`) — remplace le scan `ticket_events.event_metadata` pour `GET /tickets/{id}/metrics` (fini le `N/A`)
+- **Cascades** : `Project -- cascade --> Ticket -- cascade --> TicketEvent/TicketComment/TicketMetrics` et `Project -- cascade --> TicketMetrics` → `DELETE FROM projects` supprime tout (plus de tickets orphelins après `rm -rf specs/`)
+- **Isolation** : `specs/{project}/.task_runtime/current-task.json` reste la seule source disque, `tickets`/`ticket_metrics` en sont le miroir DB
+
+### 📊 Modèle de Données 
 ```mermaid
 erDiagram
     projects {
@@ -240,37 +245,59 @@ erDiagram
         UUID id "PK"
         UUID project_id "FK"
         UUID artifact_id "FK"
-        VARCHAR source_path
-        VARCHAR title
+        VARCHAR ticket_id
+        TEXT title
         TEXT description
         VARCHAR status
-        INTEGER position
+        VARCHAR source_file_path
+        VARCHAR source_file_hash
         VARCHAR checkbox_state
-        VARCHAR file_hash
+        INTEGER line_number
         DATETIME created_at
         DATETIME updated_at
     }
-    artifacts ||--o{ tickets : references
     projects ||--o{ tickets : references
+    artifacts ||--o{ tickets : references
     ticket_events {
         UUID id "PK"
         UUID ticket_id "FK"
         VARCHAR event_type
+        VARCHAR author_name
         VARCHAR author_type
-        JSONB payload
+        VARCHAR old_status
+        VARCHAR new_status
+        TEXT comment
+        JSONB event_metadata
         DATETIME created_at
     }
     tickets ||--o{ ticket_events : references
     ticket_comments {
         UUID id "PK"
         UUID ticket_id "FK"
+        VARCHAR author_name
         VARCHAR author_type
-        TEXT body
+        TEXT content
         DATETIME created_at
     }
     tickets ||--o{ ticket_comments : references
+    ticket_metrics {
+        UUID id "PK"
+        UUID ticket_id "FK"
+        UUID project_id "FK"
+        FLOAT conformity_score
+        VARCHAR verdict
+        FLOAT requirement_coverage
+        FLOAT code_quality
+        FLOAT architecture
+        FLOAT traceability
+        DATETIME last_audit_at
+        JSONB audit_metadata
+        DATETIME created_at
+        DATETIME updated_at
+    }
+    tickets ||--o{ ticket_metrics : references
+    projects ||--o{ ticket_metrics : references
 ```
-
 ---
 
 ## 🔌 Extension VS Code SpecKit (Nouveau)
@@ -323,14 +350,14 @@ cd Extension_GithubSpecKit
 ## 🚀 Quick Start (Guide de Lancement — pour un clone vierge)
 
 ### 1. Prérequis
-- **PostgreSQL** : Lancé avec la base `speckit` (ou `StageTal` selon votre `.env`).
+- **PostgreSQL** : Lancé avec une base vide (nom au choix, défini dans `.env` → `DATABASE_URL`).
 - **LLM Provider** : Ollama lancé (`ollama serve`) ou clés API configurées dans `.env` (Gemini, NVIDIA).
 - **Node.js 18+** et **Python 3.10+**.
 
 ### 2. Configuration `.env` — le cœur du projet (DB inchangée)
 
 > [!IMPORTANT]
-> Copiez `backend/.env` à la racine **ou** créez un nouveau `.env` à la racine. **Ne modifiez jamais `DATABASE_URL`** si `StageTal` est déjà créée.
+> Copiez `.env.example` à la racine en `.env` **ou** créez un nouveau `.env` à la racine. **Ne modifiez pas `DATABASE_URL`** après la première création de la base.
 
 <table>
 <tr>
@@ -434,13 +461,13 @@ Sans cette étape, le LLM ne sait pas qu'il doit mettre à jour le Kanban et les
 
 Vérifiez que le fichier copié contient bien `specs/{project_name}/.task_runtime/current-task.json` (pas `.task_runtime` à la racine).
 
-### 4. Environnement virtuel Python — pour `demo/` vide (obligatoire)
+### 4. Environnement virtuel Python — pour votre dossier de test vide (obligatoire)
 
 > [!IMPORTANT]
-> Dans votre dossier `demo/` vide après `git clone`, créez l'environnement avant d'installer les dépendances.
+> Dans votre dossier de test vide après `git clone` (ex: `my-workspace/`), créez l'environnement avant d'installer les dépendances.
 
 ```powershell
-# Depuis la racine du clone (demo/Extension_GithubSpecKit)
+# Depuis la racine du clone (my-workspace/Extension_GithubSpecKit)
 python -m venv venv
 .\venv\Scripts\Activate.ps1   # Windows PowerShell — sur Mac/Linux: source venv/bin/activate
 python -m pip install --upgrade pip
@@ -456,14 +483,14 @@ specify init .
 ```
 > Sans `specify init .`, les commandes `/speckit-specify` / `/speckit-plan` n'ont pas de mémoire.
 
-### 6. Dépendances Node.js — Frontend + Extension (depuis `demo`)
+### 6. Dépendances Node.js — Frontend + Extension (depuis votre dossier de test)
 
 > [!WARNING]
 > `tsc` / `cross-env` ne sont **pas** Python — ce sont des dépendances Node.js. Le `venv` Python ne les installe pas.
 
 **Frontend (obligatoire pour `AgentDocx: Start Frontend`) :**
 ```powershell
-# Depuis demo/Extension_GithubSpecKit/frontend
+# Depuis my-workspace/Extension_GithubSpecKit/frontend
 cd frontend
 npm install --legacy-peer-deps   # nécessaire à cause du conflit @nivo 0.79 vs 0.80
 # Vérifie : npm run compile ne doit plus dire 'tsc not recognized'
@@ -472,7 +499,7 @@ cd ..
 
 **Extension (seulement si vous recompilez l'extension) :**
 ```powershell
-# Depuis demo/Extension_GithubSpecKit/agentdocx-speckit
+# Depuis my-workspace/Extension_GithubSpecKit/agentdocx-speckit
 cd agentdocx-speckit
 npm install              # installe tsc, esbuild, eslint (une seule fois)
 npm run compile          # vérifie types + lint + bundle
