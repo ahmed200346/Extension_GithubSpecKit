@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import {
   Box,
   Typography,
@@ -23,11 +23,13 @@ import {
 import { DataGrid } from "@mui/x-data-grid";
 import VisibilityOutlinedIcon from "@mui/icons-material/VisibilityOutlined";
 import CloseIcon from "@mui/icons-material/Close";
+import DeleteOutlineIcon from "@mui/icons-material/DeleteOutline";
 import AssessmentIcon from "@mui/icons-material/Assessment";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import Header from "../../components/Header";
 import { tokens } from "../../theme";
 import { apiFetch, getApiBase } from "../../apiClient";
+
 const POLL_INTERVAL = 3000;
 
 const agentLabels = {
@@ -101,12 +103,15 @@ const MetricTable = ({ title, data, colors }) => {
 
   if (!data || Object.keys(data).length === 0) return null;
 
-  // Safe color references with fallbacks
-  const grey100 = colors?.grey?.['100'] || theme.palette.text.primary;
-  const grey300 = colors?.grey?.['300'] || theme.palette.text.secondary;
+  const grey100 = theme.palette.mode === "dark"
+    ? (colors?.grey?.['100'] || theme.palette.text.primary)
+    : theme.palette.text.primary;
+  const grey300 = theme.palette.mode === "dark"
+    ? (colors?.grey?.['300'] || theme.palette.text.secondary)
+    : theme.palette.text.secondary;
   const green600 = colors?.greenAccent?.['600'] || "#1da177";
   const red500 = colors?.redAccent?.['500'] || "#f44336";
-  const blue700 = colors?.blueAccent?.['700'] || "#1976d2"; // 👈 Fixed crash here
+  const blue700 = colors?.blueAccent?.['700'] || "#1976d2";
 
   return (
     <Box mb={3}>
@@ -235,7 +240,7 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  const agentEvaluations = document?.agentEvaluations || {};
+  const agentEvaluations = useMemo(() => document?.agentEvaluations || {}, [document?.agentEvaluations]);
   const globalScore = document?.kpi ?? document?.global_kpi_score;
 
   const agentScores = useMemo(() => {
@@ -286,7 +291,6 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        {/* Global Score Bar */}
         <Box mb={4}>
           <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
             <Typography variant="h5" fontWeight="600" color={theme.palette.text.primary}>
@@ -313,7 +317,6 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
           />
         </Box>
 
-        {/* Agent Cards Grid */}
         <Typography variant="h5" fontWeight="600" color={theme.palette.text.primary} mb={2}>
           Per-Agent KPI Scores
         </Typography>
@@ -402,14 +405,12 @@ const GlobalKpiPopup = ({ open, onClose, document, onSelectAgent }) => {
   );
 };
 
-
-
 const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOverview }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
 
-  const agentEvaluations = document?.agentEvaluations || {};
-  const agentKeys = Object.keys(agentEvaluations);
+  const agentEvaluations = useMemo(() => document?.agentEvaluations || {}, [document?.agentEvaluations]);
+  const agentKeys = useMemo(() => Object.keys(agentEvaluations), [agentEvaluations]);
   const globalScore = document?.kpi ?? document?.global_kpi_score;
 
   const initialIndex = agentKeys.indexOf(initialAgentKey);
@@ -420,7 +421,7 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
       const idx = agentKeys.indexOf(initialAgentKey);
       setTabIndex(idx >= 0 ? idx : 0);
     }
-  }, [open, initialAgentKey, agentKeys.join(",")]);
+  }, [open, initialAgentKey, agentKeys]);
 
   const currentAgentKey = agentKeys[tabIndex] || agentKeys[0];
   const agentData = currentAgentKey ? agentEvaluations[currentAgentKey] : null;
@@ -623,7 +624,6 @@ const AgentDetailPopup = ({ open, onClose, document, initialAgentKey, onBackToOv
   );
 };
 
-
 const Documents = () => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
@@ -631,13 +631,43 @@ const Documents = () => {
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [progress, setProgress] = useState(null);
+  const [sortModel, setSortModel] = useState([{ field: "generated_at", sort: "desc" }]);
+  const [selectedRows, setSelectedRows] = useState([]);
   const pollRef = useRef(null);
+
+  const handleSortModelChange = (newSortModel) => {
+    console.log("[SORT DEBUG] Sort model changed:", newSortModel);
+    setSortModel(newSortModel);
+  };
 
   const fetchDocuments = async () => {
     try {
       const response = await apiFetch("/pipeline/documents");
       if (response.ok) {
         const data = await response.json();
+        console.log("=== FETCH DOCUMENTS DEBUG ===");
+        console.log("[FETCH] Total documents:", data.length);
+        
+        if (data && data.length > 0) {
+          console.log("[FETCH] Sample documents (first 3):");
+          data.slice(0, 3).forEach((doc, i) => {
+            console.log(`  [${i}] ID: ${doc.id}, Name: ${doc.name}, generated_at: ${doc.generated_at}, Type: ${typeof doc.generated_at}`);
+          });
+          
+          // Sort by generated_at to show what it should look like
+          const sorted = [...data].sort((a, b) => {
+            const aDate = new Date(a.generated_at).getTime() || 0;
+            const bDate = new Date(b.generated_at).getTime() || 0;
+            return bDate - aDate; // descending
+          });
+          
+          console.log("[FETCH] After manual sort (descending):");
+          sorted.slice(0, 3).forEach((doc, i) => {
+            console.log(`  [${i}] Name: ${doc.name}, Date: ${doc.generated_at}`);
+          });
+        }
+        console.log("=============================");
+        
         setDocuments(data);
       }
     } catch (err) {
@@ -657,6 +687,51 @@ const Documents = () => {
     } catch (err) {}
   };
 
+  const handleDeleteSelected = async () => {
+    if (selectedRows.length === 0) {
+      alert("Please select rows to delete");
+      return;
+    }
+
+    const confirmMsg = `Are you sure you want to delete ${selectedRows.length} document(s)? This action cannot be undone.`;
+    if (!window.confirm(confirmMsg)) {
+      return;
+    }
+
+    try {
+      // Delete each selected document
+      const deletePromises = selectedRows.map(async (docId) => {
+        const doc = documents.find(d => d.id === docId);
+        if (!doc) return;
+
+        // Call backend delete endpoint
+        const endpoint = doc.doc_version_id 
+          ? `/pipeline/documents/${doc.doc_version_id}`
+          : `/pipeline/artifacts/${doc.id}`;
+        
+        const response = await apiFetch(endpoint, { method: "DELETE" });
+        if (!response.ok) {
+          throw new Error(`Failed to delete ${doc.name}`);
+        }
+      });
+
+      await Promise.all(deletePromises);
+
+      // Remove deleted documents from frontend state
+      setDocuments(prev => prev.filter(doc => !selectedRows.includes(doc.id)));
+      setSelectedRows([]);
+      
+      alert(`Successfully deleted ${selectedRows.length} document(s)`);
+    } catch (err) {
+      console.error("Error deleting documents:", err);
+      alert("Failed to delete some documents. Check console for details.");
+    }
+  };
+
+  useEffect(() => {
+    console.log("[SELECTED ROWS STATE] Updated:", selectedRows, "Count:", selectedRows.length);
+  }, [selectedRows]);
+
   useEffect(() => {
     fetchDocuments();
     fetchProgress();
@@ -667,399 +742,552 @@ const Documents = () => {
     return () => clearInterval(pollRef.current);
   }, []);
 
-  const handleViewPdf = async (docVersionId) => {
+  const handleViewPdf = useCallback(async (docVersionId) => {
     if (docVersionId) {
       const base = await getApiBase();
       window.open(`${base}/pipeline/pdf/${docVersionId}`, "_blank");
     }
-  };
+  }, []);
 
-  const handleOpenGlobalKpi = (row) => {
+  const handleOpenGlobalKpi = useCallback((row) => {
     setKpiView({ mode: "global", document: row, selectedAgentKey: null });
-  };
+  }, []);
 
-  const handleSelectAgent = (agentKey) => {
+  const handleSelectAgent = useCallback((agentKey) => {
     setKpiView((prev) => ({ ...prev, mode: "detail", selectedAgentKey: agentKey }));
-  };
+  }, []);
 
-  const handleBackToOverview = () => {
+  const handleBackToOverview = useCallback(() => {
     setKpiView((prev) => ({ ...prev, mode: "global", selectedAgentKey: null }));
-  };
+  }, []);
 
-  const handleCloseKpi = () => {
+  const handleCloseKpi = useCallback(() => {
     setKpiView({ mode: "closed", document: null, selectedAgentKey: null });
-  };
+  }, []);
 
-  const columns = [
-  {
-    field: "name",
-    headerName: "Document",
-    flex: 1.5,
-    minWidth: 250,
-    headerClassName: "glass-header",
-    cellClassName: "name-column--cell",
-    renderCell: ({ row }) => (
-      <Box display="flex" alignItems="center" gap={1} sx={{ minWidth: 0 }}>
-        <Typography
-          variant="body2"
-          fontWeight={600}
-          color={colors.greenAccent?.[400] || "#4cceac"}
-          sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
-        >
-          {row.name}
-        </Typography>
-      </Box>
-    ),
-  },
-  {
-    field: "projectName",
-    headerName: "Project",
-    flex: 1,
-    minWidth: 180,
-    headerClassName: "glass-header",
-    cellClassName: "glass-cell",
-    renderCell: ({ row }) => (
-      <Typography
-        variant="body2"
-        sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-      >
-        {row.projectName}
-      </Typography>
-    ),
-  },
-  {
-    field: "version",
-    headerName: "Version",
-    flex: 0.6,
-    minWidth: 100,
-    headerClassName: "glass-header",
-    cellClassName: "glass-cell",
-    align: "center",
-  },
-  {
-    field: "status",
-    headerName: "Status",
-    flex: 1.2,
-    minWidth: 140,
-    headerClassName: "glass-header",
-    renderCell: ({ row }) => {
-      const statusRaw = row.status || "";
-      const status = statusRaw.toLowerCase();
-      
-      const isRunning = progress && progress.is_running;
-      const currentAgent = progress?.current_agent;
-      const agentTimings = progress?.agent_timings || {};
-      const isDark = theme.palette.mode === "dark";
+  const columns = useMemo(
+    () => [
+      {
+        field: "name",
+        headerName: "Document Name",
+        flex: 1.2,
+        minWidth: 200,
+        headerClassName: "glass-header",
+        cellClassName: "name-column--cell",
+        renderCell: ({ row }) => (
+          <Typography
+            variant="body2"
+            sx={{ 
+              overflow: "hidden", 
+              textOverflow: "ellipsis", 
+              whiteSpace: "nowrap",
+              fontWeight: 600
+            }}
+          >
+            {row.name}
+          </Typography>
+        ),
+      },
+      {
+        field: "projectName",
+        headerName: "Project",
+        flex: 1,
+        minWidth: 180,
+        headerClassName: "glass-header",
+        cellClassName: "glass-cell",
+        renderCell: ({ row }) => (
+          <Typography
+            variant="body2"
+            sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          >
+            {row.projectName}
+          </Typography>
+        ),
+      },
+      {
+        field: "version",
+        headerName: "Version",
+        flex: 0.6,
+        minWidth: 100,
+        headerClassName: "glass-header",
+        cellClassName: "glass-cell",
+        align: "center",
+      },
+      {
+        field: "status",
+        headerName: "Status",
+        flex: 1.2,
+        minWidth: 140,
+        headerClassName: "glass-header",
+        renderCell: ({ row }) => {
+          const statusRaw = row.status || "";
+          const status = statusRaw.toLowerCase();
 
-      const agentDisplayNames = {
-        parsing: "Parsing", summary: "Summary", glossary: "Glossary",
-        diagram: "Diagram", doc_writer: "Doc Writer", layout: "Layout"
-      };
-      const agentColorsMap = {
-        parsing: colors.greenAccent?.[600] || "#2e7d32", 
-        summary: "#2196f3",
-        glossary: "#ff9800", 
-        diagram: "#e91e63",
-        doc_writer: "#9c27b0", 
-        layout: "#00bcd4"
-      };
+          const isRunning = progress && progress.is_running;
+          const currentAgent = progress?.current_agent;
+          const agentTimings = progress?.agent_timings || {};
+          const isDark = theme.palette.mode === "dark";
 
-      if (isRunning && currentAgent) {
-        const currentFileName = progress.current_file?.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, "");
-        const isThisFile = row.name === currentFileName;
-        if (isThisFile) {
-          const timing = agentTimings[currentAgent];
-          const elapsed = timing?.elapsed || 0;
-          const fmt = elapsed < 60 ? `${Math.round(elapsed)}s` : `${Math.floor(elapsed/60)}m ${Math.round(elapsed%60)}s`;
+          const agentDisplayNames = {
+            parsing: "Parsing",
+            summary: "Summary",
+            glossary: "Glossary",
+            diagram: "Diagram",
+            doc_writer: "Doc Writer",
+            layout: "Layout",
+          };
+          const agentColorsMap = {
+            parsing: colors.greenAccent?.[600] || "#2e7d32",
+            summary: "#2196f3",
+            glossary: "#ff9800",
+            diagram: "#e91e63",
+            doc_writer: "#9c27b0",
+            layout: "#00bcd4",
+          };
+
+          if (isRunning && currentAgent) {
+            const currentFileName = progress.current_file?.split(/[/\\]/).pop()?.replace(/\.[^.]+$/, "");
+            const isThisFile = row.name === currentFileName;
+            if (isThisFile) {
+              const timing = agentTimings[currentAgent];
+              const elapsed = timing?.elapsed || 0;
+              const fmt =
+                elapsed < 60
+                  ? `${Math.round(elapsed)}s`
+                  : `${Math.floor(elapsed / 60)}m ${Math.round(elapsed % 60)}s`;
+              return (
+                <Box display="flex" alignItems="center" gap={1} width="100%" p="4px 0" sx={{ minWidth: 0 }}>
+                  <Box
+                    width={8}
+                    height={8}
+                    borderRadius="50%"
+                    sx={{
+                      backgroundColor: agentColorsMap[currentAgent] || "#2196f3",
+                      animation: "pulse 1.5s infinite",
+                      "@keyframes pulse": {
+                        "0%": { opacity: 1 },
+                        "50%": { opacity: 0.4 },
+                        "100%": { opacity: 1 },
+                      },
+                    }}
+                  />
+                  <Typography
+                    fontSize="12px"
+                    fontWeight="bold"
+                    color={agentColorsMap[currentAgent] || "#2196f3"}
+                    sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                  >
+                    {agentDisplayNames[currentAgent] || currentAgent}
+                  </Typography>
+                  <Typography fontSize="11px" color={colors.grey?.[400] || "#a3a3a3"} ml="auto">
+                    {fmt}
+                  </Typography>
+                </Box>
+              );
+            }
+          }
+
+          let bgColor;
+          let textColor = "#ffffff";
+          let border = "none";
+
+          if (status === "completed" || status === "passed") {
+            bgColor = colors.greenAccent?.[600] || "#2e7d32";
+          } else if (status === "failed" || status === "error") {
+            bgColor = colors.redAccent?.[500] || "#d32f2f";
+          } else if (status === "pending") {
+            bgColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)";
+            textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)";
+            border = isDark ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(0,0,0,0.15)";
+          } else if (status === "summary") {
+            bgColor = isDark ? "rgba(33, 150, 243, 0.2)" : "rgba(33, 150, 243, 0.1)";
+            textColor = isDark ? "#64b5f6" : "#1976d2";
+          } else {
+            bgColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)";
+            textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)";
+          }
+
           return (
-            <Box display="flex" alignItems="center" gap={1} width="100%" p="4px 0" sx={{ minWidth: 0 }}>
-              <Box width={8} height={8} borderRadius="50%" sx={{
-                backgroundColor: agentColorsMap[currentAgent] || "#2196f3",
-                animation: "pulse 1.5s infinite",
-                "@keyframes pulse": { "0%": { opacity: 1 }, "50%": { opacity: 0.4 }, "100%": { opacity: 1 } }
-              }} />
-              <Typography fontSize="12px" fontWeight="bold" color={agentColorsMap[currentAgent] || "#2196f3"} sx={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {agentDisplayNames[currentAgent] || currentAgent}
-              </Typography>
-              <Typography fontSize="11px" color={colors.grey?.[400] || "#a3a3a3"} ml="auto">
-                {fmt}
+            <Box
+              width="100%"
+              m="0 auto"
+              p="6px 12px"
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              backgroundColor={bgColor}
+              borderRadius="8px"
+              sx={{ border }}
+            >
+              <Typography
+                color={textColor}
+                sx={{
+                  fontSize: "12px",
+                  fontWeight: 600,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                  textTransform: "capitalize",
+                }}
+              >
+                {statusRaw}
               </Typography>
             </Box>
           );
-        }
-      }
+        },
+      },
+      {
+        field: "kpi",
+        headerName: "KPI Score",
+        flex: 0.7,
+        minWidth: 100,
+        headerClassName: "glass-header",
+        renderCell: ({ row }) => {
+          const score = row.kpi ?? row.global_kpi_score;
+          const isDark = theme.palette.mode === "dark";
 
-      let bgColor;
-      let textColor = "#ffffff";
-      let border = "none";
+          if (score == null) {
+            return (
+              <Box
+                width="100%"
+                m="0 auto"
+                p="6px 12px"
+                display="flex"
+                justifyContent="center"
+                alignItems="center"
+                backgroundColor={isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)"}
+                borderRadius="8px"
+                border={isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)"}
+              >
+                <Typography
+                  color={isDark ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.4)"}
+                  sx={{ fontSize: "13px", fontWeight: 600 }}
+                >
+                  —
+                </Typography>
+              </Box>
+            );
+          }
 
-      if (status === "completed" || status === "passed") {
-        bgColor = colors.greenAccent?.[600] || "#2e7d32";
-      } else if (status === "failed" || status === "error") {
-        bgColor = colors.redAccent?.[500] || "#d32f2f";
-      } else if (status === "pending") {
-        // Theme-aware translucent grey
-        bgColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)";
-        textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)";
-        border = isDark ? "1px solid rgba(255,255,255,0.15)" : "1px solid rgba(0,0,0,0.15)";
-      } else if (status === "summary") {
-        // Theme-aware translucent blue
-        bgColor = isDark ? "rgba(33, 150, 243, 0.2)" : "rgba(33, 150, 243, 0.1)";
-        textColor = isDark ? "#64b5f6" : "#1976d2";
-      } else {
-        // Fallback for any other custom statuses
-        bgColor = isDark ? "rgba(255, 255, 255, 0.1)" : "rgba(0, 0, 0, 0.06)";
-        textColor = isDark ? "rgba(255, 255, 255, 0.7)" : "rgba(0, 0, 0, 0.6)";
-      }
+          let bgColor = colors.greenAccent?.[600] || "#2e7d32";
+          if (score < 80) bgColor = colors.redAccent?.[500] || "#d32f2f";
+          else if (score < 90) bgColor = "#ff9800";
 
-      return (
-        <Box 
-          width="100%" 
-          m="0 auto" 
-          p="6px 12px" 
-          display="flex" 
-          justifyContent="center" 
-          alignItems="center"
-          backgroundColor={bgColor} 
-          borderRadius="8px" 
-          sx={{ border }}
-        >
-          <Typography 
-            color={textColor}
-            sx={{ fontSize: "12px", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", textTransform: "capitalize" }}
-          >
-            {statusRaw}
-          </Typography>
-        </Box>
-      );
-    },
-  },
-  {
-    field: "kpi",
-    headerName: "KPI Score",
-    flex: 0.7,
-    minWidth: 100,
-    headerClassName: "glass-header",
-    renderCell: ({ row }) => {
-      const score = row.kpi ?? row.global_kpi_score;
-      const isDark = theme.palette.mode === "dark";
-
-      if (score == null) {
-        return (
-          <Box
-            width="100%"
-            m="0 auto"
-            p="6px 12px"
-            display="flex"
-            justifyContent="center"
-            alignItems="center"
-            backgroundColor={isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)"}
-            borderRadius="8px"
-            border={isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)"}
-          >
-            <Typography 
-              color={isDark ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.4)"} 
-              sx={{ fontSize: "13px", fontWeight: 600 }}
+          return (
+            <Box
+              width="100%"
+              m="0 auto"
+              p="6px 12px"
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              backgroundColor={bgColor}
+              borderRadius="8px"
+              sx={{
+                cursor: "pointer",
+                boxShadow: `0 2px 8px ${bgColor}44`,
+                transition: "all 0.2s ease",
+                "&:hover": {
+                  transform: "scale(1.05)",
+                  boxShadow: `0 4px 12px ${bgColor}66`,
+                },
+              }}
+              onClick={() => handleOpenGlobalKpi(row)}
             >
-              —
-            </Typography>
-          </Box>
+              <AssessmentIcon sx={{ mr: "5px", fontSize: "16px", color: "#ffffff" }} />
+              <Typography color="#ffffff" sx={{ fontWeight: 600, fontSize: "12px" }}>
+                {score}%
+              </Typography>
+            </Box>
+          );
+        },
+      },
+      {
+        field: "viewer",
+        headerName: "PDF",
+        flex: 0.6,
+        minWidth: 90,
+        headerClassName: "glass-header",
+        renderCell: ({ row }) => {
+          const hasPdf = Boolean(row.doc_version_id || row.status?.toLowerCase() === "completed");
+          const isDark = theme.palette.mode === "dark";
+
+          const buttonBg = hasPdf
+            ? colors.greenAccent?.[600] || "#2e7d32"
+            : isDark
+            ? "rgba(255, 255, 255, 0.05)"
+            : "rgba(0, 0, 0, 0.04)";
+          const textColor = hasPdf
+            ? "#ffffff"
+            : isDark
+            ? "rgba(255, 255, 255, 0.4)"
+            : "rgba(0, 0, 0, 0.4)";
+          const borderColor = hasPdf
+            ? "none"
+            : isDark
+            ? "1px solid rgba(255, 255, 255, 0.1)"
+            : "1px solid rgba(0, 0, 0, 0.1)";
+
+          return (
+            <Box
+              width="100%"
+              m="0 auto"
+              p="6px 12px"
+              display="flex"
+              justifyContent="center"
+              alignItems="center"
+              backgroundColor={buttonBg}
+              borderRadius="8px"
+              border={borderColor}
+              sx={{
+                cursor: hasPdf ? "pointer" : "default",
+                transition: "all 0.2s ease",
+                "&:hover": hasPdf
+                  ? {
+                      transform: "scale(1.05)",
+                      boxShadow: `0 4px 12px ${buttonBg}66`,
+                    }
+                  : {},
+              }}
+              onClick={() => hasPdf && handleViewPdf(row.doc_version_id || row.id)}
+            >
+              <VisibilityOutlinedIcon sx={{ fontSize: "16px", color: textColor }} />
+              <Typography color={textColor} sx={{ ml: "5px", fontWeight: 600, fontSize: "12px" }}>
+                {hasPdf ? "Open" : "—"}
+              </Typography>
+            </Box>
+          );
+        },
+      },
+{
+  field: "generated_at",
+  headerName: "Generated",
+  flex: 1,
+  minWidth: 180,
+  headerClassName: "glass-header",
+  sortable: true,
+  valueGetter: (value, row, column, apiRef) => {
+    // Try different ways to access the row
+    const rowData = row || value?.row || column?.row;
+    const timestamp = rowData?.generated_at || rowData?.created_at;
+    
+    if (!timestamp) return 0;
+    
+    // Convert ISO string to milliseconds for proper numeric sorting
+    const date = new Date(timestamp);
+    const ms = isNaN(date.getTime()) ? 0 : date.getTime();
+    
+    return ms;
+  },
+  renderCell: (params) => {
+    const isDark = theme.palette.mode === "dark";
+    // Get the original timestamp from the row, not the numeric value
+    const timestamp = params?.row?.generated_at || params?.row?.created_at;
+
+    if (!timestamp) {
+      return (
+        <Typography
+          color={isDark ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.4)"}
+          sx={{ fontSize: "13px" }}
+        >
+          —
+        </Typography>
+      );
+    }
+
+    try {
+      const date = new Date(timestamp);
+      if (isNaN(date.getTime())) {
+        return (
+          <Typography
+            color={isDark ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.4)"}
+            sx={{ fontSize: "13px" }}
+          >
+            Invalid date
+          </Typography>
         );
       }
 
-      let bgColor = colors.greenAccent?.[600] || "#2e7d32";
-      if (score < 80) bgColor = colors.redAccent?.[500] || "#d32f2f";
-      else if (score < 90) bgColor = "#ff9800";
+      const formatted = date.toLocaleString("en-US", {
+        year: "numeric",
+        month: "short",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      });
 
       return (
-        <Box
-          width="100%"
-          m="0 auto"
-          p="6px 12px"
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          backgroundColor={bgColor}
-          borderRadius="8px"
+        <Typography
+          variant="body2"
           sx={{
-            cursor: "pointer",
-            boxShadow: `0 2px 8px ${bgColor}44`,
-            transition: "all 0.2s ease",
-            "&:hover": {
-              transform: "scale(1.05)",
-              boxShadow: `0 4px 12px ${bgColor}66`,
-            },
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            color: isDark ? "#cbd5e1" : "#333333",
           }}
-          onClick={() => handleOpenGlobalKpi?.(row)}
+          title={formatted}
         >
-          <AssessmentIcon sx={{ mr: "5px", fontSize: "16px", color: "#ffffff" }} />
-          <Typography color="#ffffff" sx={{ fontWeight: 600, fontSize: "12px" }}>
-            {score}%
-          </Typography>
-        </Box>
+          {formatted}
+        </Typography>
       );
-    },
-  },
-  {
-    field: "viewer",
-    headerName: "PDF",
-    flex: 0.6,
-    minWidth: 90,
-    headerClassName: "glass-header",
-    renderCell: ({ row }) => {
-      const hasPdf = Boolean(row.doc_version_id || row.status?.toLowerCase() === "completed");
-      const isDark = theme.palette.mode === "dark";
-      
-      const buttonBg = hasPdf ? (colors.greenAccent?.[600] || "#2e7d32") : (isDark ? "rgba(255, 255, 255, 0.05)" : "rgba(0, 0, 0, 0.04)");
-      const textColor = hasPdf ? "#ffffff" : (isDark ? "rgba(255, 255, 255, 0.4)" : "rgba(0, 0, 0, 0.4)");
-      const borderColor = hasPdf ? "none" : (isDark ? "1px solid rgba(255, 255, 255, 0.1)" : "1px solid rgba(0, 0, 0, 0.1)");
-
+    } catch (err) {
       return (
-        <Box
-          width="100%"
-          m="0 auto"
-          p="6px 12px"
-          display="flex"
-          justifyContent="center"
-          alignItems="center"
-          backgroundColor={buttonBg}
-          borderRadius="8px"
-          border={borderColor}
-          sx={{
-            cursor: hasPdf ? "pointer" : "default",
-            transition: "all 0.2s ease",
-            "&:hover": hasPdf ? {
-              transform: "scale(1.05)",
-              boxShadow: `0 4px 12px ${buttonBg}66`,
-            } : {},
-          }}
-          onClick={() => hasPdf && handleViewPdf?.(row.doc_version_id || row.id)}
+        <Typography
+          color={isDark ? "rgba(255, 255, 255, 0.5)" : "rgba(0, 0, 0, 0.4)"}
+          sx={{ fontSize: "13px" }}
         >
-          <VisibilityOutlinedIcon sx={{ fontSize: "16px", color: textColor }} />
-          <Typography 
-            color={textColor} 
-            sx={{ ml: "5px", fontWeight: 600, fontSize: "12px" }}
-          >
-            {hasPdf ? "Open" : "—"}
-          </Typography>
-        </Box>
+          Error
+        </Typography>
       );
-    },
+    }
   },
-];
+},
+    ],
+    [theme.palette.mode, colors, progress, handleOpenGlobalKpi, handleViewPdf]
+  );
 
   return (
     <Box m="20px">
-  <Header title="DOCUMENTS" subtitle="Managing the Documents" />
-  <Box
-    m="40px 0 0 0"
-    height="75vh"
-    sx={{
-      "& .MuiDataGrid-root": {
-        border: "none",
-        borderRadius: "16px",
-        overflow: "hidden",
-        backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
-      },
-      "& .MuiDataGrid-cell": {
-        borderBottom: theme.palette.mode === "dark"
-          ? "1px solid rgba(255, 255, 255, 0.05)"
-          : "1px solid rgba(0, 0, 0, 0.05)",
-        color: theme.palette.mode === "dark" ? "#e0e0e0" : "#141414",
-        fontSize: "14px",
-        fontWeight: 500,
-      },
-      "& .name-column--cell": {
-        color: `${colors.greenAccent?.[400] || "#4cceac"} !important`,
-        fontWeight: 600,
-      },
-      "& .glass-cell": {
-        color: theme.palette.mode === "dark" ? "#cbd5e1" : "#333333",
-        fontWeight: 500,
-      },
-      "& .glass-header .MuiDataGrid-columnHeaderTitle": {
-        color: `${theme.palette.mode === "dark" ? "#ffffff" : "#141414"} !important`,
-        fontWeight: 700,
-      },
-      "& .MuiDataGrid-columnHeaders": {
-        backgroundColor: theme.palette.mode === "dark" ? "#1f2a40" : "#f2f0f0",
-        borderBottom: theme.palette.mode === "dark"
-          ? "1px solid rgba(255, 255, 255, 0.08)"
-          : "1px solid rgba(0, 0, 0, 0.08)",
-        "& .MuiDataGrid-columnHeader": {
-          color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
-          fontWeight: 600,
-          fontSize: "12px",
-          letterSpacing: "0.03em",
-          textTransform: "uppercase",
-        },
-      },
-      "& .MuiDataGrid-virtualScroller": {
-        // Deep navy background replaces the light grey block
-        backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
-      },
-      "& .MuiDataGrid-footerContainer": {
-        borderTop: theme.palette.mode === "dark"
-          ? "1px solid rgba(255, 255, 255, 0.08)"
-          : "1px solid rgba(0, 0, 0, 0.08)",
-        backgroundColor: theme.palette.mode === "dark" ? "#1f2a40" : "#f2f0f0",
-        color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
-        "& .MuiTablePagination-root": {
-          color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
-        },
-        "& .MuiSvgIcon-root": {
-          color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
-        },
-      },
-      "& .MuiCheckbox-root": {
-        color: `${colors.greenAccent?.[400] || "#4cceac"} !important`,
-      },
-      "& .MuiDataGrid-row": {
-        backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
-        "&:hover": {
-          backgroundColor: theme.palette.mode === "dark"
-            ? "#1f2a40 !important"
-            : "rgba(0, 0, 0, 0.04) !important",
-        },
-      },
-    }}
-  >
-    <DataGrid
-      checkboxSelection
-      rows={documents}
-      columns={columns}
-      loading={loading}
-      getRowId={(row) => row.id}
-      autoHeight={false}
-      disableRowSelectionOnClick={false}
-      sx={{
-        border: "none",
-        "& .MuiDataGrid-main": {
-          backgroundColor: "transparent", 
-        },
-        "& .MuiDataGrid-filler": {
-          backgroundColor: "transparent", 
-        }
-      }}
-    />
-  </Box>
+      <Box display="flex" justifyContent="space-between" alignItems="center">
+        <Header title="DOCUMENTS" subtitle="Managing the Documents" />
+        <Button
+          variant="contained"
+          color="error"
+          disabled={selectedRows.length === 0}
+          onClick={handleDeleteSelected}
+          startIcon={<DeleteOutlineIcon />}
+          sx={{
+            height: "40px",
+            fontWeight: 600,
+            borderRadius: "8px",
+            textTransform: "none",
+            boxShadow: selectedRows.length > 0 ? "0 4px 12px rgba(244, 67, 54, 0.3)" : "none",
+            "&:hover": {
+              boxShadow: selectedRows.length > 0 ? "0 6px 16px rgba(244, 67, 54, 0.4)" : "none",
+            },
+          }}
+        >
+          Delete Selected ({selectedRows.length})
+        </Button>
+      </Box>
+      <Box
+        m="40px 0 0 0"
+        height="75vh"
+        sx={{
+          "& .MuiDataGrid-root": {
+            border: "none",
+            borderRadius: "16px",
+            overflow: "hidden",
+            backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
+          },
+          "& .MuiDataGrid-cell": {
+            borderBottom: theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.05)"
+              : "1px solid rgba(0, 0, 0, 0.05)",
+            color: theme.palette.mode === "dark" ? "#e0e0e0" : "#141414",
+            fontSize: "14px",
+            fontWeight: 500,
+          },
+          "& .name-column--cell": {
+            color: `${colors.greenAccent?.[400] || "#4cceac"} !important`,
+            fontWeight: 600,
+          },
+          "& .glass-cell": {
+            color: theme.palette.mode === "dark" ? "#cbd5e1" : "#333333",
+            fontWeight: 500,
+          },
+          "& .glass-header .MuiDataGrid-columnHeaderTitle": {
+            color: `${theme.palette.mode === "dark" ? "#ffffff" : "#141414"} !important`,
+            fontWeight: 700,
+          },
+          "& .MuiDataGrid-columnHeaders": {
+            backgroundColor: theme.palette.mode === "dark" ? "#1f2a40" : "#f2f0f0",
+            borderBottom: theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.08)"
+              : "1px solid rgba(0, 0, 0, 0.08)",
+            "& .MuiDataGrid-columnHeader": {
+              color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+              fontWeight: 600,
+              fontSize: "12px",
+              letterSpacing: "0.03em",
+              textTransform: "uppercase",
+            },
+          },
+          "& .MuiDataGrid-virtualScroller": {
+            backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
+          },
+          "& .MuiDataGrid-footerContainer": {
+            borderTop: theme.palette.mode === "dark"
+              ? "1px solid rgba(255, 255, 255, 0.08)"
+              : "1px solid rgba(0, 0, 0, 0.08)",
+            backgroundColor: theme.palette.mode === "dark" ? "#1f2a40" : "#f2f0f0",
+            color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+            "& .MuiTablePagination-root": {
+              color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+            },
+            "& .MuiSvgIcon-root": {
+              color: theme.palette.mode === "dark" ? "#ffffff" : "#141414",
+            },
+          },
+          "& .MuiCheckbox-root": {
+            color: `${colors.greenAccent?.[400] || "#4cceac"} !important`,
+          },
+          "& .MuiDataGrid-row": {
+            backgroundColor: theme.palette.mode === "dark" ? "#141b2d" : "#ffffff",
+            "&:hover": {
+              backgroundColor: theme.palette.mode === "dark"
+                ? "#1f2a40 !important"
+                : "rgba(0, 0, 0, 0.04) !important",
+            },
+          },
+        }}
+      >
+        <DataGrid
+          checkboxSelection
+          rows={documents}
+          columns={columns}
+          loading={loading}
+          getRowId={(row) => row.id}
+          autoHeight={false}
+          disableRowSelectionOnClick={false}
+          sortModel={sortModel}
+          onSortModelChange={handleSortModelChange}
+          selectionModel={selectedRows}
+          onSelectionModelChange={(newSelection) => {
+            console.log("[SELECTION DEBUG] Type:", typeof newSelection, "Value:", newSelection);
+            console.log("[SELECTION DEBUG] Is Array?", Array.isArray(newSelection));
+            setSelectedRows(newSelection);
+          }}
+          sx={{
+            border: "none",
+            "& .MuiDataGrid-main": {
+              backgroundColor: "transparent", 
+            },
+            "& .MuiDataGrid-filler": {
+              backgroundColor: "transparent", 
+            }
+          }}
+        />
+      </Box>
 
-  <GlobalKpiPopup 
-    open={kpiView.mode === "global"} 
-    onClose={handleCloseKpi} 
-    document={kpiView.document} 
-    onSelectAgent={handleSelectAgent} 
-  />
-  
-  <AgentDetailPopup 
-    open={kpiView.mode === "detail"} 
-    onClose={handleCloseKpi} 
-    document={kpiView.document} 
-    initialAgentKey={kpiView.selectedAgentKey} 
-    onBackToOverview={handleBackToOverview} 
-  />
-</Box>
-  ); // 👇 3. CLOSE THE RETURN STATEMENT 👇
+      <GlobalKpiPopup 
+        open={kpiView.mode === "global"} 
+        onClose={handleCloseKpi} 
+        document={kpiView.document} 
+        onSelectAgent={handleSelectAgent} 
+      />
+      
+      <AgentDetailPopup 
+        open={kpiView.mode === "detail"} 
+        onClose={handleCloseKpi} 
+        document={kpiView.document} 
+        initialAgentKey={kpiView.selectedAgentKey} 
+        onBackToOverview={handleBackToOverview} 
+      />
+    </Box>
+  );
 };
 
 export default Documents;

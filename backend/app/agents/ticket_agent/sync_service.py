@@ -105,7 +105,7 @@ class SyncService:
             return result
 
         try:
-            raw = self.current_task_file.read_text(encoding="utf-8")
+            raw = self.current_task_file.read_text(encoding="utf-8-sig")
             result["raw_content"] = raw
             logger.info(f"[SyncService] Raw file content:\n{raw}")
             data = json.loads(raw)
@@ -316,7 +316,7 @@ class SyncService:
             current_task_data = None
             if self.current_task_file.exists():
                 try:
-                    raw = self.current_task_file.read_text(encoding="utf-8")
+                    raw = self.current_task_file.read_text(encoding="utf-8-sig")
                     current_task_data = json.loads(raw)
                     result["current_task_json"] = current_task_data
                     logger.info(f"[SyncService] current-task.json loaded: {current_task_data.get('task_id')}")
@@ -602,32 +602,16 @@ class SyncService:
 
             # Run the audit
             from app.agents.ticket_agent.auditor import Auditor
-            from app.models import TicketEvent, TicketEventType, AuthorType
 
-            auditor = Auditor()
+            auditor = Auditor(sync_service=self, threshold=75.0)
             
-            audit_result = await auditor.audit_task_completion(
+            audit_result = await auditor.auto_audit_on_done(
                 task_id=task_id,
-                git_diff=git_diff,
-                changed_files=[ticket.source_file_path] if ticket.source_file_path else [],
-                criteria=["requirements", "code_quality", "architecture", "traceability"],
-                spec_documents={},
-                commit_messages=[],
-                branch_name="",
-                task_title=ticket.title,
-                task_description=ticket.description or ""
+                project_path=str(self.project_root),
             )
 
             # Store audit result as ticket event
             if audit_result and not audit_result.get("error"):
-                event = TicketEvent(
-                    ticket_id=ticket.id,
-                    event_type=TicketEventType.audit_completed,
-                    author_type=AuthorType.agent,
-                    event_metadata=audit_result
-                )
-                db.add(event)
-                db.commit()
                 logger.info(f"[SyncService] Audit completed for {task_id}: {audit_result.get('verdict', 'N/A')}")
             else:
                 logger.warning(f"[SyncService] Audit failed for {task_id}: {audit_result.get('error', 'Unknown')}")

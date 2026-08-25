@@ -114,15 +114,17 @@ class StructureWatcher(BaseWatcher):
         debounce_ms: int = 1000,
         on_structure_change: Optional[Callable[[dict], Awaitable[None]]] = None
     ):
-        # Watch the specs directory (parent of tasks.md)
-        specs_path = project_path / "specs"
-        super().__init__(specs_path, debounce_ms, name="StructureWatcher")
+        # project_path is already specs/{project_name} (ex: specs/001-course-management-system)
+        # tasks.md est directement sous project_path/tasks.md, pas sous project_path/specs/tasks.md
+        # Speckit génère specs/ à la racine, puis specs/{project}/spec.md, tasks.md, plan.md, etc.
+        # On surveille donc directement project_path
+        super().__init__(project_path, debounce_ms, name="StructureWatcher")
 
         self.project_path = project_path
         self.on_structure_change = on_structure_change
         self._last_tasks_hash: Optional[str] = None
 
-        logger.info(f"[StructureWatcher] Monitoring specs/ for tasks.md changes")
+        logger.info(f"[StructureWatcher] Monitoring {project_path} for tasks.md changes")
 
     def _ensure_task_runtime(self) -> None:
         """Create .task_runtime/ directory if it doesn't exist."""

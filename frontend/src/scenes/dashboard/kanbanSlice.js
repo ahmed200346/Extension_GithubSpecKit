@@ -101,6 +101,32 @@ export const fetchDocPdf = createAsyncThunk(
   }
 );
 
+export const fetchProjectMetrics = createAsyncThunk(
+  "kanban/fetchProjectMetrics",
+  async (projectName) => {
+    const response = await apiRequest("get", `/ticket-agent/metrics?project_name=${projectName}`);
+    return response.data;
+  }
+);
+
+export const fetchTicketMetrics = createAsyncThunk(
+  "kanban/fetchTicketMetrics",
+  async (ticketId) => {
+    const response = await apiRequest("get", `/tickets/${ticketId}/metrics`);
+    return response.data;
+  }
+);
+
+export const writeCurrentTask = createAsyncThunk(
+  "kanban/writeCurrentTask",
+  async ({ taskId, status, projectName, tasksMap }) => {
+    const response = await apiRequest("post", "/ticket-agent/write-current-task", {
+      data: { task_id: taskId, status, project_name: projectName, tasks_map: tasksMap }
+    });
+    return response.data;
+  }
+);
+
 const initialState = {
   tickets: [],
   todoTickets: [],
@@ -115,11 +141,24 @@ const initialState = {
   projectName: "",
   projects: [],
   taskState: {
-    current_task: 0,
+    current_task: "",
+    current_task_index: 0,
     total_tasks: 0,
     task_status: {},
     started_at: null,
     updated_at: null
+  },
+  projectMetrics: {
+    project_name: "",
+    total_tickets: 0,
+    done_tickets: 0,
+    in_progress_tickets: 0,
+    todo_tickets: 0,
+    overall_progress_pct: 0,
+    avg_conformity_score: null,
+    tickets_with_audit: 0,
+    tickets_by_verdict: {},
+    tickets_metrics: [],
   },
 };
 
@@ -136,7 +175,8 @@ const kanbanSlice = createSlice({
     state.doneTickets = [];
     state.progress = { total: 0, done: 0, in_progress: 0, todo: 0, progress_pct: 0 };
     state.taskState = {
-      current_task: 0,
+      current_task: "",
+      current_task_index: 0,
       total_tasks: 0,
       task_status: {},
       started_at: null,
@@ -212,9 +252,9 @@ const kanbanSlice = createSlice({
         if (action.payload.projectName !== state.projectName) return;
         state.loading = false;
         state.tickets = action.payload.tickets;
-        state.todoTickets = action.payload.tickets.filter(t => t.status === "todo").sort((a, b) => a.position - b.position);
-        state.inProgressTickets = action.payload.tickets.filter(t => t.status === "in_progress").sort((a, b) => a.position - b.position);
-        state.doneTickets = action.payload.tickets.filter(t => t.status === "done").sort((a, b) => a.position - b.position);
+        state.todoTickets = action.payload.tickets.filter(t => t.status === "todo").sort((a, b) => (a.position || 0) - (b.position || 0));
+        state.inProgressTickets = action.payload.tickets.filter(t => t.status === "in_progress").sort((a, b) => (a.position || 0) - (b.position || 0));
+        state.doneTickets = action.payload.tickets.filter(t => t.status === "done").sort((a, b) => (a.position || 0) - (b.position || 0));
       })
       .addCase(fetchTickets.rejected, (state, action) => {
         state.loading = false;
@@ -252,16 +292,27 @@ const kanbanSlice = createSlice({
         if (action.payload.projectName !== state.projectName) return;
         state.taskState = action.payload.taskState;
       })
-      .addCase(ingestTasks.fulfilled, (state, action) => {
-        if (action.payload.projectName !== state.projectName) return;
-        state.tickets = action.payload.tickets;
-        state.todoTickets = action.payload.tickets.filter(t => t.status === "todo").sort((a, b) => a.position - b.position);
-        state.inProgressTickets = action.payload.tickets.filter(t => t.status === "in_progress").sort((a, b) => a.position - b.position);
-        state.doneTickets = action.payload.tickets.filter(t => t.status === "done").sort((a, b) => a.position - b.position);
+      // ingestTasks: do NOT update ticket state from the ingest response.
+      // The ingest endpoint re-parses the markdown file and would overwrite
+      // statuses that were set by current-task.json (e.g. in_progress → todo
+      // if the checkbox is still unchecked in tasks.md).
+      // Instead we rely on the fetchTickets poll (every 5s) to pull the
+      // authoritative state straight from the DB.
+      .addCase(ingestTasks.fulfilled, (_state, _action) => {
+        // intentionally left blank — fetchTickets handles state refresh
       })
       .addCase(fetchProgress.fulfilled, (state, action) => {
         if (action.payload.projectName !== state.projectName) return;
         state.progress = action.payload.progress;
+      })
+      .addCase(fetchProjectMetrics.fulfilled, (state, action) => {
+        if (action.payload.project_name !== state.projectName) return;
+        state.projectMetrics = action.payload;
+      })
+      .addCase(fetchTicketMetrics.fulfilled, (state, action) => {
+        if (state.selectedTicket?.id === action.payload.task_id) {
+          state.selectedTicket.metrics = action.payload;
+        }
       });
   },
 });

@@ -1,0 +1,70 @@
+﻿# Ticket Agent Protocol (MANDATORY for Cursor AI)
+
+You are acting as a **Universal Ticket Agent**. Your primary responsibility, in addition to coding, is to sync your progress to a live Kanban board by maintaining a specific JSON state file.
+
+**You MUST follow this protocol for EVERY task you work on. No exceptions.**
+
+---
+
+## ðŸ›  The Protocol
+
+### 1. Target File
+Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (where `{project_name}` is the exact folder name under `specs/`)
+
+### 2. Trigger Points
+- **STARTING a task**: Immediately write `status: "in_progress"`
+- **COMPLETING a task**: Immediately write `status: "done"`
+- **EVERY WRITE**: You MUST provide the **FULL `tasks` map** (all task IDs $\rightarrow$ current status) to allow backend recovery.
+
+### 3. Required JSON Format
+```json
+{
+  "task_id": "T004",
+  "file": "src/routes.py",
+  "status": "in_progress",
+  "project_name": "my-project",
+  "updated_at": "2026-08-12T10:30:00.000Z",
+  "tasks": {
+    "T001": "done",
+    "T002": "done",
+    "T003": "done",
+    "T004": "in_progress",
+    "T005": "todo"
+  }
+}
+```
+
+### 4. Field Constraints
+- `task_id`: Must match the ID in `tasks.md` (e.g., `T001`).
+- `file`: Relative path of the file you are currently modifying.
+- `status`: Only `"in_progress"` or `"done"`.
+- `project_name`: Exact name from `.task_runtime/config.json` or the `specs/` folder name.
+- `updated_at`: ISO8601 UTC timestamp.
+- `tasks`: A complete dictionary of ALL tasks found in `tasks.md` with their current status.
+
+---
+
+## ðŸš€ Workflow Example
+
+**User:** "Implement T012: Add database migrations"
+
+1. **Pre-Coding**: Write to `specs/{project_name}/.task_runtime/current-task.json` with `status: "in_progress"` and the full task map.
+2. **Execution**: Perform the coding, testing, and verification.
+3. **Post-Coding**: Write to `specs/{project_name}/.task_runtime/current-task.json` with `status: "done"` and updated task map.
+
+---
+
+## âœ… Compliance Checklist
+Before concluding any response, verify:
+- [ ] Did I write to `current-task.json` at the start AND end?
+- [ ] Is the `project_name` correct?
+- [ ] Did I include the **FULL** `tasks` map?
+- [ ] Is the JSON syntax valid?
+
+---
+
+**This protocol is an implementation of the `/prompts/universal-contract.md`. Failure to follow this results in a broken Kanban board sync.**
+
+---
+
+## End of Injection

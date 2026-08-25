@@ -150,6 +150,7 @@ class TicketMetricsResponse(BaseModel):
     last_audit_at: Optional[str] = None
     progress_pct: float
     status: str
+    agent_metrics: Optional[Dict[str, Any]] = None
 
 
 class ProjectMetricsResponse(BaseModel):
@@ -551,40 +552,9 @@ async def full_state_refresh():
     if not manager:
         raise HTTPException(status_code=503, detail="Ticket Manager not initialized")
 
-    result = manager.full_state_refresh()
+    result = await manager.full_state_refresh()
     if result.get("error"):
         raise HTTPException(status_code=500, detail=result["error"])
-    return result
-
-
-@router.post("/ticket-agent/audit")
-async def audit_task(
-    request: AuditRequest,
-):
-    """
-    POST /ticket-agent/audit
-    Triggers conformity audit for a completed task.
-    Called when ticket transitions to 'done' (from frontend or webhook).
-    Returns conformity score and verdict.
-    """
-    manager = get_ticket_manager()
-    if not manager:
-        raise HTTPException(status_code=503, detail="Ticket Manager not initialized")
-
-    if not manager.enable_auditor:
-        raise HTTPException(status_code=400, detail="Auditor not enabled")
-
-    result = await manager.audit_task_completion(
-        task_id=request.task_id,
-        git_diff=request.git_diff,
-        changed_files=request.changed_files,
-        criteria=request.criteria,
-        spec_documents=request.spec_documents,
-        commit_messages=request.commit_messages,
-        branch_name=request.branch_name or "",
-        task_title=request.task_title or "",
-        task_description=request.task_description or "",
-    )
     return result
 
 
@@ -640,13 +610,13 @@ async def write_current_task(request: WriteCurrentTaskRequest):
     from app.config import settings
     from app.utils.path_builder import BASE_DIR
 
-    # Determine project path - use per-project .task_runtime/ under specs/
+    # Determine project path - use per-project .task_runtime/ under specs/ only
     project_name = request.project_name
-    if project_name:
-        project_specs_dir = BASE_DIR / "specs" / project_name
-        task_runtime_dir = project_specs_dir / ".task_runtime"
-    else:
-        task_runtime_dir = BASE_DIR / ".task_runtime"
+    if not project_name:
+        raise HTTPException(status_code=400, detail="project_name is required")
+    
+    project_specs_dir = BASE_DIR / "specs" / project_name
+    task_runtime_dir = project_specs_dir / ".task_runtime"
     task_runtime_dir.mkdir(parents=True, exist_ok=True)
     current_task_file = task_runtime_dir / "current-task.json"
 
@@ -654,7 +624,7 @@ async def write_current_task(request: WriteCurrentTaskRequest):
     data = {}
     if current_task_file.exists():
         try:
-            data = json.loads(current_task_file.read_text(encoding="utf-8"))
+            data = json.loads(current_task_file.read_text(encoding="utf-8-sig"))
         except Exception:
             data = {}
 

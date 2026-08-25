@@ -67,6 +67,10 @@ class Settings(BaseSettings):
     # Path to the project being worked on (where current-task.json should be watched)
     TARGET_PROJECT_PATH: Optional[str] = None
 
+    # Auditor configuration
+    ENABLE_AUDITOR: bool = True
+    AUDITOR_THRESHOLD: float = 75.0
+
     model_config = SettingsConfigDict(
         env_file=str(ENV_PATH),  # Convertir en string pour compatibilité
         env_file_encoding="utf-8",

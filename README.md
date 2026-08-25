@@ -1,6 +1,32 @@
-# 🚀 Spec Kit
+# 🚀 Spec Kit — AgentDocx Ticket Manager
 
-**Spec Kit** est un pipeline multi-agents avancé conçu pour la génération, l'enrichissement et la validation automatisée de spécifications d'architecture logicielle. Il transforme des documents techniques bruts en livrables structurés, certifiés et professionnels.
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.0.3-blue?style=for-the-badge" alt="version" />
+  <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="python" />
+  <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="fastapi" />
+  <img src="https://img.shields.io/badge/PostgreSQL-StageTal-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="postgres" />
+  <img src="https://img.shields.io/badge/license-MIT-green?style=for-the-badge" alt="license" />
+</p>
+
+<p align="center">
+  <b>Pipeline multi-agents</b> • <b>Ticket Agent temps réel</b> • <b>Kanban autonome</b><br/>
+  <i>Transforme des specs Markdown brutes en livrables certifiés avec traçabilité complète</i>
+</p>
+
+---
+
+<details>
+<summary>📑 Table des matières</summary>
+
+- [Architecture Générale](#-architecture-générale-du-projet)
+- [Cœur Agentique](#-le-cœur-agentique--pipeline--ressources-de-guidage)
+- [Frontend](#️-interface-frontend)
+- [Agent Ticket](#-agent-ticket--universal-ticket-agent-kanban-sync-temps-réel)
+- [Traçabilité BDD](#️-traçabilité--versioning-bdd-postgresql)
+- [Extension VS Code](#-extension-vs-code-speckit-nouveau)
+- [Quick Start](#-quick-start-guide-de-lancement--pour-un-clone-vierge)
+
+</details>
 
 ---
 
@@ -9,11 +35,26 @@
 Le projet adopte une architecture modulaire où l'IA n'est pas seulement un "chat", mais un ensemble d'agents spécialisés orchestrés comme un flux de travail industriel.
 
 ### 📂 Arborescence & Rôles
-- **`/backend`** : ⚙️ **Le Moteur**. Propulsé par **FastAPI** et **LangGraph**. Il contient la logique d'orchestration, les services d'agents et la gestion des providers LLM.
-  - 📘 *Architecture Technique* : Consultez le [README du backend](backend/README.md) pour les détails sur le `llm_client` et les services.
-- **`/frontend`** : 🖥️ **Le Poste de Contrôle**. Dashboard **React** pour le monitoring temps réel, la visualisation des KPIs et la gestion des documents.
-- **`/specs`** : 📄 **La Source**. Dossier surveillé contenant les spécifications Markdown brutes et le fichier `tasks.md`.
+- **`/backend`** : ⚙️ **Le Moteur**. Propulsé par **FastAPI** et **LangGraph**. Il contient la logique d'orchestration, les services d'agents, la gestion des providers LLM et le **Ticket Agent** (`app/agents/ticket_agent/`).
+  - 📘 *Architecture Technique* : Consultez le [README du backend](backend/README.md) pour les détails sur le `llm_client`, les services et l'architecture du Ticket Agent.
+- **`/frontend`** : 🖥️ **Le Poste de Contrôle**. Dashboard **React** pour le monitoring temps réel, la visualisation des KPIs, la gestion des documents et le **Kanban Ticket Board** (polling `task-state` + WebSocket).
+- **`/specs`** : 📄 **La Source**. Dossier surveillé contenant les spécifications Markdown brutes, le fichier `tasks.md` et **`.task_runtime/current-task.json` par projet** (`specs/{project}/.task_runtime/` — source unique pour le Ticket Agent).
 - **`/outputs`** : 📦 **L'Usine**. Stockage centralisé des livrables (JSON, Markdown enrichis, PDF versionnés).
+- **`/prompts`** : 📝 **Le Contrat**. `universal-contract.md` + adapters (`claude`, `codex`, `copilot`, `cursor`, `windsurf`) qui guident le LLM pour agir en tant que Ticket Agent.
+- **`/agentdocx-speckit`** : 🧩 **L'Extension**. VS Code extension (`src/extension.ts`, `scripts/python/start_server.py`) qui auto-crée les `.task_runtime` par projet et lance le Ticket Manager.
+
+---
+
+## 📚 Documentation Détaillée par Module
+
+> [!NOTE]
+> Ce README racine donne une vue d'ensemble. Pour approfondir chaque partie, consultez :
+
+| Module | README détaillé | Contenu |
+|---|---|---|
+| **🧩 Extension VS Code** | [`agentdocx-speckit/README.md`](agentdocx-speckit/README.md) | Auto-init `.task_runtime`, Dual Watchers, `start_server.py`, `spec_watcher.py`, packaging `0.0.3` |
+| **🖥️ Frontend Dashboard** | [`frontend/README.md`](frontend/README.md) | React/MUI, Kanban Board, `kanbanSlice`, Drag & Drop, polling + WebSocket |
+| **⚙️ Backend Moteur** | [`backend/README.md`](backend/README.md) | LLM providers (ollama/gemini/nvidia), LangGraph, Ticket Agent (`manager`, `watcher`, `sync_service`, `auditor`), API & BDD |
 
 ---
 
@@ -59,23 +100,78 @@ Le Frontend est une application React moderne utilisant **Material-UI** et **Dat
 
 ---
 
-## 📋 Agent JIRA (Kanban Ticket Sync)
+## 📋 Agent Ticket — Universal Ticket Agent (Kanban Sync Temps Réel)
 
-L'**Agent JIRA** assure une synchronisation bidirectionnelle et automatique entre l'état d'avancement technique du projet (via Copilot) et un tableau Kanban de suivi (To Do / In Progress / Done).
+L'**Agent Ticket** assure une synchronisation autonome et temps réel entre l'avancement technique (via n'importe quel LLM : Claude Code, Codex, Copilot, Cursor, Windsurf) et le tableau Kanban (To Do / In Progress / Done). Il remplace l'ancien Agent JIRA et fonctionne par **fichier unique par projet**.
 
-### 🔄 Flux de Synchronisation
+### 🎯 Source Unique : `specs/{project}/.task_runtime/current-task.json`
+
+Chaque projet sous `specs/` possède son propre `.task_runtime` isolé :
+```
+specs/001-course-management-system/.task_runtime/current-task.json
+specs/002-autre-projet/.task_runtime/current-task.json
+```
+Aucun dossier racine `.task_runtime` — isolation totale, pas de conflit entre projets.
+
+Format JSON (atomique, tmp + rename) :
+```json
+{
+  "task_id": "T009",
+  "file": "backend_course/main.py",
+  "status": "in_progress",
+  "project_name": "001-course-management-system",
+  "updated_at": "2026-08-25T10:00:00.000Z",
+  "tasks": { "T001": "done", "T002": "done", ..., "T009": "in_progress", "T010": "todo" }
+}
+```
+
+### 🔄 Flux de Synchronisation Détaillé
+
 #### 1. Ingestion des Tâches (`POST /api/v1/ingest`)
-L'ingestion permet d'initialiser ou de rafraîchir la liste des tickets en base de données à partir du fichier de spécifications.
-- **Processus** : Le backend analyse `specs/tasks.md` $\rightarrow$ crée les tickets (`T001`, `T002`, ...) avec le statut initial `todo`.
+- **Processus** : Le backend analyse `specs/{project}/tasks.md` → crée les tickets (`T001`, `T002`, ...) avec statut initial `todo` + événement `source:"initial_ingestion"`.
 
-#### 2. Synchronisation de Statut en Temps Réel
-Le passage d'un ticket à l'état "en cours" ou "terminé" est strictement piloté par l'activité de Copilot via le fichier `.task_runtime/current-task.json`.
+![Dashboard Ingestion](DashboardVide.png)
+*Utilisation du bouton "Ingest Tasks" pour synchroniser les tâches de `tasks.md` vers le Kanban.*
 
-### 🤖 Contrat Copilot (`.github/copilot-instructions.md`)
-Pour garantir cette synchronisation, GitHub Copilot suit un protocole strict :
-- **Avant chaque tâche** : Écrit `status: "in_progress"`.
-- **Après chaque tâche** : Écrit `status: "done"`.
-- **État Global** : Inclut un instantané complet de toutes les tâches pour éviter toute perte de synchronisation.
+#### 2. Transition Autonome via `current-task.json` (Dual Watchers)
+Le Ticket Manager (`backend/app/agents/ticket_agent/manager.py`) orchestre deux watchers :
+
+| Watcher | Surveille | Déclenche |
+|---|---|---|
+| **StructureWatcher** | `specs/{project}/tasks.md` | Signal "ready for ingestion" (nouvelle tâche détectée) |
+| **StatusWatcher** | `specs/{project}/.task_runtime/current-task.json` | `SyncService.sync_current_task()` → `TicketEvent` `source:"watcher"` → `todo → in_progress → done` |
+
+![Dashboard Synchronisation](DashboardRempli.png)
+*Visualisation du tableau Kanban synchronisé en temps réel avec l'activité de l'Agent Ticket.*
+
+**Cycle nominal (ex: T009) :**
+```
+LLM écrit current-task.json {task_id:"T009", status:"in_progress", tasks:{...}} 
+  → StatusWatcher détecte → DB: T009 todo→in_progress (source:"watcher")
+LLM écrit current-task.json {task_id:"T009", status:"done"}
+  → StatusWatcher détecte → DB: T009 in_progress→done (source:"watcher") → Auditor (si activé, seuil 75)
+```
+
+#### 3. Auditor (Optionnel)
+Si `ENABLE_AUDITOR=True`, chaque passage `→ done` déclenche `Auditor.auto_audit_on_done()` (conformité < 75 → revert `done → in_progress` + événement `audit`).
+
+### 🤖 Contrat Universal (`prompts/universal-contract.md`)
+
+Pour fonctionner comme Agent Ticket, le LLM **DOIT** suivre le protocole (voir `prompts/universal-contract.md` — source unique, et ses adapters) :
+- **Avant chaque tâche** : Écrire `specs/{project}/.task_runtime/current-task.json` avec `status: "in_progress"` + **FULL `tasks` map**.
+- **Après chaque tâche** : Écrire le même fichier avec `status: "done"` + FULL `tasks` map.
+- **Écriture atomique** : `current-task.json.tmp` → `rename` pour éviter les lectures partielles.
+
+Adapters fournis pour chaque IDE :
+| IDE | Fichier à copier dans votre projet cloné | Source |
+|---|---|---|
+| **Claude Code** | `CLAUDE.md` | `prompts/claude-adapter.md` |
+| **Codex** | `AGENTS.md` | `prompts/universal-contract.md` → `AGENTS.md` |
+| **Cursor** | `.cursorrules` | `prompts/cursor-adapter.md` |
+| **Windsurf** | `.windsurfrules` | `prompts/windsurf-adapter.md` |
+| **Copilot** | `.github/copilot-instructions.md` | `prompts/copilot-adapter.md` |
+
+> **QuickStart pour un nouveau clone :** Copiez le fichier adapter correspondant à votre LLM depuis `prompts/` ou `agentdocx-speckit/adapters/` vers la racine du projet cloné (voir section Quick Start ci-dessous). Sans ce fichier, le LLM ne sait pas qu'il doit mettre à jour `current-task.json` et le Kanban restera bloqué.
 
 ---
 
@@ -180,31 +276,143 @@ erDiagram
 
 L'extension VS Code **AgentDocx SpecKit** offre une expérience intégrée dans une seule fenêtre VS Code, remplaçant les scripts manuels.
 
-- **Logs Intégrés** : Deux canaux dans la vue Output (`AgentDocx Server` et `AgentDocx Watcher`).
-- **Automatisation** : Démarrage automatique du serveur et du watcher au chargement.
-- **Commandes Palette** : `triggerPipeline`, `startServer`, etc.
+- **Logs Intégrés** : Trois canaux dans la vue Output (`AgentDocx Server`, `AgentDocx Watcher`, `AgentDocx Frontend`).
+  - **AgentDocx Watcher** — logs watchdog, détection fichiers, file d'attente
+    ![AgentDocx Watcher](AgentDocxWatcher.png)
+  - **AgentDocx Server** — logs FastAPI, progression agents (Parsing → Summary → Glossary → Diagram → DocWriter → Layout), KPIs + Ticket Manager (`[TicketManager]`, `[StatusWatcher]`, `[SyncService]`)
+    ![AgentDocx Server](AgentDocxServer.png)
+  - **AgentDocx Frontend** — logs React, compilation `webpack compiled successfully`, URL `http://localhost:5000`
+    ![AgentDocx Frontend](AgentDocxFrontend.png)
+- **Automatisation** : Démarrage automatique du serveur, du watcher et du frontend au chargement de l'extension (via `src/extension.ts`).
+- **Commandes Palette** : `AgentDocx: Start Server`, `AgentDocx: Start Watcher`, `AgentDocx: Start Frontend`, `AgentDocx: Trigger Pipeline`, etc.
 
 ### 📦 Installation (via .vsix)
-1. Téléchargez `agentdocx-speckit-0.0.2.vsix`.
+> 📸 **Installation via .vsix** :
+> ![Installation VSIX](ExtensionVSCode.png)
+> *(Capture : icône Extensions → "..." → "Install from VSIX..." → sélectionner le fichier .vsix)*
+
+1. Téléchargez `agentdocx-speckit-0.0.3.vsix`.
 2. `Ctrl+Shift+P` $\rightarrow$ **Extensions: Install from VSIX...**
 
 ---
 
-## 🚀 Quick Start (Guide de Lancement)
+## 🚀 Quick Start (Guide de Lancement — pour un clone vierge)
 
 ### 1. Prérequis
-- **PostgreSQL** : Lancé avec la base `speckit`.
-- **LLM Provider** : Ollama lancé ou clés API configurées dans `.env`.
+- **PostgreSQL** : Lancé avec la base `speckit` (ou `StageTal` selon votre `.env`).
+- **LLM Provider** : Ollama lancé (`ollama serve`) ou clés API configurées dans `.env` (Gemini, NVIDIA).
+- **Node.js 18+** et **Python 3.10+**.
 
-### 2. Configuration `.env` (Repo Source)
+### 2. Configuration `.env` — le cœur du projet (DB inchangée)
+
+> [!IMPORTANT]
+> Copiez `backend/.env` à la racine **ou** créez un nouveau `.env` à la racine. **Ne modifiez jamais `DATABASE_URL`** si `StageTal` est déjà créée.
+
+<table>
+<tr>
+<td>
+
+**📦 Fichier complet à copier-coller**
+
 ```dotenv
-DATABASE_URL=postgresql://user:password@localhost:5432/speckit
-TARGET_PROJECT_PATH=C:\chemin\vers\votre-projet-enfant
-LLM_PROVIDER=ollama
-OLLAMA_MODEL=gemma4:31b-cloud
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🗄️  DATABASE — ne pas modifier si StageTal existe
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+DATABASE_URL=postgresql://postgres:0000@localhost:5432/StageTal
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🤖  LLM PROVIDER — choix unique (facade: llm_client.py)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+#  ollama  → local via `ollama serve`
+#  gemini  → Google API
+#  nvidia  → NVIDIA NIM
+LLM_PROVIDER=gemini
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 🎫  TICKET AGENT — auto-découverte recommandée
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+TARGET_PROJECT_PATH=
+ENABLE_AUDITOR=True
+AUDITOR_THRESHOLD=75.0
+LLM_REQUEST_TIMEOUT=600
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 📄  STOCKAGE & LOGS
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PDF_STORAGE_DIR=./storage/pdfs
+LOG_LEVEL=INFO
 ```
 
-### 3. Lancement
-1. **Frontend** : `cd frontend && npm start`
-2. **Extension** : Activez l'extension dans VS Code.
-3. **Pipeline** : Modifiez un fichier dans `specs/` ou utilisez la commande `Trigger Pipeline`.
+</td>
+</tr>
+</table>
+
+<details>
+<summary>🦙 <b>Si <code>LLM_PROVIDER=ollama</code> → cliquez pour voir la config</b></summary>
+
+```dotenv
+OLLAMA_BASE_URL=http://localhost:11434
+OLLAMA_MODEL=gemma4:31b-cloud   # ou via `ollama pull gemma4:31b-cloud`
+```
+> Lancer au préalable : `ollama serve` puis `ollama pull gemma4:31b-cloud`
+
+</details>
+
+<details>
+<summary>✨ <b>Si <code>LLM_PROVIDER=gemini</code> → cliquez pour voir la config</b></summary>
+
+```dotenv
+GEMINI_API_KEY=VOTRE_CLE_GEMINI
+GEMINI_MODEL=gemini-3.1-flash-lite
+```
+
+</details>
+
+<details>
+<summary>🟢 <b>Si <code>LLM_PROVIDER=nvidia</code> → cliquez pour voir la config</b></summary>
+
+```dotenv
+NVIDIA_API_KEY=VOTRE_CLE_NVIDIA
+NVIDIA_MODEL=meta/llama-3.3-70b-instruct
+NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
+```
+
+</details>
+
+> [!TIP]
+> **Laissez `TARGET_PROJECT_PATH=` vide** — le `TicketManager` résout dynamiquement :
+> `1)` `TARGET_PROJECT_PATH` si défini → `2)` scan `**/.task_runtime/current-task.json` le plus récent → `3)` scan `specs/*/tasks.md` → `4)` fallback `BASE_DIR`.
+> Ne le remplissez que pour forcer un projet, ex: `TARGET_PROJECT_PATH=C:\...\specs\001-course-management-system`
+
+### 3. Activer le Ticket Agent pour votre LLM (OBLIGATOIRE)
+
+Sans cette étape, le LLM ne sait pas qu'il doit mettre à jour le Kanban et les tickets resteront bloqués en `todo`.
+
+**Copiez le contrat universel vers la racine du projet cloné selon votre IDE :**
+
+| Votre LLM / IDE | Fichier à copier | Commande (depuis la racine du clone) |
+|---|---|---|
+| **Claude Code (Ollama)** | `CLAUDE.md` | `cp prompts/claude-adapter.md CLAUDE.md` ou `cp agentdocx-speckit/adapters/claude-adapter.md CLAUDE.md` puis suivez les instructions d'injection dans le fichier |
+| **Codex** | `AGENTS.md` | `cp prompts/universal-contract.md AGENTS.md` (ou utilisez `agentdocx-speckit/adapters/codex-adapter.md`) |
+| **Cursor** | `.cursorrules` | `cp prompts/cursor-adapter.md .cursorrules` |
+| **Windsurf** | `.windsurfrules` | `cp prompts/windsurf-adapter.md .windsurfrules` |
+| **Copilot** | `.github/copilot-instructions.md` | `cp prompts/copilot-adapter.md .github/copilot-instructions.md` |
+
+> **Source unique :** `prompts/universal-contract.md` est le contrat maître. Tous les adapters en sont dérivés. Le fichier copié dit au LLM d'écrire **uniquement** dans `specs/{project}/.task_runtime/current-task.json` (atomique, avec FULL `tasks` map) pour déclencher `todo → in_progress → done`.
+
+> [!NOTE]
+> **Fichiers actifs à la racine (recréés) :** `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md` — ce sont **ces fichiers à la racine** que les LLM lisent, pas ceux dans `prompts/` (qui n'est que la bibliothèque source à copier).
+
+Vérifiez que le fichier copié contient bien `specs/{project_name}/.task_runtime/current-task.json` (pas `.task_runtime` à la racine).
+
+### 4. Lancement — 4 étapes, zéro terminal (sauf LLM)
+
+| Étape | Action | Vérification |
+|:---:|---|---|
+| **1️⃣** | **Extension** : Installez `agentdocx-speckit-0.0.3.vsix` → `Ctrl+Shift+P` → `Developer: Reload Window` | `Output > AgentDocx Server` affiche `✔ [TicketManager] Dual watchers started` + `StatusWatcher Monitoring .../.task_runtime` |
+| **2️⃣** | **Frontend** : `AgentDocx: Start Frontend` dans la palette (ou `cd frontend && npm start`) | `Output > AgentDocx Frontend` → `webpack compiled successfully` → `http://localhost:5000` |
+| **3️⃣** | **Pipeline** : Modifiez un fichier dans `specs/{project}/` ou `AgentDocx: Trigger Pipeline` | `Output > AgentDocx Watcher` → `Pipeline exécuté avec succès` |
+| **4️⃣** | **Kanban** : Dashboard → `Ingest Tasks` → lancez `Claude Code : /speckit-implement T009` | Kanban passe `todo → in_progress → done` en temps réel (`source:"watcher"` dans `Ticket Events`) |
+
+> [!NOTE]
+> Tout est piloté depuis l'extension — seul votre LLM (`ollama launch claude`, `cursor`, etc.) tourne en CLI, comme vous le faites déjà.

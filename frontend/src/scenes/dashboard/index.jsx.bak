@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { useTheme } from "@mui/material/styles";
@@ -76,10 +76,7 @@ import {
   fetchProjects,
   fetchTaskState,
   fetchProjectMetrics,
-  fetchTicketMetrics,
-  writeCurrentTask,
 } from "./kanbanSlice";
-import { useWebSocket } from "../../hooks/useWebSocket";
 
 const GlassCard = ({ children, ...props }) => {
   const theme = useTheme();
@@ -170,7 +167,7 @@ const CheckboxIcon = React.forwardRef(({ state, ...props }, ref) => {
   }
 });
 
-const TicketCard = ({ ticket, onClick, index, onCheckboxClick }) => {
+const TicketCard = ({ ticket, onClick, index }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode) || {};
 
@@ -181,13 +178,6 @@ const TicketCard = ({ ticket, onClick, index, onCheckboxClick }) => {
   };
 
   const statusStyle = statusColors[ticket.status] || statusColors.todo;
-
-  const handleCheckboxClick = (e) => {
-    e.stopPropagation();
-    if (onCheckboxClick) {
-      onCheckboxClick(ticket);
-    }
-  };
 
   return (
     <Draggable draggableId={ticket.id} index={index}>
@@ -221,12 +211,7 @@ const TicketCard = ({ ticket, onClick, index, onCheckboxClick }) => {
           <Box p={2}>
             <Box display="flex" alignItems="center" justifyContent="space-between" mb={1}>
               <Tooltip title={`Checkbox: ${ticket.checkbox_state || "unchecked"}`}>
-                <Box 
-                  onClick={handleCheckboxClick}
-                  sx={{ cursor: 'pointer', p: 0.5, borderRadius: 1, '&:hover': { backgroundColor: 'action.hover' } }}
-                >
-                  <CheckboxIcon state={ticket.checkbox_state} />
-                </Box>
+                <CheckboxIcon state={ticket.checkbox_state} />
               </Tooltip>
               <StatusChip status={ticket.status} />
             </Box>
@@ -264,10 +249,9 @@ const TicketCard = ({ ticket, onClick, index, onCheckboxClick }) => {
   );
 };
 
-const Column = ({ title, status, tickets, placeholder, projectName, ...droppableProps }) => {
+const Column = ({ title, status, tickets, placeholder, ...droppableProps }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode);
-  const dispatch = useDispatch();
   const { taskState } = useSelector((state) => state.kanban);
   
   const statusColors = {
@@ -279,26 +263,8 @@ const Column = ({ title, status, tickets, placeholder, projectName, ...droppable
   const color = statusColors[status] || colors.grey?.['500'] || '#9e9e9e';
   
   // Check if this column has the current in-progress task
-  const isCurrentInProgress = status === "in_progress" && (taskState.current_task_index || 0) > 0;
+  const isCurrentInProgress = status === "in_progress" && taskState.current_task > 0;
   const currentTaskStatus = taskState.task_status[taskState.current_task];
-  
-  const handleCheckboxClick = (ticket) => {
-    // Build tasks map with updated status
-    const newStatus = ticket.status === 'done' ? 'todo' : 
-                     ticket.status === 'in_progress' ? 'done' : 'in_progress';
-    const tasksMap = tickets.reduce((acc, t) => {
-      acc[t.ticket_id] = t.status;
-      return acc;
-    }, {});
-    tasksMap[ticket.ticket_id] = newStatus;
-    
-    dispatch(writeCurrentTask({
-      taskId: ticket.ticket_id,
-      status: newStatus,
-      projectName: projectName,
-      tasksMap
-    }));
-  };
   
   return (
     <Droppable droppableId={status} {...droppableProps}>
@@ -344,7 +310,7 @@ const Column = ({ title, status, tickets, placeholder, projectName, ...droppable
                     }}
                   />
                   <Typography variant="caption" sx={{ color, fontWeight: 600 }}>
-                    Task {taskState.current_task_index || taskState.current_task}
+                    Task {taskState.current_task}
                   </Typography>
                 </Box>
               )}
@@ -377,13 +343,7 @@ const Column = ({ title, status, tickets, placeholder, projectName, ...droppable
               </Box>
             ) : (
               tickets.map((ticket, index) => (
-                <TicketCard 
-                  key={ticket.id} 
-                  ticket={ticket} 
-                  index={index} 
-                  onClick={() => droppableProps.onTicketClick(ticket)}
-                  onCheckboxClick={handleCheckboxClick}
-                />
+                <TicketCard key={ticket.id} ticket={ticket} index={index} onClick={() => droppableProps.onTicketClick(ticket)} />
               ))
             )}
             {/* provided.placeholder is already correctly rendered here as a JSX element */}
@@ -437,22 +397,18 @@ const CommentItem = ({ comment, isLightMode = false }) => {
   );
 };
 
-const EventItem = ({ event, isLightMode = false }) => {
+const EventItem = ({ event }) => {
   const theme = useTheme();
   const colors = tokens(theme.palette.mode) || {};
   
-  const textPrimary = isLightMode ? theme.palette.text.primary : (colors.grey?.['100'] || '#f5f5f5');
-  const textSecondary = isLightMode ? theme.palette.text.secondary : (colors.grey?.['300'] || '#e0e0e0');
-  const textMuted = isLightMode ? theme.palette.text.disabled : (colors.grey?.['500'] || '#9e9e9e');
-  
   const eventIcons = {
-    status_change: "����",
-    status_override: "������",
-    comment_added: "����",
-    doc_regenerated: "����",
+    status_change: "🔄",
+    status_override: "⚠️",
+    comment_added: "💬",
+    doc_regenerated: "📄",
   };
   
-  const icon = eventIcons[event.event_type] || "����";
+  const icon = eventIcons[event.event_type] || "📋";
   
   return (
     <ListItem sx={{ py: 1, borderBottom: `1px solid ${theme.palette.divider}` }}>
@@ -468,17 +424,17 @@ const EventItem = ({ event, isLightMode = false }) => {
       </Avatar>
       <ListItemText
         primary={
-          <Typography variant="body2" fontWeight={600} color={textPrimary}>
+          <Typography variant="body2" fontWeight={600} color={colors.grey?.['100'] || '#f5f5f5'}>
             {event.event_type.replace("_", " ")}
           </Typography>
         }
         secondary={
           <Box>
-            <Typography variant="body2" color={textSecondary}>
+            <Typography variant="body2" color={colors.grey?.['300'] || '#e0e0e0'}>
               {event.payload ? JSON.stringify(event.payload) : "No payload"}
             </Typography>
-            <Typography variant="caption" color={textMuted}>
-              {new Date(event.created_at).toLocaleString()} • {event.author_type === "agent" ? "���� Agent" : "���� User"}
+            <Typography variant="caption" color={colors.grey?.['500'] || '#9e9e9e'}>
+              {new Date(event.created_at).toLocaleString()} • {event.author_type === "agent" ? "🤖 Agent" : "👤 User"}
             </Typography>
           </Box>
         }
@@ -494,11 +450,9 @@ const TicketDetailDialog = ({ ticket, open, onClose, onAddComment, onRefreshPdf 
   const [commentText, setCommentText] = useState("");
   const [activeTab, setActiveTab] = useState(0);
   const [comments, setComments] = useState([]);
-  const [loadingComments, setLoadingComments] = useState(false);
   const [events, setEvents] = useState([]);
+  const [loadingComments, setLoadingComments] = useState(false);
   const [loadingEvents, setLoadingEvents] = useState(false);
-  const [ticketMetrics, setTicketMetrics] = useState(null);
-  const [loadingMetrics, setLoadingMetrics] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loadingPdf, setLoadingPdf] = useState(false);
   
@@ -519,22 +473,18 @@ const TicketDetailDialog = ({ ticket, open, onClose, onAddComment, onRefreshPdf 
   const loadData = async () => {
     setLoadingComments(true);
     setLoadingEvents(true);
-    setLoadingMetrics(true);
     try {
-      const [commentsRes, eventsRes, metricsRes] = await Promise.all([
+      const [commentsRes, eventsRes] = await Promise.all([
         dispatch(fetchTicketComments(ticket.id)).unwrap(),
         dispatch(fetchTicketEvents(ticket.id)).unwrap(),
-        dispatch(fetchTicketMetrics(ticket.id)).unwrap(),
       ]);
       setComments(commentsRes);
       setEvents(eventsRes);
-      setTicketMetrics(metricsRes);
     } catch (err) {
       console.error("Failed to load ticket details:", err);
     } finally {
       setLoadingComments(false);
       setLoadingEvents(false);
-      setLoadingMetrics(false);
     }
   };
   
@@ -584,7 +534,6 @@ const TicketDetailDialog = ({ ticket, open, onClose, onAddComment, onRefreshPdf 
           <Tab label="Description" icon={<DescriptionIcon />} />
           <Tab label="Comments" icon={<CommentIcon />} />
           <Tab label="Events" icon={<HistoryIcon />} />
-          <Tab label="Metrics" icon={"📊"} />
           <Tab label="Document" icon={<PictureAsPdfIcon />} />
         </Tabs>
         
@@ -650,54 +599,6 @@ const TicketDetailDialog = ({ ticket, open, onClose, onAddComment, onRefreshPdf 
         )}
         
         {activeTab === 3 && (
-          <Box>
-            <Typography variant="h6" sx={{ sx: { mt: 2, textAlign: "center" } }}>
-              Metrics
-            </Typography>
-            {loadingMetrics ? (
-              <Box display="flex" justifyContent="center" py={4}>
-                <CircularProgress size={24} />
-              </Box>
-            ) : ticketMetrics ? (
-              <Box sx={{ p: 2 }}>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Conformity Score: {ticketMetrics.conformity_score !== null ? ticketMetrics.conformity_score : "N/A"}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Verdict: {ticketMetrics.verdict || "N/A"}
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Requirement Coverage: {ticketMetrics.requirement_coverage !== null ? ticketMetrics.requirement_coverage : "N/A"}%
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Code Quality: {ticketMetrics.code_quality !== null ? ticketMetrics.code_quality : "N/A"}%
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Architecture: {ticketMetrics.architecture !== null ? ticketMetrics.architecture : "N/A"}%
-                </Typography>
-                <Typography variant="body2" sx={{ mb: 1 }}>
-                  Traceability: {ticketMetrics.traceability !== null ? ticketMetrics.traceability : "N/A"}%
-                </Typography>
-                {ticketMetrics.last_audit_at && (
-                  <Typography variant="body2" sx={{ mb: 1 }}>
-                    Last Audit: {new Date(ticketMetrics.last_audit_at).toLocaleDateString()}
-                  </Typography>
-                )}
-                {ticketMetrics.agent_metrics && (
-                  <Typography variant="body2" sx={{ mb: 1, color: "secondary" }}>
-                    Agent Metrics: Requirement {ticketMetrics.agent_metrics.requirement_coverage !== null ? ticketMetrics.agent_metrics.requirement_coverage : "N/A"}%, Code Quality {ticketMetrics.agent_metrics.code_quality !== null ? ticketMetrics.agent_metrics.code_quality : "N/A"}%
-                  </Typography>
-                )}
-              </Box>
-            ) : (
-              <Typography variant="body2" color={textMuted} sx={{ py: 4, textAlign: "center" }}>
-                No metrics available
-              </Typography>
-            )}
-          </Box>
-        )}
-        
-        {activeTab === 4 && (
           <Box>
             <Divider sx={{ mb: 2 }} />
             <Box display="flex" flexDirection="column" alignItems="center" py={4}>
@@ -818,28 +719,6 @@ const KanbanBoard = () => {
   
   const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "info" });
   
-  // WebSocket for real-time updates
-  const wsUrl = process.env.REACT_APP_WS_URL || "ws://localhost:8000/ws";
-  const { isConnected: wsConnected, lastMessage: wsMessage } = useWebSocket(
-    `${wsUrl}/tickets/${projectName}`,
-    {
-      enabled: !!projectName,
-      onMessage: (data) => {
-        // Handle real-time ticket updates from WebSocket
-        if (data.type === 'ticket_update') {
-          dispatch(updateTicketInState(data.payload));
-          dispatch(fetchProgress(projectName));
-        } else if (data.type === 'progress_update') {
-          dispatch(fetchProgress(projectName));
-        } else if (data.type === 'task_state_update') {
-          dispatch(fetchTaskState(projectName));
-        }
-      },
-      reconnect: true,
-      reconnectInterval: 5000,
-    }
-  );
-  
   useEffect(() => {
     dispatch(fetchProjects());
     dispatch(setProjectName(""));
@@ -865,14 +744,13 @@ const KanbanBoard = () => {
     
     refresh(); // Initial load
     
-    // Poll every 15 seconds (reduced from 5s to reduce server load)
-    // WebSocket handles real-time updates, polling is fallback
-    const interval = setInterval(refresh, 15000);
+    // Poll every 5 seconds for faster updates
+    const interval = setInterval(refresh, 5000);
     
     return () => clearInterval(interval);
   }, [dispatch, projectName]);
   
-  // Auto-ingest tasks for the selected project (once + every 60s)
+  // Auto-ingest tasks for the selected project (once + every 30s)
   useEffect(() => {
     if (!projectName) return;
     
@@ -891,7 +769,7 @@ const KanbanBoard = () => {
     
     ingestAndRefresh(); // Initial load
     
-    const interval = setInterval(ingestAndRefresh, 60000);
+    const interval = setInterval(ingestAndRefresh, 30000);
     
     return () => clearInterval(interval);
   }, [dispatch, projectName]);
@@ -916,20 +794,7 @@ const KanbanBoard = () => {
     
     const ticket = tickets.find(t => t.id === draggableId);
     if (ticket && source.droppableId !== destination.droppableId) {
-      // Build tasks map with updated status
-      const tasksMap = tickets.reduce((acc, t) => {
-        acc[t.ticket_id] = t.status;
-        return acc;
-      }, {});
-      tasksMap[ticket.ticket_id] = destination.droppableId;
-      
-      // Write to current-task.json (watcher will sync to DB)
-      dispatch(writeCurrentTask({
-        taskId: ticket.ticket_id,
-        status: destination.droppableId,
-        projectName: projectName,
-        tasksMap
-      }))
+      dispatch(updateTicketStatus({ ticketId: ticket.id, status: destination.droppableId }))
         .then(() => {
           setSnackbar({ open: true, message: `Moved to ${destination.droppableId.replace("_", " ")}`, severity: "success" });
           dispatch(fetchProgress(projectName));
@@ -975,7 +840,7 @@ const KanbanBoard = () => {
       <Box
         sx={{
           height: "100%",
-          width: `${taskState.total_tasks > 0 ? ((taskState.current_task_index || 0) / taskState.total_tasks) * 100 : 0}%`,
+          width: `${taskState.total_tasks > 0 ? (taskState.current_task / taskState.total_tasks) * 100 : 0}%`,
           borderRadius: 3,
           background: `linear-gradient(90deg, ${colors.greenAccent?.['500'] || '#4cceac'}, ${colors.blueAccent?.['500'] || '#2196f3'})`,
           transition: "width 0.3s ease",
@@ -983,17 +848,17 @@ const KanbanBoard = () => {
       />
     </Box>
     <Typography variant="caption" sx={{ color: theme.palette.text.secondary, whiteSpace: "nowrap", minWidth: 80 }}>
-      Task {taskState.current_task_index || 1} / {taskState.total_tasks}
+      Task {taskState.current_task || 1} / {taskState.total_tasks}
     </Typography>
     <Chip
-      label={taskState.task_status[taskState.current_task] === "in_progress" ? "In Progress" : taskState.task_status[taskState.current_task] === "done" ? "Done" : "To Do"}
+      label={taskState.task_status[taskState.current_task] === "in_progress" ? "In Progress" : taskState.task_status[taskState.current_task] === "done" ? "Done" : "Pending"}
       size="small"
       sx={{
         backgroundColor: taskState.task_status[taskState.current_task] === "in_progress"
           ? `${colors.greenAccent?.['500'] || '#4cceac'}33`
           : taskState.task_status[taskState.current_task] === "done"
           ? `${colors.greenAccent?.['500'] || '#4cceac'}33`
-          : `${colors.blueAccent?.['500'] || '#2196f3'}33`,
+          : `${colors.orangeAccent?.['500'] || '#ff9800'}33`,
       }}
     />
   </Box>

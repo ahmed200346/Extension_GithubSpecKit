@@ -40,42 +40,44 @@ def _read_current_task() -> Dict[str, Any]:
     return {}
 
 
-def _write_current_task(task_id: str, status: str) -> None:
+def _write_current_task(task_id: str, status: str, project_name: Optional[str] = None) -> None:
     """
-    Write-back ticket status to .task_runtime/current-task.json.
-    Maintains the 'tasks' map and updates the top-level status if the ticket is the current one.
+    Write-back ticket status to project's .task_runtime/current-task.json.
     """
     try:
-        data = _read_current_task()
+        if not project_name:
+            return
+        
+        project_file = BASE_DIR / "specs" / project_name / ".task_runtime" / "current-task.json"
+        
+        data = {}
+        if project_file.exists():
+            try:
+                data = json.loads(project_file.read_text(encoding="utf-8-sig"))
+            except (json.JSONDecodeError, OSError):
+                pass
+
         if not data:
-            # If the file is missing or empty, we don't have enough context (project_name, etc.)
-            # to create a new valid current-task.json from scratch.
             return
 
-        # 1. Update the full tasks map
         tasks = data.get("tasks", {})
         if not isinstance(tasks, dict):
             tasks = {}
         tasks[task_id] = status
         data["tasks"] = tasks
 
-        # 2. Update top-level status if this is the active task
         if data.get("task_id") == task_id:
             data["status"] = status
 
-        # 3. Update timestamp
         data["updated_at"] = datetime.utcnow().isoformat() + "Z"
 
-        # 4. Atomic write (temp file -> replace)
-        temp_file = _CURRENT_TASK_FILE.with_suffix(".json.tmp")
+        project_file.parent.mkdir(parents=True, exist_ok=True)
+        temp_file = project_file.with_suffix(".json.tmp")
         temp_file.write_text(json.dumps(data, indent=2), encoding="utf-8")
-        temp_file.replace(_CURRENT_TASK_FILE)
+        temp_file.replace(project_file)
     except Exception as e:
-        # We log and swallow the error to ensure that a file write failure
-        # doesn't crash the primary database update flow.
         import logging
         logging.getLogger(__name__).error(f"[WriteBack] Failed to update current-task.json: {e}")
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Parsing helpers
@@ -344,13 +346,17 @@ def update_ticket_status(
         ticket_id=ticket.id,
         event_type=event_type,
         author_type=author_type,
+        old_status=old_status,
+        new_status=target_status,
         event_metadata={"from": old_status.value, "to": target_status.value, "source": source},
     ))
     db.commit()
     db.refresh(ticket)
 
     # Write-back to current-task.json to keep AI and Watcher in sync
-    _write_current_task(ticket.ticket_id, target_status.value)
+    project = db.query(Project).filter(Project.id == ticket.project_id).first()
+    project_name = project.name if project else None
+    _write_current_task(ticket.ticket_id, target_status.value, project_name=project_name)
 
     return ticket
 

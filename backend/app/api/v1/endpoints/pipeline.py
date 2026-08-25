@@ -187,18 +187,20 @@ async def list_projects(db: Session = Depends(get_db)):
 @router.get("/task-state/{project_name}")
 async def get_task_state(project_name: str, db: Session = Depends(get_db)):
     """GET /task-state/{project_name} - État courant des tâches pour le Kanban.
-    Authoritative version: reads from current-task.json and Database.
+    Authoritative version: merges current-task.json tasks map with DB statuses.
+    current-task.json takes precedence over DB for tasks listed in its tasks map.
     """
-    # 1. Read current-task.json for the active task ID
-    current_task_json_path = BASE_DIR / ".task_runtime" / "current-task.json"
+    # 1. Read current-task.json for the active task ID and tasks map from project-specific path only
+    project_specific_path = BASE_DIR / "specs" / project_name / ".task_runtime" / "current-task.json"
+    
     current_task_data = {}
-    if current_task_json_path.exists():
+    if project_specific_path.exists():
         try:
-            current_task_data = json.loads(current_task_json_path.read_text(encoding="utf-8"))
+            current_task_data = json.loads(project_specific_path.read_text(encoding="utf-8-sig"))
         except Exception:
             pass
 
-    # 2. Get all tickets for this project from DB to build the status map
+    # 2. Get all tickets for this project from DB
     from app.models import Project, Ticket
     project = db.query(Project).filter(Project.name == project_name).first()
     if not project:
@@ -212,11 +214,19 @@ async def get_task_state(project_name: str, db: Session = Depends(get_db)):
 
     tickets = db.query(Ticket).filter(Ticket.project_id == project.id).all()
 
-    # Map ticket_id (e.g. "T001") to its status value
+    # 3. Build task_status: start from DB statuses, then overlay with current-task.json tasks map
+    #    (current-task.json is authoritative for tasks listed there)
     task_status_map = {t.ticket_id: t.status.value for t in tickets if t.ticket_id}
 
-    # Determine the current task numeric index (T001 -> 1)
-    active_task_id = current_task_data.get("task_id")
+    # Overlay with current-task.json tasks map (takes precedence)
+    json_tasks = current_task_data.get("tasks", {})
+    if isinstance(json_tasks, dict):
+        for task_id, status_val in json_tasks.items():
+            if task_id in task_status_map:
+                task_status_map[task_id] = status_val
+
+    # 4. Determine the current task ID and numeric index
+    active_task_id = current_task_data.get("task_id", "")
     current_task_idx = 0
     if active_task_id:
         match = re.match(r'T(\d+)', active_task_id)
@@ -224,7 +234,8 @@ async def get_task_state(project_name: str, db: Session = Depends(get_db)):
             current_task_idx = int(match.group(1))
 
     return {
-        "current_task": current_task_idx,
+        "current_task": active_task_id or f"T{current_task_idx:03d}" if current_task_idx else "",
+        "current_task_index": current_task_idx,
         "total_tasks": len(tickets),
         "task_status": task_status_map,
         "started_at": current_task_data.get("started_at"),

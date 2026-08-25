@@ -1,60 +1,42 @@
-import os
-import logging
-from contextlib import asynccontextmanager
-from pathlib import Path
-
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from app.api.v1.endpoints import tickets, pipeline
+from app.agents.ticket_agent.manager import ticket_agent_lifespan
+from app.health_check import health, root
+from starlette.types import ASGIApp, Scope, Receive, Send
+import logging
 
-from app.config import settings
-from app.database import engine, Base
-
-import app.models
-
-# Import routers
-from app.api.v1.endpoints import pipeline
-from app.api.v1.endpoints import tickets
-
-# Import Ticket Agent lifespan
-from app.agents.ticket_agent import ticket_agent_lifespan
-
-# 1. Création automatique des tables BDD si elles n'existent pas et synchronisation des ENUMs natifs
-Base.metadata.create_all(bind=engine)
-app.models.sync_native_enums(engine)
-
-# ── Logging setup ────────────────────────────────────────────────────────────
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
-    datefmt="%H:%M:%S",
-)
 logger = logging.getLogger(__name__)
 
-
-@asynccontextmanager
-async def lifespan(app: FastAPI):
+class WebSocketCORSMiddleware:
     """
-    Combined lifespan: starts Ticket Agent watcher + any other startup/shutdown logic.
+    Custom ASGI middleware to prevent 403 Forbidden on WebSocket connections
+    by ensuring the Origin header is handled permissively during development.
     """
-    logger.info("[lifespan] Server starting...")
+    def __init__(self, app: ASGIApp):
+        self.app = app
 
-    # Start Ticket Agent (includes file watcher)
-    async with ticket_agent_lifespan(app):
-        logger.info("[lifespan] Ticket Agent started")
-        yield
+    async def __call__(self, scope: Scope, receive: Receive, send: Send):
+        if scope["type"] == "websocket":
+            # In development, we bypass the origin check by removing the origin header.
+            # This prevents 403 Forbidden errors when connecting from different origins
+            # (like the VS Code webview).
+            logger.info(f"[WebSocketCORSMiddleware] WebSocket connection attempt: path={scope.get('path')}")
+            scope["headers"] = [
+                (k, v) for k, v in scope.get("headers", [])
+                if k.lower() != b"origin"
+            ]
+        await self.app(scope, receive, send)
 
-    logger.info("[lifespan] Server shutting down...")
-
-
-# 2. Initialisation UNIQUE de FastAPI
 app = FastAPI(
-    title="Spec Kit Extension - AgentDocx API",
+    title="SpecKit Extension API",
     version="1.0.0",
-    description="API FastAPI d'orchestration Multi-Agents LangGraph pour Spec Kit",
-    lifespan=lifespan,
+    lifespan=ticket_agent_lifespan
 )
 
-# 3. Configuration CORS
+# Add WebSocket CORS middleware FIRST (runs first for WebSocket, ignored for HTTP)
+app.add_middleware(WebSocketCORSMiddleware)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -63,58 +45,14 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 4. Inclusion des Routers
-# -> Prefix /api/v1/docs : Requis par le Frontend React (AddDocument.jsx & Documents.jsx)
-app.include_router(pipeline.router, prefix="/api/v1/docs", tags=["Documents & Pipeline Frontend"])
+# Include Routers
+app.include_router(tickets.router, prefix="/api/v1", tags=["Tickets"])
+app.include_router(pipeline.router, prefix="/api/v1/pipeline", tags=["Pipeline"])
 
-# -> Prefix /api/v1/pipeline : Conservé pour scripts CLI, Watcher ou outils externes
-app.include_router(pipeline.router, prefix="/api/v1/pipeline", tags=["Pipeline CLI"])
-
-# -> Prefix /api/v1 : Endpoints Kanban (tickets, progress, ingest, commit-refine, ticket-agent)
-app.include_router(tickets.router, prefix="/api/v1", tags=["Tickets Kanban"])
-
-
-# 5. Endpoints de santé (Health Checks)
-@app.get("/", tags=["Health"])
-async def root():
-    return {
-        "message": "SpecKit Extension API is running!",
-        "swagger_docs": "/docs"
-    }
-
-
-@app.get("/health", tags=["Health"])
-async def health():
-    return {"status": "ok", "version": "1.0.0"}
-
-
-@app.get("/debug-current-task", tags=["Debug"])
-async def debug_current_task():
-    """
-    GET /debug-current-task
-    Runs the full sync logic via TicketManager and returns detailed diagnostics.
-    """
-    from app.agents.ticket_agent import get_ticket_manager
-    from app.config import settings
-    from app.utils.path_builder import BASE_DIR
-
-    manager = get_ticket_manager()
-    if not manager:
-        return {"error": "Ticket Manager not initialized"}
-
-    result = manager.force_sync()
-
-    # Add additional debug info about paths
-    result["debug_paths"] = {
-        "BASE_DIR": str(BASE_DIR),
-        "TARGET_PROJECT_PATH_setting": settings.TARGET_PROJECT_PATH,
-        "computed_current_task_file": str(manager.current_task_file),
-        "manager_status": manager.get_status(),
-    }
-
-    return result
-
+# Health check endpoints
+app.add_api_route("/health", health, methods=["GET"])
+app.add_api_route("/", root, methods=["GET"])
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=False)
+    uvicorn.run(app, host="0.0.0.0", port=8000)

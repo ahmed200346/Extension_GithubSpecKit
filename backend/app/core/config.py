@@ -53,6 +53,7 @@ class Settings(BaseSettings):
     # ============================================================================
     PDF_STORAGE_DIR: str = "./storage/pdfs"
     TARGET_PROJECT_PATH: str = ""
+    PROJECTS_ROOT: str = "."
     
     class Config:
         env_file = ".env"

@@ -8,6 +8,8 @@ Coordinates: DualWatcherManager (StructureWatcher + StatusWatcher) → SyncServi
 
 import asyncio
 import logging
+import json
+from datetime import datetime
 from contextlib import asynccontextmanager
 from typing import Optional, Callable, Awaitable
 from pathlib import Path
@@ -38,6 +40,66 @@ class TicketManager:
     - Refresh button → full_state_refresh() for complete consistency
     """
 
+    @staticmethod
+    def _resolve_dynamic_project_path(settings, base_dir: str) -> str:
+        """
+        Dynamically resolves the active project path.
+        Priority:
+        1. Static TARGET_PROJECT_PATH in .env (if provided)
+        2. Most recently updated current-task.json under PROJECTS_ROOT
+        3. Fallback: scan specs/*/tasks.md to find the active project
+        4. Fallback to base_dir
+        """
+        # 1. Static override
+        if getattr(settings, "TARGET_PROJECT_PATH", None):
+            return settings.TARGET_PROJECT_PATH
+
+        # 2. Dynamic discovery under PROJECTS_ROOT
+        projects_root = Path(getattr(settings, "PROJECTS_ROOT", base_dir))
+        latest_update = None
+        active_path = None
+
+        try:
+            # Scan for all current-task.json files in subdirectories
+            for task_file in projects_root.rglob(".task_runtime/current-task.json"):
+                try:
+                    with open(task_file, "r", encoding="utf-8") as f:
+                        data = json.load(f)
+                        updated_at_str = data.get("updated_at")
+                        if updated_at_str:
+                            # Parse ISO8601 timestamp
+                            updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                            if latest_update is None or updated_at > latest_update:
+                                latest_update = updated_at
+                                active_path = str(task_file.parents[1])  # parent of .task_runtime
+                except Exception as e:
+                    logger.debug(f"Could not read task file {task_file}: {e}")
+
+        except Exception as e:
+            logger.error(f"Error during dynamic project discovery: {e}")
+
+        if active_path:
+            logger.info(f"[TicketManager] Dynamically resolved active project to: {active_path}")
+            return active_path
+
+        # 3. Fallback: scan specs/*/tasks.md to find the project directory
+        try:
+            base_path = Path(base_dir)
+            specs_dir = base_path / "specs"
+            if specs_dir.exists():
+                for project_subdir in specs_dir.iterdir():
+                    if project_subdir.is_dir():
+                        tasks_file = project_subdir / "tasks.md"
+                        if tasks_file.exists():
+                            logger.info(f"[TicketManager] Found project via specs scan: {project_subdir}")
+                            return str(project_subdir)
+        except Exception as e:
+            logger.error(f"Error during specs scan fallback: {e}")
+
+        # 4. Fallback
+        logger.info(f"[TicketManager] No active project found. Falling back to: {base_dir}")
+        return base_dir
+
     def __init__(
         self,
         project_path: Optional[str] = None,
@@ -46,7 +108,7 @@ class TicketManager:
         enable_auditor: bool = False,
         auditor_threshold: float = 75.0
     ):
-        self.project_path = project_path or settings.TARGET_PROJECT_PATH or str(BASE_DIR)
+        self.project_path = project_path or self._resolve_dynamic_project_path(settings, str(BASE_DIR))
         self.structure_debounce_ms = structure_debounce_ms
         self.status_debounce_ms = status_debounce_ms
         self.enable_auditor = enable_auditor
@@ -60,6 +122,7 @@ class TicketManager:
         # Callbacks for frontend notification
         self._on_structure_change: Optional[Callable[[dict], Awaitable[None]]] = None
         self._on_status_change: Optional[Callable[[dict], Awaitable[None]]] = None
+
 
         logger.info(f"[TicketManager] Initialized for project: {self.project_path}")
         logger.info(f"[TicketManager] Structure debounce: {structure_debounce_ms}ms")
@@ -150,6 +213,7 @@ class TicketManager:
             except Exception as e:
                 logger.error(f"[TicketManager] Status change callback error: {e}")
 
+
     def set_structure_callback(self, callback: Callable[[dict], Awaitable[None]]) -> None:
         """Register callback for structure changes (tasks.md)."""
         self._on_structure_change = callback
@@ -157,6 +221,7 @@ class TicketManager:
     def set_status_callback(self, callback: Callable[[dict], Awaitable[None]]) -> None:
         """Register callback for status changes (current-task.json)."""
         self._on_status_change = callback
+
 
     async def start(self) -> None:
         """Start both watchers in the background."""
@@ -200,11 +265,11 @@ class TicketManager:
             self.initialize()
         return await self._sync_service.sync_current_task()
 
-    def full_state_refresh(self) -> dict:
+    async def full_state_refresh(self) -> dict:
         """Complete project state synchronization (Refresh Process button)."""
         if not self._sync_service:
             self.initialize()
-        return self._sync_service.full_state_refresh()
+        return await self._sync_service.full_state_refresh()
 
     def prepare_structure_sync(self) -> dict:
         """Prepare structure sync data from tasks.md (StructureWatcher path)."""
@@ -292,7 +357,7 @@ async def ticket_agent_lifespan(app):
     global _manager
 
     # Configuration from settings
-    project_path = getattr(settings, 'TARGET_PROJECT_PATH', None) or str(BASE_DIR)
+    project_path = TicketManager._resolve_dynamic_project_path(settings, str(BASE_DIR))
     structure_debounce_ms = getattr(settings, 'STRUCTURE_WATCH_DEBOUNCE_MS', 1000)
     status_debounce_ms = getattr(settings, 'STATUS_WATCH_DEBOUNCE_MS', 500)
     enable_auditor = getattr(settings, 'ENABLE_AUDITOR', False)
