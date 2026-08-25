@@ -1,0 +1,193 @@
+# Codex Adapter — Universal Contract Injection
+
+**Source:** `/prompts/universal-contract.md` (master protocol)  
+**Target:** `AGENTS.md` (project root)  
+**Purpose:** Make Codex follow the Universal Contract automatically
+
+---
+
+## Injection Instructions
+
+Copy the **entire content below** into your project's `AGENTS.md` file at the root of the repository.
+
+---
+
+## AGENTS.md Content (Copy Everything Below This Line)
+
+---
+
+# Ticket Agent Protocol (MANDATORY for Codex)
+
+## Overview
+You are working with a **Universal Ticket Agent** that syncs task progress to a live Kanban board. The backend watches `specs/{project_name}/.task_runtime/current-task.json`. You MUST write to this file for every task.
+
+---
+
+## The Protocol
+
+### File to Write
+```
+specs/{project_name}/.task_runtime/current-task.json
+```
+(Where `{project_name}` is the exact project folder name under `specs/`, e.g., `specs/001-course-management-system/.task_runtime/current-task.json`)
+(Create `.task_runtime/` directory if it doesn't exist)
+
+### When to Write
+1. **BEFORE** starting any task → write `status: "in_progress"`
+2. **AFTER** completing a task → write `status: "done"`
+3. **ALWAYS** include the FULL `tasks` map (all task IDs → status)
+
+### JSON Format (EXACT)
+```json
+{
+  "task_id": "T004",
+  "file": "src/routes.py",
+  "status": "in_progress",
+  "project_name": "001-cli-todo-manager",
+  "updated_at": "2026-08-12T10:30:00.000Z",
+  "tasks": {
+    "T001": "done",
+    "T002": "done",
+    "T003": "done",
+    "T004": "in_progress",
+    "T005": "todo"
+  }
+}
+```
+
+### Field Rules
+| Field | Required | Rules |
+|-------|----------|-------|
+| `task_id` | YES | Exact task ID from `tasks.md` (e.g., `T004`) |
+| `file` | YES | Relative path of primary file you're editing |
+| `status` | YES | `"in_progress"` (starting) or `"done"` (finishing) |
+| `project_name` | YES | Exact project name from backend (e.g., `001-cli-todo-manager`) |
+| `updated_at` | YES | Current UTC time in ISO8601 format |
+| `tasks` | YES | **ALL** task IDs from `tasks.md` with current status |
+
+### Status Values
+- `"todo"` — Not started
+- `"in_progress"` — Currently working
+- `"done"` — Completed
+
+---
+
+## How to Find Project Name
+
+The `project_name` must match the backend exactly. Check in order:
+1. `.task_runtime/config.json` → `"project_name"` field (if exists)
+2. Parent folder of `tasks.md` (e.g., `specs/001-cli-todo-manager/tasks.md` → `"001-cli-todo-manager"`)
+3. Git repo name from remote origin
+
+---
+
+## Example Workflow
+
+### Task: "Implement T004: Add user authentication"
+
+**BEFORE coding — write current-task.json:**
+```json
+{
+  "task_id": "T004",
+  "file": "src/auth/routes.py",
+  "status": "in_progress",
+  "project_name": "001-cli-todo-manager",
+  "updated_at": "2026-08-12T10:30:00.000Z",
+  "tasks": {
+    "T001": "done",
+    "T002": "done",
+    "T003": "done",
+    "T004": "in_progress",
+    "T005": "todo"
+  }
+}
+```
+
+**Do the work** (implement the feature)
+
+**AFTER completing — write current-task.json:**
+```json
+{
+  "task_id": "T004",
+  "file": "src/auth/routes.py",
+  "status": "done",
+  "project_name": "001-cli-todo-manager",
+  "updated_at": "2026-08-12T10:45:00.000Z",
+  "tasks": {
+    "T001": "done",
+    "T002": "done",
+    "T003": "done",
+    "T004": "done",
+    "T005": "todo"
+  }
+}
+```
+
+---
+
+## Writing the File (Atomic)
+
+**IMPORTANT:** Write atomically to avoid partial reads:
+1. Write to `specs/{project_name}/.task_runtime/current-task.json.tmp`
+2. Rename/replace `specs/{project_name}/.task_runtime/current-task.json`
+
+In bash:
+```bash
+cat > specs/001-cli-todo-manager/.task_runtime/current-task.json.tmp << 'EOF'
+{
+  "task_id": "T004",
+  "file": "src/auth/routes.py",
+  "status": "in_progress",
+  "project_name": "001-cli-todo-manager",
+  "updated_at": "2026-08-12T10:30:00.000Z",
+  "tasks": {
+    "T001": "done",
+    "T002": "done",
+    "T003": "done",
+    "T004": "in_progress",
+    "T005": "todo"
+  }
+}
+EOF
+mv specs/001-cli-todo-manager/.task_runtime/current-task.json.tmp specs/001-cli-todo-manager/.task_runtime/current-task.json
+```
+
+---
+
+## Compliance Checklist (Every Task)
+
+- [ ] `.task_runtime/` directory exists
+- [ ] `current-task.json` written atomically (tmp + rename)
+- [ ] `task_id` matches a ticket from `tasks.md`
+- [ ] `project_name` matches backend project exactly
+- [ ] `tasks` map contains **ALL** task IDs from `tasks.md`
+- [ ] `updated_at` is current UTC ISO8601
+- [ ] JSON is valid
+
+---
+
+## Why This Matters
+
+| If You Skip | Consequence |
+|-------------|-------------|
+| No write on start | Board shows `todo` while you're working |
+| No write on done | Board stays `in_progress` forever |
+| Partial `tasks` map | Other tasks look stale on Kanban |
+| Wrong `project_name` | Ticket not found → no sync at all |
+| Invalid JSON | Watcher errors, no sync |
+
+---
+
+## Manual Sync Trigger (If Needed)
+
+```bash
+curl -X POST http://localhost:8000/api/v1/sync-current-task
+```
+
+---
+
+**This protocol is defined in `/prompts/universal-contract.md` — this adapter is a formatted injection for Codex.**
+
+---
+
+## End of Injection

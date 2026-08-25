@@ -14,6 +14,12 @@ SCRIPT_DIR = CURRENT_FILE.parent        # .../scripts/python
 RACINE_DIR = CURRENT_FILE.parents[3] # .../StageTalan
 AGENTDOCX_DIR = CURRENT_FILE.parents[2]   # .../agentdocx-speckit
 
+# 🎯 Support de la variable d'environnement SPECKIT_WORKSPACE (définie par l'extension VS Code)
+SPECKIT_WORKSPACE = os.environ.get("SPECKIT_WORKSPACE")
+if SPECKIT_WORKSPACE:
+    RACINE_DIR = Path(SPECKIT_WORKSPACE)
+    print(f"[VERIF] Workspace depuis extension VS Code : {RACINE_DIR}", flush=True)
+
 print(f"[VERIF] Dossier StageTalan : {RACINE_DIR}", flush=True)
 
 # Détection stricte : backend situé sous StageTalan (ou secours sous agentdocx-speckit)
@@ -53,34 +59,16 @@ os.chdir(str_backend_dir)
 
 print(f"[StartServer] sys.path[0] pointé sur : {sys.path[0]}", flush=True)
 
-# 3. INITIALISATION FASTAPI
-from fastapi import FastAPI
-from fastapi.middleware.cors import CORSMiddleware
+# 3. INITIALISATION FASTAPI — assurer que TicketManager logs sont visibles
+import logging
+logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s", force=True)
+logging.getLogger("app.agents.ticket_agent").setLevel(logging.INFO)
+logging.getLogger("app.agents.ticket_agent.manager").setLevel(logging.INFO)
+logging.getLogger("app.agents.ticket_agent.watcher").setLevel(logging.INFO)
+logging.getLogger("app.agents.ticket_agent.sync_service").setLevel(logging.INFO)
+
 import uvicorn
-
-from app.config import settings
-from app.database import engine, Base
-import app.models  
-from app.api.v1.endpoints import pipeline
-
-# Base de données : Création automatique des tables
-Base.metadata.create_all(bind=engine)
-
-# Instance de l'application FastAPI
-app = FastAPI(
-    title="Spec Kit Extension - AgentDocx API",
-    version="1.0.0",
-    description="API FastAPI d'orchestration Multi-Agents LangGraph pour Spec Kit"
-)
-
-# Configuration CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+from app.main import app # 🎯 IMPORTANT: On importe l'app configurée dans main.py (incluant tous les routers et lifespan=ticket_agent_lifespan)
 
 # 🛡️ Global exception handler : capture TOUTES les exceptions et retourne le traceback complet
 from fastapi.responses import JSONResponse
@@ -96,138 +84,23 @@ async def global_exception_handler(request: Request, exc: Exception):
         content={"detail": f"Erreur: {str(exc)}\nTraceback:\n{tb_str}"}
     )
 
-# Inclusion des Routers
-app.include_router(pipeline.router, prefix="/api/v1/docs", tags=["Documents & Pipeline Frontend"])
-app.include_router(pipeline.router, prefix="/api/v1/pipeline", tags=["Pipeline CLI"])
-
-# Endpoints de Santé (Health Checks)
-@app.get("/", tags=["Health"])
-async def root():
-    return {
-        "message": "SpecKit Extension API is running!", 
-        "swagger_docs": "/docs"
-    }
-
-@app.get("/health", tags=["Health"])
-async def health():
-    return {"status": "ok", "version": "1.0.0"}
-
-# 4. DEMARRAGE UVICORN
+# 4. DEMARRAGE UVICORN — aligné avec BrancheMain (logique principale identique)
+#
+# IMPORTANT : on lance directement l'application réelle définie dans
+# app/main.py (app.main:app). Cette application inclut TOUS les routers,
+# y compris tickets.router et le lifespan ticket_agent_lifespan (TicketManager).
+# Ne PAS créer d'instance FastAPI locale ici : app.main est la seule source de vérité.
 if __name__ == "__main__":
-    print(f"[StartServer] Démarrage du serveur Uvicorn via start_server:app...", flush=True)
-    
+    import uvicorn
+
+    print(f"[StartServer] Démarrage du serveur Uvicorn via app.main:app (TicketManager lifespan actif)...", flush=True)
+
     uvicorn.run(
-        "start_server:app",
+        "app.main:app",
         host="127.0.0.1",
         port=8000,
         reload=False,
-        app_dir=str_script_dir,
-        reload_dirs=[str_backend_dir, str_script_dir]
+        app_dir=str_backend_dir,
+        reload_dirs=[str_backend_dir, str_script_dir],
+        log_level="info",
     )
-# import os
-# import sys
-# from pathlib import Path
-# from fastapi import FastAPI
-# from fastapi.middleware.cors import CORSMiddleware
-# import uvicorn
-
-# # 1. Configurer l'encodage et l'affichage immédiat des logs (Windows)
-# if hasattr(sys.stdout, "reconfigure"):
-#     sys.stdout.reconfigure(line_buffering=True, encoding='utf-8')
-# if hasattr(sys.stderr, "reconfigure"):
-#     sys.stderr.reconfigure(line_buffering=True, encoding='utf-8')
-
-# # 2. LOCALISATION DYNAMIQUE DU DOSSIER REEL DU BACKEND
-# CURRENT_FILE = Path(__file__).resolve()
-# SCRIPT_DIR = CURRENT_FILE.parent  # scripts/python
-
-# # On remonte d'au moins 2 niveaux pour balayer la RACINE du projet
-# PROJECT_ROOT = CURRENT_FILE.parents[2] if len(CURRENT_FILE.parents) > 2 else CURRENT_FILE.parent
-
-# def find_backend_dir(root: Path) -> Path:
-#     """
-#     Recherche automatiquement le dossier contenant le package 'app/config.py'.
-#     """
-#     # Test 1 : Vérification rapide sous root/backend ou root
-#     for candidate in [root / "backend", root]:
-#         if (candidate / "app" / "config.py").exists():
-#             return candidate
-
-#     # Test 2 : Recherche récursive dans tout le projet
-#     for path in root.rglob("config.py"):
-#         if path.parent.name == "app":
-#             return path.parent.parent
-
-#     return root
-
-# BACKEND_DIR = find_backend_dir(PROJECT_ROOT)
-# str_backend_dir = str(BACKEND_DIR)
-# str_script_dir = str(SCRIPT_DIR)
-
-# print(f"[StartServer] Racine backend détectée : {str_backend_dir}", flush=True)
-
-# # 3. Injection dans sys.path et PYTHONPATH AVANT toute importation
-# for d in [str_backend_dir, str_script_dir]:
-#     if d not in sys.path:
-#         sys.path.insert(0, d)
-
-# os.environ["PYTHONPATH"] = str_backend_dir + os.pathsep + str_script_dir + os.pathsep + os.environ.get("PYTHONPATH", "")
-# os.chdir(str_backend_dir)
-
-# # =========================================================================
-# # 4. INITIALISATION DE FASTAPI (Importations désormais garanties)
-# # =========================================================================
-# from app.config import settings
-# from app.database import engine, Base
-# import app.models  
-# from app.api.v1.endpoints import pipeline
-
-# # Base de données : Création automatique des tables
-# Base.metadata.create_all(bind=engine)
-
-# # Instance de l'application FastAPI
-# app = FastAPI(
-#     title="Spec Kit Extension - AgentDocx API",
-#     version="1.0.0",
-#     description="API FastAPI d'orchestration Multi-Agents LangGraph pour Spec Kit"
-# )
-
-# # Configuration CORS
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"],
-# )
-
-# # Inclusion des Routers
-# app.include_router(pipeline.router, prefix="/api/v1/docs", tags=["Documents & Pipeline Frontend"])
-# app.include_router(pipeline.router, prefix="/api/v1/pipeline", tags=["Pipeline CLI"])
-
-# # Endpoints de Santé (Health Checks)
-# @app.get("/", tags=["Health"])
-# async def root():
-#     return {
-#         "message": "SpecKit Extension API is running!", 
-#         "swagger_docs": "/docs"
-#     }
-
-# @app.get("/health", tags=["Health"])
-# async def health():
-#     return {"status": "ok", "version": "1.0.0"}
-
-# # =========================================================================
-# # 5. DEMARRAGE DU SERVEUR UVICORN
-# # =========================================================================
-# if __name__ == "__main__":
-#     print(f"[StartServer] Démarrage du serveur Uvicorn via start_server:app...", flush=True)
-    
-#     uvicorn.run(
-#         "start_server:app",
-#         host="127.0.0.1",
-#         port=8000,
-#         reload=True,
-#         app_dir=str_script_dir,
-#         reload_dirs=[str_backend_dir, str_script_dir]
-#     )
