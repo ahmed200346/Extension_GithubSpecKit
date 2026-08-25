@@ -433,7 +433,29 @@ Sans cette étape, le LLM ne sait pas qu'il doit mettre à jour le Kanban et les
 
 Vérifiez que le fichier copié contient bien `specs/{project_name}/.task_runtime/current-task.json` (pas `.task_runtime` à la racine).
 
-### 4. Lancement — 4 étapes, zéro terminal (sauf LLM)
+### 4. Environnement virtuel Python — pour `demo/` vide (obligatoire)
+
+> [!IMPORTANT]
+> Dans votre dossier `demo/` vide après `git clone`, créez l'environnement avant d'installer les dépendances.
+
+```powershell
+# Depuis la racine du clone (demo/Extension_GithubSpecKit)
+python -m venv venv
+.\venv\Scripts\Activate.ps1   # Windows PowerShell — sur Mac/Linux: source venv/bin/activate
+python -m pip install --upgrade pip
+pip install -r requirements.txt          # ou pip install -r backend/requirements.txt si présent
+```
+
+### 5. Initialiser SpecKit — crée `.specify/` (obligatoire si absent)
+
+```bash
+specify init .
+# Alternative : npx @github/spec-kit init .
+# Vérifie : ls .specify/  et  ls .specify/memory/constitution.md
+```
+> Sans `specify init .`, les commandes `/speckit-specify` / `/speckit-plan` n'ont pas de mémoire.
+
+### 6. Lancement — 4 étapes, zéro terminal (sauf LLM)
 
 | Étape | Action | Vérification |
 |:---:|---|---|
