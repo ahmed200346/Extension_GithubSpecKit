@@ -40,7 +40,8 @@ Le projet adopte une architecture modulaire où l'IA n'est pas seulement un "cha
 - **`/frontend`** : 🖥️ **Le Poste de Contrôle**. Dashboard **React** pour le monitoring temps réel, la visualisation des KPIs, la gestion des documents et le **Kanban Ticket Board** (polling `task-state` + WebSocket).
 - **`/specs`** : 📄 **La Source**. Dossier surveillé contenant les spécifications Markdown brutes, le fichier `tasks.md` et **`.task_runtime/current-task.json` par projet** (`specs/{project}/.task_runtime/` — source unique pour le Ticket Agent).
 - **`/outputs`** : 📦 **L'Usine**. Stockage centralisé des livrables (JSON, Markdown enrichis, PDF versionnés).
-- **`/prompts`** : 📝 **Le Contrat**. `universal-contract.md` + adapters (`claude`, `codex`, `copilot`, `cursor`, `windsurf`) qui guident le LLM pour agir en tant que Ticket Agent.
+- **`/prompts`** : 📝 **Le Contrat — Source d'initialisation**. `universal-contract.md` (maître) + 5 adapters (`claude` → `CLAUDE.md`, `codex` → `AGENTS.md`, `copilot` → `.github/copilot-instructions.md`, `cursor` → `.cursorrules`, `windsurf` → `.windsurfrules`). **Indispensable même s'il n'est pas exécuté** : c'est en copiant ces fichiers à la racine que le LLM devient Ticket Agent (`specs/{project}/.task_runtime`).
+- **`/documentation`** : 📚 **Guides de référence**. `commands/` (`lifecycle-guide.md`, `sync-commands.md`) pour le cycle de vie `/speckit-*` et `jira/` (`mapping-rules.md`, `ticket-templates.md`) pour les règles de mapping. N'affecte pas le runtime, mais explique comment initialiser et étendre les règles LLM.
 - **`/agentdocx-speckit`** : 🧩 **L'Extension**. VS Code extension (`src/extension.ts`, `scripts/python/start_server.py`) qui auto-crée les `.task_runtime` par projet et lance le Ticket Manager.
 
 ---
