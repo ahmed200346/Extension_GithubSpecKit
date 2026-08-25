@@ -456,7 +456,32 @@ specify init .
 ```
 > Sans `specify init .`, les commandes `/speckit-specify` / `/speckit-plan` n'ont pas de mémoire.
 
-### 6. Lancement — 4 étapes, zéro terminal (sauf LLM)
+### 6. Dépendances Node.js — Frontend + Extension (depuis `demo`)
+
+> [!WARNING]
+> `tsc` / `cross-env` ne sont **pas** Python — ce sont des dépendances Node.js. Le `venv` Python ne les installe pas.
+
+**Frontend (obligatoire pour `AgentDocx: Start Frontend`) :**
+```powershell
+# Depuis demo/Extension_GithubSpecKit/frontend
+cd frontend
+npm install --legacy-peer-deps   # nécessaire à cause du conflit @nivo 0.79 vs 0.80
+# Vérifie : npm run compile ne doit plus dire 'tsc not recognized'
+cd ..
+```
+
+**Extension (seulement si vous recompilez l'extension) :**
+```powershell
+# Depuis demo/Extension_GithubSpecKit/agentdocx-speckit
+cd agentdocx-speckit
+npm install              # installe tsc, esbuild, eslint (une seule fois)
+npm run compile          # vérifie types + lint + bundle
+# ou package complet :
+npx @vscode/vsce package # génère agentdocx-speckit-0.0.4.vsix
+cd ..
+```
+
+### 7. Lancement — 4 étapes, zéro terminal (sauf LLM)
 
 | Étape | Action | Vérification |
 |:---:|---|---|
