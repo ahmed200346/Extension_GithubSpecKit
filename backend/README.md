@@ -13,6 +13,9 @@
   <i>Transforme des specs Markdown brutes en livrables certifiés avec sync Kanban autonome</i>
 </p>
 
+> [!NOTE]
+> **Où se trouve ce backend dans le repo ?** Branche `main` (`RepoSigma/Extension_GithubSpecKit/backend/`) — pipeline complet. L'extension VS Code est dans la branche `extension` (`BrancheExtenion/Extension_GithubSpecKit/agentdocx-speckit/`). Voir `README.md` racine → `🌿 Branches du repo` pour cloner les deux ou les fusionner en `main`.
+
 ---
 
 <details>

@@ -67,8 +67,28 @@ class TicketManager:
                         data = json.load(f)
                         updated_at_str = data.get("updated_at")
                         if updated_at_str:
-                            # Parse ISO8601 timestamp
-                            updated_at = datetime.fromisoformat(updated_at_str.replace("Z", "+00:00"))
+                            # Parse ISO8601 timestamp — gère 7 chiffres PowerShell (tronque à 6 pour fromisoformat)
+                            ts = updated_at_str
+                            if "." in ts:
+                                # Sépare fraction et zone
+                                if ts.endswith("Z"):
+                                    base, frac_z = ts.split(".", 1)
+                                    frac = frac_z[:-1]  # sans Z
+                                    if len(frac) > 6:
+                                        frac = frac[:6]
+                                    ts = f"{base}.{frac}Z"
+                                elif "+" in ts:
+                                    base, rest = ts.split(".", 1)
+                                    # rest contient frac+offset
+                                    # ex: 2026-08-25T14:41:00.3307983+00:00
+                                    for sep in ["+", "-"]:
+                                        if sep in rest:
+                                            frac, offset = rest.split(sep, 1)
+                                            if len(frac) > 6:
+                                                frac = frac[:6]
+                                            ts = f"{base}.{frac}{sep}{offset}"
+                                            break
+                            updated_at = datetime.fromisoformat(ts.replace("Z", "+00:00"))
                             if latest_update is None or updated_at > latest_update:
                                 latest_update = updated_at
                                 active_path = str(task_file.parents[1])  # parent of .task_runtime
@@ -96,8 +116,19 @@ class TicketManager:
         except Exception as e:
             logger.error(f"Error during specs scan fallback: {e}")
 
-        # 4. Fallback
-        logger.info(f"[TicketManager] No active project found. Falling back to: {base_dir}")
+        # 4. Fallback: éviter de créer .task_runtime à la racine
+        # Si aucun projet trouvé, essayer le premier dossier sous specs/ même sans tasks.md, sinon ne pas créer de runtime à la racine
+        try:
+            base_path = Path(base_dir)
+            specs_dir = base_path / "specs"
+            if specs_dir.exists():
+                for project_subdir in specs_dir.iterdir():
+                    if project_subdir.is_dir() and not project_subdir.name.startswith('.'):
+                        logger.info(f"[TicketManager] Fallback to first specs project: {project_subdir}")
+                        return str(project_subdir)
+        except Exception as e:
+            logger.error(f"Error during fallback scan: {e}")
+        logger.warning(f"[TicketManager] No project found — will not create .task_runtime at workspace root {base_dir}")
         return base_dir
 
     def __init__(
@@ -118,6 +149,7 @@ class TicketManager:
         self._sync_service: Optional[SyncService] = None
         self._auditor: Optional[Auditor] = None
         self._running = False
+        self._auto_switch_task: Optional[asyncio.Task] = None
 
         # Callbacks for frontend notification
         self._on_structure_change: Optional[Callable[[dict], Awaitable[None]]] = None
@@ -243,12 +275,57 @@ class TicketManager:
         except Exception as e:
             logger.error(f"[TicketManager] Initial sync failed: {e}")
 
+        # Problème 2 — switch dynamique automatique sans Reload Window
+        # Vérifie toutes les 5s si un nouveau projet a un current-task.json plus récent
+        if not self._auto_switch_task or self._auto_switch_task.done():
+            self._auto_switch_task = asyncio.create_task(self._monitor_project_switch())
+            logger.info("[TicketManager] Auto-switch monitor started (5s interval)")
+
+    async def _monitor_project_switch(self) -> None:
+        """Surveille l'apparition d'un projet plus récent et bascule automatiquement."""
+        while self._running:
+            try:
+                await asyncio.sleep(5)
+                if not self._running:
+                    break
+                new_path = self._resolve_dynamic_project_path(settings, str(BASE_DIR))
+                if new_path != self.project_path:
+                    logger.info(f"[TicketManager] 🔄 Auto-switch détecté: {self.project_path} → {new_path}")
+                    # Arrêter les anciens watchers
+                    if self._dual_watcher:
+                        await self._dual_watcher.stop()
+                    # Basculer vers le nouveau projet
+                    self.project_path = new_path
+                    self._dual_watcher = None
+                    self._sync_service = None
+                    self.initialize()
+                    await self._dual_watcher.start()
+                    logger.info(f"[TicketManager] ✅ Auto-switched to {new_path}")
+                    # Sync initial du nouveau projet
+                    try:
+                        result = await self._sync_service.sync_current_task()
+                        logger.info(f"[TicketManager] Auto-switch initial sync: {result.get('action', 'completed')}")
+                    except Exception as e:
+                        logger.error(f"[TicketManager] Auto-switch sync failed: {e}")
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[TicketManager] Auto-switch monitor error: {e}")
+
     async def stop(self) -> None:
         """Stop both watchers gracefully."""
         if not self._running:
             return
 
         self._running = False
+
+        if self._auto_switch_task:
+            self._auto_switch_task.cancel()
+            try:
+                await self._auto_switch_task
+            except asyncio.CancelledError:
+                pass
+            self._auto_switch_task = None
 
         if self._dual_watcher:
             await self._dual_watcher.stop()
@@ -364,6 +441,15 @@ async def ticket_agent_lifespan(app):
     auditor_threshold = getattr(settings, 'AUDITOR_THRESHOLD', 75.0)
 
     logger.info("[Lifespan] Starting Ticket Agent with Dual Watchers...")
+
+    # Création autonome des tables si absentes (pour chaque DB, ex: FinalDB vide)
+    try:
+        from app.database import Base, engine
+        import app.models  # noqa: F401 — enregistre les métadonnées
+        Base.metadata.create_all(bind=engine)
+        logger.info("[Lifespan] Tables vérifiées/créées via Base.metadata.create_all (autonome)")
+    except Exception as e:
+        logger.error(f"[Lifespan] Erreur création tables: {e}")
 
     _manager = TicketManager(
         project_path=project_path,

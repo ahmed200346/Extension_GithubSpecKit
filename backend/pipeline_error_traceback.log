@@ -1,0 +1,67 @@
+Traceback (most recent call last):
+  File "c:\Users\Ahmed Aziz\Desktop\Be\extension-github-spec-kit\backend\app\api\v1\endpoints\pipeline.py", line 515, in upload_and_process_document
+    final_state = await app_graph.ainvoke(initial_state)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\pregel\main.py", line 4090, in ainvoke
+    async for chunk in self.astream(
+    ...<30 lines>...
+            chunks.append(chunk)
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\pregel\main.py", line 3440, in astream
+    async for _ in runner.atick(
+    ...<16 lines>...
+            yield o
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\pregel\_runner.py", line 557, in atick
+    _panic_or_proceed(
+    ~~~~~~~~~~~~~~~~~^
+        futures.done.union(f for f, t in futures.items() if t is not None),
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<3 lines>...
+        handled_futures=handled_futures,
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\pregel\_runner.py", line 687, in _panic_or_proceed
+    raise exc
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\pregel\_retry.py", line 744, in arun_with_retry
+    return await task.proc.ainvoke(task.input, config)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\_internal\_runnable.py", line 733, in ainvoke
+    input = await asyncio.create_task(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+        step.ainvoke(input, config, **kwargs), context=context
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langgraph\_internal\_runnable.py", line 501, in ainvoke
+    ret = await self.afunc(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langchain_core\runnables\config.py", line 707, in run_in_executor
+    return await asyncio.get_running_loop().run_in_executor(
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+    )
+    ^
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\thread.py", line 86, in run
+    result = ctx.run(self.task)
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\concurrent\futures\thread.py", line 73, in run
+    return fn(*args, **kwargs)
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\langchain_core\runnables\config.py", line 698, in wrapper
+    return func(*args, **kwargs)
+  File "c:\Users\Ahmed Aziz\Desktop\Be\extension-github-spec-kit\backend\app\graph\nodes.py", line 168, in summary_node
+    summary_doc = agent_service.generate_summary(
+        parsed_json_dict=parsed_json_dict,
+        summary_spec_dict=summary_spec_dict
+    )
+  File "c:\Users\Ahmed Aziz\Desktop\Be\extension-github-spec-kit\backend\app\services\summary_service.py", line 57, in generate_summary
+    return parse_and_validate_json(raw_output, SummaryOutputModel)
+  File "c:\Users\Ahmed Aziz\Desktop\Be\extension-github-spec-kit\backend\app\core\llm_utils.py", line 138, in parse_and_validate_json
+    raise e
+  File "c:\Users\Ahmed Aziz\Desktop\Be\extension-github-spec-kit\backend\app\core\llm_utils.py", line 132, in parse_and_validate_json
+    dict_data = json.loads(extracted_json, strict=False)
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\json\__init__.py", line 365, in loads
+    return cls(**kw).decode(s)
+           ~~~~~~~~~~~~~~~~^^^
+  File "C:\Users\Ahmed Aziz\AppData\Local\Python\pythoncore-3.14-64\Lib\json\decoder.py", line 348, in decode
+    raise JSONDecodeError("Extra data", s, end)
+json.decoder.JSONDecodeError: Extra data: line 28 column 1 (char 2216)
+During task with name 'summary_agent' and id '9892beea-22ca-a4b1-a8d9-cdef9bc2909f'

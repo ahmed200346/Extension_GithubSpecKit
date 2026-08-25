@@ -44,6 +44,11 @@ class BaseWatcher:
         """Main watch loop - runs until stopped."""
         self._running = True
 
+        # Garde-fou : ne jamais créer .task_runtime à la racine du workspace (seulement sous specs/{project})
+        if self.watch_path.name == ".task_runtime" and (self.watch_path.parent / "specs").exists():
+            logger.warning(f"[{self.name}] Skip creating .task_runtime at workspace root {self.watch_path} — only specs/{{project}}/.task_runtime is allowed")
+            return
+
         # Ensure watch directory exists
         self.watch_path.mkdir(parents=True, exist_ok=True)
 
@@ -127,7 +132,11 @@ class StructureWatcher(BaseWatcher):
         logger.info(f"[StructureWatcher] Monitoring {project_path} for tasks.md changes")
 
     def _ensure_task_runtime(self) -> None:
-        """Create .task_runtime/ directory if it doesn't exist."""
+        """Create .task_runtime/ directory if it doesn't exist — only under specs/{project}, never at workspace root."""
+        # Garde-fou : ne jamais créer .task_runtime à la racine du workspace (qui contient specs/)
+        if (self.project_path / "specs").exists():
+            logger.warning(f"[StructureWatcher] Skip creating .task_runtime at workspace root {self.project_path} — only specs/{{project}}/.task_runtime is allowed")
+            return
         task_runtime_dir = self.project_path / ".task_runtime"
         task_runtime_dir.mkdir(parents=True, exist_ok=True)
         

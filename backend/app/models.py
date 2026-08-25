@@ -132,6 +132,9 @@ class Project(Base):
     artifacts = relationship(
         "Artifact", back_populates="project", cascade="all, delete-orphan"
     )
+    tickets = relationship(
+        "Ticket", back_populates="project", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<Project id={self.id} name={self.name!r}>"
@@ -308,7 +311,7 @@ class Ticket(Base):
     created_at = Column(DateTime, server_default=func.now(), nullable=False)
     updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
 
-    project = relationship("Project")
+    project = relationship("Project", back_populates="tickets")
     events = relationship(
         "TicketEvent",
         back_populates="ticket",
@@ -320,6 +323,12 @@ class Ticket(Base):
         back_populates="ticket",
         cascade="all, delete-orphan",
         order_by="TicketComment.created_at",
+    )
+    metrics = relationship(
+        "TicketMetrics",
+        back_populates="ticket",
+        cascade="all, delete-orphan",
+        uselist=False,
     )
 
     def __repr__(self) -> str:
@@ -388,3 +397,36 @@ class TicketComment(Base):
 
     def __repr__(self) -> str:
         return f"<TicketComment id={self.id} ticket_id={self.ticket_id}>"
+
+
+class TicketMetrics(Base):
+    """
+    Métriques d'implémentation persistées pour un ticket.
+    Permet au frontend de lire Conformity Score / Verdict sans scanner ticket_events.
+    1 ticket → 0..1 metrics (upsert à chaque audit).
+    """
+    __tablename__ = "ticket_metrics"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=_uuid)
+    ticket_id = Column(
+        UUID(as_uuid=True), ForeignKey("tickets.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    project_id = Column(
+        UUID(as_uuid=True), ForeignKey("projects.id", ondelete="CASCADE"), nullable=False
+    )
+    conformity_score = Column(Float, nullable=True)
+    verdict = Column(String(30), nullable=True)
+    requirement_coverage = Column(Float, nullable=True)
+    code_quality = Column(Float, nullable=True)
+    architecture = Column(Float, nullable=True)
+    traceability = Column(Float, nullable=True)
+    last_audit_at = Column(DateTime, server_default=func.now(), nullable=False)
+    audit_metadata = Column(JSONB, nullable=True)
+    created_at = Column(DateTime, server_default=func.now(), nullable=False)
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now(), nullable=False)
+
+    ticket = relationship("Ticket", back_populates="metrics")
+    project = relationship("Project")
+
+    def __repr__(self) -> str:
+        return f"<TicketMetrics ticket_id={self.ticket_id} score={self.conformity_score} verdict={self.verdict}>"

@@ -1,7 +1,7 @@
 # 🚀 Spec Kit — AgentDocx Ticket Manager
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.0.3-blue?style=for-the-badge" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.0.4-blue?style=for-the-badge" alt="version" />
   <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="python" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="fastapi" />
   <img src="https://img.shields.io/badge/PostgreSQL-StageTal-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="postgres" />
@@ -296,6 +296,29 @@ L'extension VS Code **AgentDocx SpecKit** offre une expérience intégrée dans 
 
 ---
 
+## 🌿 Branches du repo — où se trouve quoi ?
+
+> **Depuis `0.0.4`, tout est dans `main` au même niveau** (plus besoin de 2 clones) :
+
+| Emplacement dans `main` | Contenu | README détaillé |
+|---|---|---|
+| `backend/` | Pipeline FastAPI + Ticket Agent | [`backend/README.md`](backend/README.md) |
+| `frontend/` | Dashboard React + Kanban | [`frontend/README.md`](frontend/README.md) |
+| `agentdocx-speckit/` | Extension VS Code (`src/extension.ts`, `scripts/python/`) | [`agentdocx-speckit/README.md`](agentdocx-speckit/README.md) |
+| `specs/` | Projets `001-...`, `002-...` (`tasks.md` + `.task_runtime/`) | — |
+| `prompts/` | Contrats universels (`universal-contract.md` + adapters) | — |
+
+> **Branche `extension` = miroir de dev** pour l'extension seule (`BrancheExtenion/`). Pour publier, on l'a **mergée dans `main`** — un seul `git clone` suffit désormais.
+
+**Clone unique (recommandé) :**
+```bash
+git clone https://github.com/ahmed200346/Extension_GithubSpecKit.git
+cd Extension_GithubSpecKit
+# Vérifie : ls backend/ frontend/ agentdocx-speckit/ specs/
+```
+
+---
+
 ## 🚀 Quick Start (Guide de Lancement — pour un clone vierge)
 
 ### 1. Prérequis
@@ -312,13 +335,18 @@ L'extension VS Code **AgentDocx SpecKit** offre une expérience intégrée dans 
 <tr>
 <td>
 
-**📦 Fichier complet à copier-coller**
+**📦 Depuis `.env.example` → copiez puis remplissez vos clés**
+
+```bash
+cp .env.example .env
+# puis éditez .env : GEMINI_API_KEY, NVIDIA_API_KEY
+```
 
 ```dotenv
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 🗄️  DATABASE — ne pas modifier si StageTal existe
+# 🗄️  DATABASE
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-DATABASE_URL=postgresql://postgres:0000@localhost:5432/StageTal
+DATABASE_URL=postgresql://user:password@localhost:5432/dbname
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 🤖  LLM PROVIDER — choix unique (facade: llm_client.py)

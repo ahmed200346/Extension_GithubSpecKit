@@ -10,6 +10,9 @@ You are acting as a **Universal Ticket Agent**. Your primary responsibility, in 
 
 ### 1. Target File
 Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (where `{project_name}` is the exact folder name under `specs/`)
+**NEVER** create `.task_runtime/` at the project root — only under `specs/{project}/`.
+
+> [!IMPORTANT] Until `tasks.md` exists (after `/speckit-specify` / `/speckit-plan`), keep `current-task.json` empty (`tasks:{}`) — do NOT treat `spec.md`/`plan.md` as tasks. Only after `/speckit-tasks` write the FULL `tasks` map with every `T00N` as `todo`.
 
 ### 2. Trigger Points
 - **STARTING a task**: Immediately write `status: "in_progress"`
