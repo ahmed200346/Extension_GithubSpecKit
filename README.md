@@ -53,7 +53,7 @@ Le projet adopte une architecture modulaire où l'IA n'est pas seulement un "cha
 
 | Module | README détaillé | Contenu |
 |---|---|---|
-| **🧩 Extension VS Code** | [`agentdocx-speckit/README.md`](agentdocx-speckit/README.md) | Auto-init `.task_runtime`, Dual Watchers, `start_server.py`, `spec_watcher.py`, packaging `0.0.3` |
+| **🧩 Extension VS Code** | [`agentdocx-speckit/README.md`](agentdocx-speckit/README.md) | Auto-init `.task_runtime`, Dual Watchers, `start_server.py`, `spec_watcher.py`, packaging `0.0.4` |
 | **🖥️ Frontend Dashboard** | [`frontend/README.md`](frontend/README.md) | React/MUI, Kanban Board, `kanbanSlice`, Drag & Drop, polling + WebSocket |
 | **⚙️ Backend Moteur** | [`backend/README.md`](backend/README.md) | LLM providers (ollama/gemini/nvidia), LangGraph, Ticket Agent (`manager`, `watcher`, `sync_service`, `auditor`), API & BDD |
 
@@ -319,7 +319,7 @@ L'extension VS Code **AgentDocx SpecKit** offre une expérience intégrée dans 
 > ![Installation VSIX](ExtensionVSCode.png)
 > *(Capture : icône Extensions → "..." → "Install from VSIX..." → sélectionner le fichier .vsix)*
 
-1. Téléchargez `agentdocx-speckit-0.0.3.vsix`.
+1. Téléchargez `agentdocx-speckit-0.0.4.vsix`.
 2. `Ctrl+Shift+P` $\rightarrow$ **Extensions: Install from VSIX...**
 
 ---
@@ -512,7 +512,7 @@ cd ..
 
 | Étape | Action | Vérification |
 |:---:|---|---|
-| **1️⃣** | **Extension** : Installez `agentdocx-speckit-0.0.3.vsix` → `Ctrl+Shift+P` → `Developer: Reload Window` | `Output > AgentDocx Server` affiche `✔ [TicketManager] Dual watchers started` + `StatusWatcher Monitoring .../.task_runtime` |
+| **1️⃣** | **Extension** : Installez `agentdocx-speckit-0.0.4.vsix` → `Ctrl+Shift+P` → `Developer: Reload Window` | `Output > AgentDocx Server` affiche `✔ [TicketManager] Dual watchers started` + `StatusWatcher Monitoring .../.task_runtime` |
 | **2️⃣** | **Frontend** : `AgentDocx: Start Frontend` dans la palette (ou `cd frontend && npm start`) | `Output > AgentDocx Frontend` → `webpack compiled successfully` → `http://localhost:5000` |
 | **3️⃣** | **Pipeline** : Modifiez un fichier dans `specs/{project}/` ou `AgentDocx: Trigger Pipeline` | `Output > AgentDocx Watcher` → `Pipeline exécuté avec succès` |
 | **4️⃣** | **Kanban** : Dashboard → `Ingest Tasks` → lancez `Claude Code : /speckit-implement T009` | Kanban passe `todo → in_progress → done` en temps réel (`source:"watcher"` dans `Ticket Events`) |
