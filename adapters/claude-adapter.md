@@ -1,4 +1,4 @@
-# Claude Code Adapter — Universal Contract Injection
+﻿# Claude Code Adapter â€” Universal Contract Injection
 
 **Source:** `/prompts/universal-contract.md` (master protocol)  
 **Target:** `CLAUDE.md` (project root)  
@@ -32,11 +32,15 @@ You are working with a **Universal Ticket Agent** that syncs your task progress 
 specs/{project_name}/.task_runtime/current-task.json
 ```
 (Where `{project_name}` is the exact project folder name under `specs/`, e.g., `specs/001-course-management-system/.task_runtime/current-task.json`)
+**NEVER** create `.task_runtime/` at the project root — only under `specs/{project}/`.
+
+> [!IMPORTANT]
+> **Until `tasks.md` exists:** After `/speckit-specify` and `/speckit-plan`, keep `current-task.json` **empty** (`tasks:{}`) — do NOT treat `spec.md`/`plan.md` as tasks. Only after `/speckit-tasks` write the FULL `tasks` map with every `T00N` as `todo`.
 
 ### When to Write
-1. **BEFORE** starting any task → write `status: "in_progress"`
-2. **AFTER** completing a task → write `status: "done"`
-3. **ALWAYS** include the FULL `tasks` map (all task IDs → status)
+1. **BEFORE** starting any task â†’ write `status: "in_progress"`
+2. **AFTER** completing a task â†’ write `status: "done"`
+3. **ALWAYS** include the FULL `tasks` map (all task IDs â†’ status)
 
 ### JSON Format (EXACT)
 ```json
@@ -67,17 +71,17 @@ specs/{project_name}/.task_runtime/current-task.json
 | `tasks` | YES | **ALL** task IDs from `tasks.md` with current status |
 
 ### Status Values
-- `"todo"` — Not started
-- `"in_progress"` — Currently working
-- `"done"` — Completed
+- `"todo"` â€” Not started
+- `"in_progress"` â€” Currently working
+- `"done"` â€” Completed
 
 ---
 
 ## How to Find Your Project Name
 
 Check in order:
-1. `.task_runtime/config.json` → `"project_name"` field (if exists)
-2. Parent folder of `tasks.md` (e.g., `specs/001-cli-todo-manager/tasks.md` → `"001-cli-todo-manager"`)
+1. `.task_runtime/config.json` â†’ `"project_name"` field (if exists)
+2. Parent folder of `tasks.md` (e.g., `specs/001-cli-todo-manager/tasks.md` â†’ `"001-cli-todo-manager"`)
 3. Git repo name: `git config --get remote.origin.url | sed 's/.*\/\([^/]*\)\.git/\1/'`
 
 ---
@@ -86,7 +90,7 @@ Check in order:
 
 ### User says: "Implement T004: Add user authentication"
 
-**Step 1 — BEFORE coding (write to current-task.json):**
+**Step 1 â€” BEFORE coding (write to current-task.json):**
 ```json
 {
   "task_id": "T004",
@@ -104,9 +108,9 @@ Check in order:
 }
 ```
 
-**Step 2 — Do the work** (write code, run tests, etc.)
+**Step 2 â€” Do the work** (write code, run tests, etc.)
 
-**Step 3 — AFTER completing (write to current-task.json):**
+**Step 3 â€” AFTER completing (write to current-task.json):**
 ```json
 {
   "task_id": "T004",
@@ -176,7 +180,7 @@ def write_task_status(task_id: str, file: str, status: str, project_name: str, a
 | No write on start | Board shows `todo` while you're working |
 | No write on done | Board stays `in_progress` forever |
 | Partial `tasks` map | Other tasks look stale on Kanban |
-| Wrong `project_name` | Ticket not found → no sync at all |
+| Wrong `project_name` | Ticket not found â†’ no sync at all |
 | Invalid JSON | Watcher errors, no sync |
 
 ---
@@ -190,8 +194,12 @@ curl -X POST http://localhost:8000/api/v1/sync-current-task
 
 ---
 
-**This protocol is defined in `/prompts/universal-contract.md` — this adapter is a formatted injection for Claude Code.**
+**This protocol is defined in `/prompts/universal-contract.md` â€” this adapter is a formatted injection for Claude Code.**
 
 ---
+
+### Metrics and Dashboard Verification (MANDATORY)
+
+Before marking a task done, ensure the backend runs with `ENABLE_AUDITOR=true`, write the full `current-task.json` with the task set to `"done"`, and allow the StatusWatcher to trigger the Auditor. Verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}` returns `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability`, plus `overall_progress_pct`, `tickets_with_audit`, and `avg_conformity_score`. Confirm the values appear in the dashboard Metrics tab. If missing, keep the task `in_progress`; never invent metrics or edit the database directly.
 
 ## End of Injection

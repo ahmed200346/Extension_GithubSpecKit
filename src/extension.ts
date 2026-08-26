@@ -36,17 +36,74 @@ async function initTaskRuntimes(workspacePath: string, watcherChannel: vscode.Ou
                 watcherChannel.appendLine(`[INIT] Created runtime directory for ${projectDir}`);
             }
 
+            // Problème 1 — ne jamais créer de tâches "done" avant que tasks.md n'existe
+            // Si tasks.md n'existe pas, le runtime doit rester vide (tasks:{}) jusqu'à /speckit-tasks
+            const tasksMdPath = path.join(projectPath, 'tasks.md');
+            let expectedTasks: Record<string, string> | null = null;
+            if (fs.existsSync(tasksMdPath)) {
+                try {
+                    const tasksContent = fs.readFileSync(tasksMdPath, 'utf8');
+                    const matches = tasksContent.match(/\bT\d+\b/g);
+                    if (matches) {
+                        const unique = Array.from(new Set(matches)).sort();
+                        expectedTasks = {};
+                        for (const id of unique) {
+                            // Seules les tâches du tasks.md réel sont valides — toutes en todo à l'initialisation
+                            if (/^T\d+$/.test(id)) {
+                                expectedTasks[id] = "todo";
+                            }
+                        }
+                    }
+                } catch {}
+            }
+
             if (!fs.existsSync(currentTaskFile)) {
-                const initialData = {
+                const initialData: any = {
                     task_id: "",
                     file: "",
                     status: "todo",
                     project_name: projectDir,
                     updated_at: new Date().toISOString(),
-                    tasks: {}
+                    tasks: expectedTasks && Object.keys(expectedTasks).length > 0 ? expectedTasks : {}
                 };
                 fs.writeFileSync(currentTaskFile, JSON.stringify(initialData, null, 2), 'utf8');
-                watcherChannel.appendLine(`[INIT] Initialized current-task.json for ${projectDir}`);
+                watcherChannel.appendLine(`[INIT] Initialized current-task.json for ${projectDir} with ${Object.keys(initialData.tasks).length} tasks`);
+            } else if (expectedTasks !== null) {
+                // Si tasks.md existe mais current-task.json a un tasks incomplet (ex: 4 done sur spec.md), corriger en todo complet
+                try {
+                    const existing = JSON.parse(fs.readFileSync(currentTaskFile, 'utf8'));
+                    const existingKeys = Object.keys(existing.tasks || {});
+                    const expectedKeys = Object.keys(expectedTasks);
+                    const isIncomplete = existingKeys.length !== expectedKeys.length || existingKeys.some(k => !(k in expectedTasks));
+                    const hasPrematureDone = Object.values(existing.tasks || {}).some((v: any) => v === "done");
+                    if ((isIncomplete || hasPrematureDone) && expectedKeys.length > 0) {
+                        // Ne corriger que si le fichier semble avoir été généré prématurément (ex: T001 spec.md done)
+                        const looksPremature = existing.file && existing.file.includes('spec.md');
+                        if (looksPremature || isIncomplete) {
+                            existing.tasks = expectedTasks;
+                            existing.task_id = "";
+                            existing.file = "";
+                            existing.status = "todo";
+                            existing.updated_at = new Date().toISOString();
+                            fs.writeFileSync(currentTaskFile, JSON.stringify(existing, null, 2), 'utf8');
+                            watcherChannel.appendLine(`[INIT] Corrected premature current-task.json for ${projectDir} → ${expectedKeys.length} todo`);
+                        }
+                    }
+                } catch {}
+            } else if (!fs.existsSync(tasksMdPath)) {
+                // tasks.md n'existe pas encore — forcer un runtime vide même si un LLM l'a rempli prématurément
+                try {
+                    const existing = JSON.parse(fs.readFileSync(currentTaskFile, 'utf8'));
+                    if (Object.keys(existing.tasks || {}).length > 0) {
+                        existing.tasks = {};
+                        existing.task_id = "";
+                        existing.file = "";
+                        existing.status = "todo";
+                        existing.updated_at = new Date().toISOString();
+                        fs.writeFileSync(currentTaskFile, JSON.stringify(existing, null, 2), 'utf8');
+                        watcherChannel.appendLine(`[INIT] Reset premature tasks for ${projectDir} (tasks.md not yet generated)`);
+                    }
+                } catch {}
             }
         }
     } catch (err) {

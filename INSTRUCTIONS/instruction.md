@@ -117,25 +117,29 @@ from pathlib import Path
 from datetime import datetime
 
 def on_task_start(task_id, file_path, all_tasks):
-    runtime = Path.cwd() / ".task_runtime"
-    runtime.mkdir(exist_ok=True)
+    project_name = os.getenv("PROJECT_NAME", Path.cwd().name)
+    # Toujours sous specs/{project}/.task_runtime — jamais à la racine
+    runtime = Path(f"specs/{project_name}/.task_runtime")
+    runtime.mkdir(parents=True, exist_ok=True)
     data = {
         "task_id": task_id,
         "file": file_path,
         "status": "in_progress",
-        "project_name": os.getenv("PROJECT_NAME", Path.cwd().name),
+        "project_name": project_name,
         "updated_at": datetime.utcnow().isoformat() + "Z",
         "tasks": all_tasks
     }
     (runtime / "current-task.json").write_text(json.dumps(data, indent=2))
 
 def on_task_end(task_id, file_path, all_tasks):
-    runtime = Path.cwd() / ".task_runtime"
+    project_name = os.getenv("PROJECT_NAME", Path.cwd().name)
+    runtime = Path(f"specs/{project_name}/.task_runtime")
+    runtime.mkdir(parents=True, exist_ok=True)
     data = {
         "task_id": task_id,
         "file": file_path,
         "status": "done",
-        "project_name": os.getenv("PROJECT_NAME", Path.cwd().name),
+        "project_name": project_name,
         "updated_at": datetime.utcnow().isoformat() + "Z",
         "tasks": all_tasks
     }

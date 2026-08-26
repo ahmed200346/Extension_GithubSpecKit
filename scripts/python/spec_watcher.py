@@ -257,11 +257,8 @@ def ensure_task_runtime_dir(file_path: Path, base_dir: Path) -> Path:
     except ValueError:
         pass
     
-    # Fallback: create at base_dir level
-    task_runtime_dir = base_dir / ".task_runtime"
-    task_runtime_dir.mkdir(parents=True, exist_ok=True)
-    return task_runtime_dir
-
+    # Fallback: NE JAMAIS créer à la racine — seulement sous specs/{project}
+    # Fichiers hors specs (ex: .specify/memory/constitution.md) n'ont pas de runtime projet
     return False
 
 

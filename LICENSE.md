@@ -1,7 +1,9 @@
-MIT License
+MIT License — AgentDocx SpecKit `0.0.4`
+
+> Branche `extension` : `agentdocx-speckit/` — VS Code extension (Ticket Manager `specs/{project}/.task_runtime`, Dual Watchers)
 
 Copyright (c) 2026 Ahmed Aziz Ammar
-(5th Year AI Student)
+(5th Year AI Student — Version 0.0.4, Ticket Manager + FinalDB `ticket_metrics`)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

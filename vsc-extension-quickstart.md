@@ -1,48 +1,61 @@
-# Welcome to your VS Code Extension
+# 🚀 AgentDocx SpecKit — Extension QuickStart `0.0.4`
 
-## What's in the folder
+<p align="center">
+  <img src="https://img.shields.io/badge/version-0.0.4-blue?style=for-the-badge" alt="version" />
+  <img src="https://img.shields.io/badge/VS_Code-1.125+-007ACC?style=for-the-badge&logo=visualstudiocode&logoColor=white" alt="vscode" />
+  <img src="https://img.shields.io/badge/Ticket_Agent-Dual_Watchers-blue?style=for-the-badge" alt="ticket" />
+</p>
 
-* This folder contains all of the files necessary for your extension.
-* `package.json` - this is the manifest file in which you declare your extension and command.
-  * The sample plugin registers a command and defines its title and command name. With this information VS Code can show the command in the command palette. It doesn’t yet need to load the plugin.
-* `src/extension.ts` - this is the main file where you will provide the implementation of your command.
-  * The file exports one function, `activate`, which is called the very first time your extension is activated (in this case by executing the command). Inside the `activate` function we call `registerCommand`.
-  * We pass the function containing the implementation of the command as the second parameter to `registerCommand`.
+> [!NOTE]
+> **Où se trouve ce dossier ?** Branche `extension` (`BrancheExtenion/Extension_GithubSpecKit/agentdocx-speckit/`) — complément de la branche `main` (`RepoSigma` → `backend/`, `frontend/`, `specs/`). Voir `README.md` racine → `🌿 Branches du repo`.
 
-## Setup
+---
 
-* install the recommended extensions (amodio.tsl-problem-matcher, ms-vscode.extension-test-runner, and dbaeumer.vscode-eslint)
+## 📦 What's in the folder — `0.0.4` Ticket Manager
 
+* `package.json` — manifeste `agentdocx-speckit` `0.0.4`, catégorie Marketplace `Integration` : 7 commandes (`Start/Stop Server`, `Start/Stop Watcher`, `Start/Stop Frontend`, `Trigger Pipeline`)
+* `src/extension.ts` — `activate()` + `initTaskRuntimes()` : crée `specs/{project}/.task_runtime/current-task.json` **vide** (`tasks:{}`) jusqu'à `tasks.md`, puis `29 todo`
+* `scripts/python/` — `start_server.py` (`app.main:app` + `ticket_agent_lifespan` + auto `Base.metadata.create_all` pour `FinalDB`), `spec_watcher.py` (watchdog `specs/**/*.md` sans créer à la racine)
+* `adapters/` — contrats `universal-contract.md` + 5 adapters (`claude`, `codex`, `copilot`, `cursor`, `windsurf`) tous en `specs/{project}/.task_runtime`
+* `dist/extension.js` — bundle `esbuild` (généré par `npm run compile`)
 
-## Get up and running straight away
+### Frontend intégré et terminal CLI unique
 
-* Press `F5` to open a new window with your extension loaded.
-* Run your command from the command palette by pressing (`Ctrl+Shift+P` or `Cmd+Shift+P` on Mac) and typing `Hello World`.
-* Set breakpoints in your code inside `src/extension.ts` to debug your extension.
-* Find output from your extension in the debug console.
+À l'activation, l'extension lance le serveur FastAPI, le watcher Python et le frontend React avec `npm start`. Leurs sorties sont séparées dans `AgentDocx Server`, `AgentDocx Watcher` et `AgentDocx Frontend`. L'utilisateur ne garde donc qu'un terminal pour le CLI d'agent choisi (Claude Code, Codex/Copilot, Cursor ou Windsurf).
 
-## Make changes
+Le CLI écrit `specs/{project}/.task_runtime/current-task.json`. Quand une tâche passe à `done`, le backend `StatusWatcher` déclenche l'Auditor si `ENABLE_AUDITOR=True`. Le dashboard affiche ensuite les métriques de `TicketMetrics` : score de conformité, verdict, couverture des exigences, qualité du code, architecture et traçabilité.
 
-* You can relaunch the extension from the debug toolbar after changing code in `src/extension.ts`.
-* You can also reload (`Ctrl+R` or `Cmd+R` on Mac) the VS Code window with your extension to load your changes.
+---
 
+## 🛠️ Setup
 
-## Explore the API
+* `npm install` (recommandé : `amodio.tsl-problem-matcher`, `ms-vscode.extension-test-runner`)
+* `npm run compile` → vérifie `src/extension.ts` + `spec_watcher.py` + `start_server.py` (0 errors, ~60 warnings `naming-convention` ignorables)
 
-* You can open the full set of our API when you open the file `node_modules/@types/vscode/index.d.ts`.
+---
 
-## Run tests
+## ▶️ Get up and running
 
-* Install the [Extension Test Runner](https://marketplace.visualstudio.com/items?itemName=ms-vscode.extension-test-runner)
-* Run the "watch" task via the **Tasks: Run Task** command. Make sure this is running, or tests might not be discovered.
-* Open the Testing view from the activity bar and click the Run Test" button, or use the hotkey `Ctrl/Cmd + ; A`
-* See the output of the test result in the Test Results view.
-* Make changes to `src/test/extension.test.ts` or create new test files inside the `test` folder.
-  * The provided test runner will only consider files matching the name pattern `**.test.ts`.
-  * You can create folders inside the `test` folder to structure your tests any way you want.
+* `F5` → nouvelle fenêtre avec l'extension chargée → `Output` : `AgentDocx Server` (`[TicketManager] Dual watchers started` + `[Lifespan] Tables vérifiées`), `AgentDocx Watcher`, `AgentDocx Frontend`
+* `Ctrl+Shift+P` → `AgentDocx: Start Server` / `Start Watcher` / `Start Frontend` (auto au `onStartupFinished`)
+* Breakpoints dans `src/extension.ts` → Debug Console
 
-## Go further
+---
 
-* Reduce the extension size and improve the startup time by [bundling your extension](https://code.visualstudio.com/api/working-with-extensions/bundling-extension).
-* [Publish your extension](https://code.visualstudio.com/api/working-with-extensions/publishing-extension) on the VS Code extension marketplace.
-* Automate builds by setting up [Continuous Integration](https://code.visualstudio.com/api/working-with-extensions/continuous-integration).
+## 🔄 Make changes — Ticket Manager
+
+* Modifie `src/extension.ts` → `npm run compile` → `Ctrl+R` (Reload Window) → vérifie `specs/{project}/.task_runtime` reste vide jusqu'à `tasks.md`
+* Modifie `scripts/python/spec_watcher.py` → pas de `mkdir` à la racine (garde-fou `BaseWatcher.run`)
+
+---
+
+## 🧪 Run tests
+
+* `npm run watch` + Extension Test Runner → `src/test/extension.test.ts` (`**.test.ts`)
+
+---
+
+## 📚 Go further
+
+* `npm run package` → `agentdocx-speckit-0.0.4.vsix` → `Extensions: Install from VSIX...`
+* Pour publier : branche `extension` → merge dans `main` (voir `README.md` racine → `🌿 Branches`), puis `vsce publish`

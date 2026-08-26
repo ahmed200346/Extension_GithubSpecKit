@@ -21,9 +21,16 @@ The backend watches `specs/{project_name}/.task_runtime/current-task.json`. Any 
 specs/{project_name}/.task_runtime/current-task.json
 ```
 - Where `{project_name}` is the exact name of the project folder under `specs/` (e.g., `specs/001-course-management-system/.task_runtime/current-task.json`).
-- The `.task_runtime/` directory MUST exist.
+- The `.task_runtime/` directory MUST be **only** under `specs/{project}/` — **NEVER** create `.task_runtime/` at the project root.
 - The file MUST be valid JSON, UTF-8 encoded.
 - Write **atomically** (write to temp file, then rename) to avoid partial reads.
+
+> [!IMPORTANT]
+> **Initial state until `tasks.md` exists:** When a new project is created via `/speckit-specify` / `/speckit-plan`, `tasks.md` does not yet exist. The file `specs/{project}/.task_runtime/current-task.json` **MUST remain empty** until `/speckit-tasks` generates `tasks.md`:
+> ```json
+> { "task_id": "", "file": "", "status": "todo", "project_name": "002-expense-tracker", "updated_at": "...", "tasks": {} }
+> ```
+> Do **NOT** treat `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/` as tasks. Only IDs from `tasks.md` (e.g., `T001`, `T002`) are valid tasks. The first valid write is after `tasks.md` exists, with the FULL `tasks` map where every `T00N` is initially `todo`.
 
 ### 2.2 Write Timing (CRITICAL)
 | Moment | Action |
@@ -98,6 +105,12 @@ The backend watcher (`watcher.py`) detects file changes via `watchfiles` and:
    - The single `task_id`/`status` pair (legacy)
    - **Every entry in the `tasks` map** (recovery mechanism)
 4. Creates `TicketEvent` audit trail (`author_type: "agent"`)
+
+When a task is marked `done`, the StatusWatcher triggers the backend Auditor when `ENABLE_AUDITOR=true`. The Auditor calculates and persists `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability`. The dashboard only displays these backend results; assistants MUST NOT invent or write metric values into `current-task.json`.
+
+### 5.1 Completion Metrics Verification (MANDATORY)
+
+Before declaring a task complete, the assistant MUST verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}` returns the completed task's audit metrics and confirm the dashboard Metrics tab displays them. If metrics are unavailable, keep the task `in_progress` and resolve the auditor/backend issue.
 
 ---
 

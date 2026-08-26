@@ -2,7 +2,7 @@
   "name": "agentdocx-speckit",
   "displayName": "AgentDocx SpecKit",
   "description": "Extension VS Code pour le suivi et le déclenchement du pipeline de documentation Spec Kit",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "publisher": "agentdocx",
   "repository": {
     "type": "git",
@@ -12,7 +12,7 @@
     "vscode": "^1.125.0"
   },
   "categories": [
-    "Other"
+    "Integration"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -35,6 +35,14 @@
       {
         "command": "agentdocx-speckit.stopWatcher",
         "title": "AgentDocx SpecKit: Arrêter le Watcher Python"
+      },
+      {
+        "command": "agentdocx-speckit.start_frontend",
+        "title": "AgentDocx SpecKit: Démarrer le Frontend React"
+      },
+      {
+        "command": "agentdocx-speckit.stop_frontend",
+        "title": "AgentDocx SpecKit: Arrêter le Frontend React"
       },
       {
         "command": "agentdocx-speckit.triggerPipeline",
