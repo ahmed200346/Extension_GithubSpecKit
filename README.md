@@ -444,20 +444,20 @@ NVIDIA_BASE_URL=https://integrate.api.nvidia.com/v1
 
 Sans cette étape, le LLM ne sait pas qu'il doit mettre à jour le Kanban et les tickets resteront bloqués en `todo`.
 
-**Copiez le contrat universel vers la racine du projet cloné selon votre IDE :**
+**Copiez le contrat universel depuis `prompts/` (ou `agentdocx-speckit/adapters/`) — ne versionnez pas `.claude/` / `.github/` :**
 
-| Votre LLM / IDE | Fichier à copier | Commande (depuis la racine du clone) |
-|---|---|---|
-| **Claude Code (Ollama)** | `CLAUDE.md` | `cp prompts/claude-adapter.md CLAUDE.md` ou `cp agentdocx-speckit/adapters/claude-adapter.md CLAUDE.md` puis suivez les instructions d'injection dans le fichier |
-| **Codex** | `AGENTS.md` | `cp prompts/universal-contract.md AGENTS.md` (ou utilisez `agentdocx-speckit/adapters/codex-adapter.md`) |
-| **Cursor** | `.cursorrules` | `cp prompts/cursor-adapter.md .cursorrules` |
-| **Windsurf** | `.windsurfrules` | `cp prompts/windsurf-adapter.md .windsurfrules` |
-| **Copilot** | `.github/copilot-instructions.md` | `cp prompts/copilot-adapter.md .github/copilot-instructions.md` |
+| Votre CLI | Méthode la plus simple (recommandée) | Alternative | Copie depuis `prompts/` |
+|---|---|---|---|
+| **Claude Code** | `CLAUDE.md` à la racine (lu comme skill) | `.claude/skills/universal-task-skill.md` | `cp prompts/claude-adapter.md CLAUDE.md` ou `mkdir -p .claude/skills && cp prompts/claude-adapter.md .claude/skills/universal-task-skill.md` |
+| **Copilot** | `AGENTS.md` à la racine (lu comme skill, le plus simple) | `.github/skills/copilot-skill.md` ou `.github/copilot-skill.md` | `cp prompts/copilot-adapter.md AGENTS.md` ou `mkdir -p .github && cp prompts/copilot-adapter.md .github/copilot-instructions.md` |
+| **Codex** | `AGENTS.md` | `.codex/skills/` | `cp prompts/universal-contract.md AGENTS.md` |
+| **Cursor** | `.cursor/skills/universal-task-skill/SKILL.md` (ou `.cursor/rules/task-sync.mdc`, `.cursorrules` legacy) | `.cursor/rules/task-sync.mdc` | `mkdir -p .cursor/skills/universal-task-skill && cp prompts/cursor-adapter.md .cursor/skills/universal-task-skill/SKILL.md` |
+| **Windsurf** | `.windsurf/skills/universal-task-skill/SKILL.md` (ou `.windsurfrules`) | `.windsurf/rules/task-sync.md` | `mkdir -p .windsurf/skills/universal-task-skill && cp prompts/windsurf-adapter.md .windsurf/skills/universal-task-skill/SKILL.md` |
 
 > **Source unique :** `prompts/universal-contract.md` est le contrat maître. Tous les adapters en sont dérivés. Le fichier copié dit au LLM d'écrire **uniquement** dans `specs/{project}/.task_runtime/current-task.json` (atomique, avec FULL `tasks` map) pour déclencher `todo → in_progress → done`.
 
 > [!NOTE]
-> **Fichiers actifs à la racine (recréés) :** `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.windsurfrules`, `.github/copilot-instructions.md` — ce sont **ces fichiers à la racine** que les LLM lisent, pas ceux dans `prompts/` (qui n'est que la bibliothèque source à copier).
+> **Fichiers actifs à la racine :** `CLAUDE.md` (Claude, lu comme skill) et `AGENTS.md` (Copilot/Codex, lu comme skill) suffisent — pas besoin de `.claude/skills` ou `.github/copilot-instructions.md` séparés si vous utilisez la méthode simple. `prompts/` reste la bibliothèque source à copier.
 
 Vérifiez que le fichier copié contient bien `specs/{project_name}/.task_runtime/current-task.json` (pas `.task_runtime` à la racine).
 

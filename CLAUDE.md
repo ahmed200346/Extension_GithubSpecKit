@@ -23,6 +23,24 @@ You are working with a **Universal Ticket Agent** that syncs your task progress 
 
 **You MUST follow this protocol for EVERY task you work on.**
 
+### Claude Code Execution Rule (MANDATORY)
+
+When `/speckit-implement` is invoked, this protocol is part of the command execution and MUST be performed by Claude Code itself. Do not delegate it to the backend, frontend, extension, or Ticket Agent. The Ticket Agent only observes `current-task.json`; it never infers implementation progress from the chat, `tasks.md`, Git changes, or logs.
+
+After reading `tasks.md` and before editing any source file, determine the requested task IDs from the command arguments. For `/speckit-implement Implement T001,T002 and T003`, the requested IDs are `T001`, `T002`, and `T003`. Validate that every requested ID exists in `tasks.md`, then immediately write `specs/{project_name}/.task_runtime/current-task.json` with:
+
+- `task_id` set to the first task currently being implemented;
+- `file` set to the primary file for that task, or the first primary file when several files are involved;
+- `status` set to `in_progress`;
+- `project_name` resolved from `.task_runtime/config.json` first, then the parent directory of `tasks.md`;
+- `tasks` containing every task ID in `tasks.md`, with requested tasks marked `in_progress` and all other tasks preserving their current status (use `todo` when no prior status exists).
+
+This first status write MUST happen before any implementation edit, test edit, formatting change, dependency installation, or hook execution. For multiple requested tasks, mark all requested tasks `in_progress` in the same initial write. Never write `status: "todo"` in the top-level object, and never leave `task_id` empty.
+
+After each requested task is implemented and its validation succeeds, atomically rewrite the same file with that task marked `done`. Keep the full `tasks` map on every write. Before starting the next task, set its `task_id`, `file`, and top-level `status` to `in_progress`; after the final requested task passes validation, set the top-level status to `done` and mark all completed requested tasks `done`.
+
+Use a temporary file in the same `.task_runtime` directory followed by an atomic replace. On Windows, use a short Python or PowerShell script if needed. Verify that the final file is valid JSON and that its path is project-specific. If a status write fails, stop implementation and report the write error; do not continue while the Kanban state is stale.
+
 ---
 
 ## The Protocol
@@ -37,8 +55,8 @@ specs/{project_name}/.task_runtime/current-task.json
 > [!IMPORTANT]
 > **Until `tasks.md` exists:** After `/speckit-specify` and `/speckit-plan`, keep `current-task.json` **empty** (`tasks:{}`) — do NOT treat `spec.md`/`plan.md` as tasks. Only after `/speckit-tasks` generates `tasks.md` should you write the FULL `tasks` map with every `T00N` initially `todo`.
 
-### When to Write
-1. **BEFORE** starting any task → write `status: "in_progress"`
+### When to Write — TIMING CRITICAL
+1. **IMMEDIATELY BEFORE you start coding (first action)** → write `status: "in_progress"` with `tasks: { ..., "T00N": "in_progress", ... }`
 2. **AFTER** completing a task → write `status: "done"`
 3. **ALWAYS** include the FULL `tasks` map (all task IDs → status)
 

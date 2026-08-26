@@ -35,10 +35,10 @@ specs/{project_name}/.task_runtime/current-task.json
 > [!IMPORTANT]
 > **Until `tasks.md` exists:** After `/speckit-specify` and `/speckit-plan`, keep `current-task.json` **empty** (`tasks:{}`) — do NOT treat `spec.md`/`plan.md` as tasks. Only after `/speckit-tasks` generates `tasks.md` should you write the FULL `tasks` map with every `T00N` initially `todo`.
 
-### When to Write
-1. **BEFORE** starting any task → write `status: "in_progress"`
-2. **AFTER** completing a task → write `status: "done"`
-3. **ALWAYS** include the FULL `tasks` map (all task IDs → status)
+### When to Write — TIMING CRITICAL (eyes on Kanban)
+1. **IMMEDIATELY BEFORE you start coding** (first action after reading `tasks.md`) → write `status: "in_progress"` with `tasks: { ..., "T00N": "in_progress", ... }` — the Kanban eye must see `In Progress` at launch, not mid-task
+2. **IMMEDIATELY AFTER you finish coding + tests pass** → write `status: "done"` with `tasks: { ..., "T00N": "done", ... }`
+3. **ALWAYS** include the FULL `tasks` map (all task IDs → status) — even if you only changed one task
 
 ### JSON Format (EXACT)
 ```json

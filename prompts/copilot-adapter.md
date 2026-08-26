@@ -30,6 +30,10 @@ You are working with a **Universal Ticket Agent** that syncs task progress to a 
 specs/{project_name}/.task_runtime/current-task.json
 ```
 (Where `{project_name}` is the exact project folder name under `specs/`, e.g., `specs/001-course-management-system/.task_runtime/current-task.json`)
+**NEVER** create `.task_runtime/` at the project root — only under `specs/{project}/`.
+
+> [!IMPORTANT]
+> **Until `tasks.md` exists:** After `/speckit-specify` and `/speckit-plan`, keep `current-task.json` **empty** (`tasks:{}`) — do NOT treat `spec.md`/`plan.md` as tasks. Only after `/speckit-tasks` write the FULL `tasks` map with every `T00N` as `todo`.
 (Create `.task_runtime/` directory if it doesn't exist)
 
 ### When to Write

@@ -1,4 +1,4 @@
-# Cursor Adapter — Universal Contract Injection
+﻿# Cursor Adapter â€” Universal Contract Injection
 
 **Source:** `/prompts/universal-contract.md` (master protocol)  
 **Target:** `.cursorrules` (project root)  
@@ -24,14 +24,17 @@ You are acting as a **Universal Ticket Agent**. Your primary responsibility, in 
 
 ---
 
-## 🛠 The Protocol
+## ðŸ›  The Protocol
 
 ### 1. Target File
 Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (where `{project_name}` is the exact folder name under `specs/`)
+**NEVER** create `.task_runtime/` at the project root â€” only under `specs/{project}/`.
+
+> [!IMPORTANT] Until `tasks.md` exists, keep `current-task.json` empty (`tasks:{}`) â€” do NOT treat `spec.md`/`plan.md` as tasks.
 
 ### 2. Trigger Points
-- **STARTING a task**: Immediately write `status: "in_progress"`
-- **COMPLETING a task**: Immediately write `status: "done"`
+- **IMMEDIATELY BEFORE you start coding (first action)**: Write `status: "in_progress"`
+- **IMMEDIATELY AFTER coding + tests pass**: Write `status: "done"`
 - **EVERY WRITE**: You MUST provide the **FULL `tasks` map** (all task IDs $\rightarrow$ current status) to allow backend recovery.
 
 ### 3. Required JSON Format
@@ -62,7 +65,7 @@ Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (wh
 
 ---
 
-## 🚀 Workflow Example
+## ðŸš€ Workflow Example
 
 **User:** "Implement T012: Add database migrations"
 
@@ -72,7 +75,7 @@ Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (wh
 
 ---
 
-## ✅ Compliance Checklist
+## âœ… Compliance Checklist
 Before concluding any response, verify:
 - [ ] Did I write to `current-task.json` at the start AND end?
 - [ ] Is the `project_name` correct?

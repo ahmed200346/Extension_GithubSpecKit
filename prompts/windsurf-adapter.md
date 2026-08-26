@@ -29,6 +29,9 @@ You are integrated with a **Universal Ticket Agent** system. To ensure the proje
 ### 1. State File
 The single source of truth for your current activity is:
 `specs/{project_name}/.task_runtime/current-task.json` (where `{project_name}` is the exact project folder name under `specs/`)
+**NEVER** create `.task_runtime/` at the project root — only under `specs/{project}/`.
+
+> [!IMPORTANT] Until `tasks.md` exists, keep `current-task.json` empty (`tasks:{}`) — do NOT treat `spec.md`/`plan.md` as tasks.
 
 ### 2. Mandatory Update Cycle
 | Event | Required Action | Status Value |
