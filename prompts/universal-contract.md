@@ -21,16 +21,9 @@ The backend watches `specs/{project_name}/.task_runtime/current-task.json`. Any 
 specs/{project_name}/.task_runtime/current-task.json
 ```
 - Where `{project_name}` is the exact name of the project folder under `specs/` (e.g., `specs/001-course-management-system/.task_runtime/current-task.json`).
-- The `.task_runtime/` directory MUST be **only** under `specs/{project}/` — **NEVER** create `.task_runtime/` at the project root.
+- The `.task_runtime/` directory MUST exist (create if missing).
 - The file MUST be valid JSON, UTF-8 encoded.
 - Write **atomically** (write to temp file, then rename) to avoid partial reads.
-
-> [!IMPORTANT]
-> **Initial state until `tasks.md` exists:** When a new project is created via `/speckit-specify` / `/speckit-plan`, `tasks.md` does not yet exist. The file `specs/{project}/.task_runtime/current-task.json` **MUST remain empty** until `/speckit-tasks` generates `tasks.md`:
-> ```json
-> { "task_id": "", "file": "", "status": "todo", "project_name": "002-expense-tracker", "updated_at": "...", "tasks": {} }
-> ```
-> Do **NOT** treat `spec.md`, `plan.md`, `research.md`, `data-model.md`, `contracts/` as tasks. Only IDs from `tasks.md` (e.g., `T001`, `T002`) are valid tasks. The first valid write is after `tasks.md` exists, with the FULL `tasks` map where every `T00N` is initially `todo`.
 
 ### 2.2 Write Timing (CRITICAL)
 | Moment | Action |
@@ -106,6 +99,17 @@ The backend watcher (`watcher.py`) detects file changes via `watchfiles` and:
    - **Every entry in the `tasks` map** (recovery mechanism)
 4. Creates `TicketEvent` audit trail (`author_type: "agent"`)
 
+When a task is marked `done`, the StatusWatcher triggers the backend Auditor when `ENABLE_AUDITOR=true`. The Auditor calculates and persists `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability` in the ticket audit event. The dashboard only displays these backend results; assistants MUST NOT invent or write metric values into `current-task.json`.
+
+### 5.1 Completion Metrics Verification (MANDATORY)
+
+Before declaring a task complete, the assistant MUST:
+1. Ensure the backend is running with `ENABLE_AUDITOR=true`.
+2. Write the full `tasks` map with the completed task set to `"done"`.
+3. Wait for the StatusWatcher audit. If it does not react, call `POST http://localhost:8000/api/v1/sync-current-task` once.
+4. Verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}` and confirm the completed task has all six audit fields above, while the project response includes `overall_progress_pct`, `tickets_with_audit`, and `avg_conformity_score`.
+5. Confirm the completed ticket's dashboard Metrics tab displays the conformity score, verdict, and component scores. If unavailable, keep the task `in_progress` and resolve the auditor/backend issue.
+
 ---
 
 ## 6. Compliance Checklist (AI Self-Verification)
@@ -118,6 +122,9 @@ Before/after each task, the AI MUST verify:
 - [ ] `tasks` map contains **ALL** task IDs from `tasks.md`
 - [ ] `updated_at` is current UTC ISO8601
 - [ ] JSON is valid (no trailing commas, proper escaping)
+- [ ] Auditor is enabled and the completion audit was triggered
+- [ ] Backend metrics endpoint returns metrics for the completed task
+- [ ] Dashboard Metrics tab displays the audit results
 
 ---
 

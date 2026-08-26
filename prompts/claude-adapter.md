@@ -25,6 +25,8 @@ You are working with a **Universal Ticket Agent** that syncs your task progress 
 
 ---
 
+Claude Code writes the status file; the Ticket Agent backend calculates and persists conformity metrics. The dashboard reads those metrics from the backend.
+
 ## The Protocol
 
 ### File to Write
@@ -35,8 +37,20 @@ specs/{project_name}/.task_runtime/current-task.json
 
 ### When to Write
 1. **BEFORE** starting any task → write `status: "in_progress"`
-2. **AFTER** completing a task → write `status: "done"`
+2. **AFTER** completing a task and verifying its backend audit metrics and dashboard display → write `status: "done"`
 3. **ALWAYS** include the FULL `tasks` map (all task IDs → status)
+
+### Metrics and Dashboard Verification (MANDATORY)
+
+When a task is completed, Claude Code MUST:
+
+1. Ensure the backend Ticket Agent is running with `ENABLE_AUDITOR=true`.
+2. Write the full `current-task.json` with the task set to `"done"`; this transition triggers the StatusWatcher and Auditor.
+3. If the watcher does not react, call `POST http://localhost:8000/api/v1/sync-current-task` once. Never edit the database directly.
+4. Verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}`. The completed task must have `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability`; the project response must include `overall_progress_pct`, `tickets_with_audit`, and `avg_conformity_score`.
+5. Open the completed ticket's Metrics tab in the dashboard and confirm the score, verdict, and component metrics are displayed. If missing, leave the task `in_progress`, fix the backend/auditor cause, and repeat verification.
+
+Do not invent metric values in `current-task.json`, and do not mark a task done based only on passing code tests while the audit response is missing.
 
 ### JSON Format (EXACT)
 ```json

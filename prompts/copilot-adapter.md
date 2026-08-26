@@ -1,197 +1,35 @@
-# GitHub Copilot Adapter — Universal Contract Injection
+# GitHub Copilot Adapter - Universal Contract Injection
 
-**Source:** `/prompts/universal-contract.md` (master protocol)  
-**Target:** `.github/copilot-instructions.md` (project root)  
-**Purpose:** Make GitHub Copilot follow the Universal Contract automatically
+**Source:** `/prompts/universal-contract.md` (master protocol)
+**Target:** `.github/copilot-instructions.md` (project root)
 
----
+## Ticket Agent Protocol (MANDATORY)
 
-## Injection Instructions
+For every task, use `specs/{project_name}/.task_runtime/current-task.json`. Resolve `project_name` from `.task_runtime/config.json`, then the parent folder of `tasks.md`, then the Git remote name. Never create `.task_runtime` at the workspace root.
 
-Copy the **entire content below** into your project's `.github/copilot-instructions.md` file.
+Before coding, atomically write the full task map with the active task set to `in_progress`. After implementation and tests pass, set the task to `done` only after the metrics verification below. Every write must include every task ID from `tasks.md`.
 
----
+### Metrics and Dashboard Verification (MANDATORY)
 
-## .github/copilot-instructions.md Content (Copy Everything Below This Line)
+1. Ensure the backend Ticket Agent runs with `ENABLE_AUDITOR=true`.
+2. Write the full `current-task.json` with the completed task set to `"done"`; this triggers StatusWatcher and the backend Auditor.
+3. If the watcher does not react, call `POST http://localhost:8000/api/v1/sync-current-task` once. Never edit the database directly.
+4. Verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}`. The completed task must include `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability`; the project response must include `overall_progress_pct`, `tickets_with_audit`, and `avg_conformity_score`.
+5. Confirm the dashboard ticket Metrics tab displays the score, verdict, and component metrics. If missing, keep the task `in_progress` and fix the auditor/backend issue.
 
----
+Do not calculate or invent metric values in `current-task.json`.
 
-# Ticket Agent Protocol (MANDATORY for GitHub Copilot)
+### Required JSON Shape
 
-## Overview
-You are working with a **Universal Ticket Agent** that syncs task progress to a live Kanban board. The backend watches `specs/{project_name}/.task_runtime/current-task.json`. You MUST write to this file for every task.
-
----
-
-## The Protocol
-
-### File to Write
-```
-specs/{project_name}/.task_runtime/current-task.json
-```
-(Where `{project_name}` is the exact project folder name under `specs/`, e.g., `specs/001-course-management-system/.task_runtime/current-task.json`)
-**NEVER** create `.task_runtime/` at the project root — only under `specs/{project}/`.
-
-> [!IMPORTANT]
-> **Until `tasks.md` exists:** After `/speckit-specify` and `/speckit-plan`, keep `current-task.json` **empty** (`tasks:{}`) — do NOT treat `spec.md`/`plan.md` as tasks. Only after `/speckit-tasks` write the FULL `tasks` map with every `T00N` as `todo`.
-(Create `.task_runtime/` directory if it doesn't exist)
-
-### When to Write
-1. **BEFORE** starting any task → write `status: "in_progress"`
-2. **AFTER** completing a task → write `status: "done"`
-3. **ALWAYS** include the FULL `tasks` map (all task IDs → status)
-
-### JSON Format (EXACT)
 ```json
 {
   "task_id": "T004",
   "file": "src/routes.py",
   "status": "in_progress",
-  "project_name": "001-cli-todo-manager",
+  "project_name": "my-project",
   "updated_at": "2026-08-12T10:30:00.000Z",
-  "tasks": {
-    "T001": "done",
-    "T002": "done",
-    "T003": "done",
-    "T004": "in_progress",
-    "T005": "todo"
-  }
+  "tasks": {"T001": "done", "T004": "in_progress"}
 }
 ```
 
-### Field Rules
-| Field | Required | Rules |
-|-------|----------|-------|
-| `task_id` | YES | Exact task ID from `tasks.md` (e.g., `T004`) |
-| `file` | YES | Relative path of primary file you're editing |
-| `status` | YES | `"in_progress"` (starting) or `"done"` (finishing) |
-| `project_name` | YES | Exact project name from backend (e.g., `001-cli-todo-manager`) |
-| `updated_at` | YES | Current UTC time in ISO8601 format |
-| `tasks` | YES | **ALL** task IDs from `tasks.md` with current status |
-
-### Status Values
-- `"todo"` — Not started
-- `"in_progress"` — Currently working
-- `"done"` — Completed
-
----
-
-## How to Find Project Name
-
-The `project_name` must match the backend exactly. Check in order:
-1. `.task_runtime/config.json` → `"project_name"` field (if exists)
-2. Parent folder of `tasks.md` (e.g., `specs/001-cli-todo-manager/tasks.md` → `"001-cli-todo-manager"`)
-3. Git repo name from remote origin
-
----
-
-## Example Workflow
-
-### Task: "Implement T004: Add user authentication"
-
-**BEFORE coding — write current-task.json:**
-```json
-{
-  "task_id": "T004",
-  "file": "src/auth/routes.py",
-  "status": "in_progress",
-  "project_name": "001-cli-todo-manager",
-  "updated_at": "2026-08-12T10:30:00.000Z",
-  "tasks": {
-    "T001": "done",
-    "T002": "done",
-    "T003": "done",
-    "T004": "in_progress",
-    "T005": "todo"
-  }
-}
-```
-
-**Do the work** (implement the feature)
-
-**AFTER completing — write current-task.json:**
-```json
-{
-  "task_id": "T004",
-  "file": "src/auth/routes.py",
-  "status": "done",
-  "project_name": "001-cli-todo-manager",
-  "updated_at": "2026-08-12T10:45:00.000Z",
-  "tasks": {
-    "T001": "done",
-    "T002": "done",
-    "T003": "done",
-    "T004": "done",
-    "T005": "todo"
-  }
-}
-```
-
----
-
-## Writing the File (Atomic)
-
-**IMPORTANT:** Write atomically to avoid partial reads:
-1. Write to `specs/{project_name}/.task_runtime/current-task.json.tmp`
-2. Rename/replace `specs/{project_name}/.task_runtime/current-task.json`
-
-In bash:
-```bash
-cat > specs/001-cli-todo-manager/.task_runtime/current-task.json.tmp << 'EOF'
-{
-  "task_id": "T004",
-  "file": "src/auth/routes.py",
-  "status": "in_progress",
-  "project_name": "001-cli-todo-manager",
-  "updated_at": "2026-08-12T10:30:00.000Z",
-  "tasks": {
-    "T001": "done",
-    "T002": "done",
-    "T003": "done",
-    "T004": "in_progress",
-    "T005": "todo"
-  }
-}
-EOF
-mv specs/001-cli-todo-manager/.task_runtime/current-task.json.tmp specs/001-cli-todo-manager/.task_runtime/current-task.json
-```
-
----
-
-## Compliance Checklist (Every Task)
-
-- [ ] `.task_runtime/` directory exists
-- [ ] `current-task.json` written atomically (tmp + rename)
-- [ ] `task_id` matches a ticket from `tasks.md`
-- [ ] `project_name` matches backend project exactly
-- [ ] `tasks` map contains **ALL** task IDs from `tasks.md`
-- [ ] `updated_at` is current UTC ISO8601
-- [ ] JSON is valid
-
----
-
-## Why This Matters
-
-| If You Skip | Consequence |
-|-------------|-------------|
-| No write on start | Board shows `todo` while you're working |
-| No write on done | Board stays `in_progress` forever |
-| Partial `tasks` map | Other tasks look stale on Kanban |
-| Wrong `project_name` | Ticket not found → no sync at all |
-| Invalid JSON | Watcher errors, no sync |
-
----
-
-## Manual Sync Trigger (If Needed)
-
-```bash
-curl -X POST http://localhost:8000/api/v1/sync-current-task
-```
-
----
-
-**This protocol is defined in `/prompts/universal-contract.md` — this adapter is a formatted injection for GitHub Copilot.**
-
----
-
-## End of Injection
+Write to `current-task.json.tmp`, then atomically replace `current-task.json`. The JSON must be valid UTF-8.

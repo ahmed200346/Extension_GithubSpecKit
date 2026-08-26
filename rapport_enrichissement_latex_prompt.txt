@@ -1,0 +1,172 @@
+PROMPT POUR CLAUDE WEB - ENRICHISSEMENT DU RAPPORT LATEX AGENT DOCX V2
+
+Contexte
+
+Je vais te fournir deux fichiers en pieces jointes :
+
+1. documentation_technique_agent_docx.txt
+   Ce document decrit l'architecture complete et l'evolution du projet Agent Docx V2, notamment le pipeline multi-agents, le Ticket Agent, la synchronisation Kanban, les watchers, l'extension VS Code, les providers LLM et le manifest extension.yml.
+
+2. Un fichier .txt contenant le code source LaTeX actuel de mon rapport.
+   Le rapport actuel documente principalement l'ancien Agent Pipeline avec Ollama comme seul provider LLM. Il ne couvre pas encore correctement les evolutions V2.
+
+Objectif
+
+Lis integralement les deux pieces jointes avant de repondre. Enrichis mon rapport LaTeX existant pour presenter techniquement la version V2 du projet Agent Docx, tout en conservant les parties deja presentes sur l'ancien Agent Pipeline.
+
+Le rapport doit clairement distinguer :
+
+- l'ancienne architecture du pipeline, principalement basee sur Ollama ;
+- l'architecture V2 avec plusieurs providers LLM ;
+- le Ticket Agent universel et la synchronisation Kanban ;
+- l'extension VS Code AgentDocx SpecKit ;
+- la publication communautaire avec extension.yml.
+
+Regles importantes
+
+1. Ne supprime aucune section utile du rapport existant.
+2. Ne remplace pas abusivement la description de l'ancien pipeline : conserve-la comme historique ou comme architecture initiale.
+3. N'invente aucune classe, endpoint, metrique, commande, version ou comportement qui ne figure pas dans les pieces jointes.
+4. Si une information est ambigue ou contradictoire, signale-la dans une section \textit{Points a verifier} au lieu de choisir arbitrairement.
+5. Utilise les noms techniques exacts des fichiers et composants documentes :
+   - backend/app/core/llm_client.py
+   - client_ollama.py
+   - client_gemini.py
+   - client_nvidia.py
+   - backend/app/agents/ticket_agent/manager.py
+   - watcher.py
+   - sync_service.py
+   - auditor.py
+   - ticket_ingestion.py
+   - specs/{project}/.task_runtime/current-task.json
+   - CLAUDE.md
+   - AGENTS.md
+   - extension.yml
+6. Explique le fonctionnement, les responsabilites des composants, les entrees/sorties et les transitions d'etat. Ne fais pas seulement une liste de fichiers.
+7. Conserve le style academique et technique du rapport.
+8. Produis du LaTeX compilable. Echappe correctement les caracteres speciaux dans le texte : %, _, &, #, { et } lorsque necessaire.
+9. N'utilise pas de dependances LaTeX nouvelles sans les declarer. Si tu proposes un package, indique-le dans une section \textit{Packages necessaires}.
+10. Pour les diagrammes, utilise uniquement des environnements compatibles avec les packages deja presents dans mon fichier LaTeX. Si le rapport ne contient pas de package de diagramme, fournis le diagramme sous forme de code Mermaid ou indique clairement le package requis, sans casser le document.
+11. N'ajoute pas de fausses captures d'ecran, de faux resultats de tests ou de faux chiffres.
+12. Le texte final doit etre en francais technique.
+
+Contenu technique a ajouter ou renforcer
+
+A. Evolution de l'architecture
+
+Ajoute une section qui explique le passage de l'ancien pipeline Ollama-only vers Agent Docx V2 :
+
+- separation entre le pipeline de production documentaire et le Ticket Agent ;
+- architecture FastAPI, LangGraph, SQLAlchemy/PostgreSQL et React ;
+- role de l'extension VS Code dans le lancement du backend, du frontend et des watchers ;
+- flux global depuis specs/{project}/tasks.md jusqu'aux sorties Markdown/PDF et au Kanban.
+
+B. Architecture multi-provider LLM
+
+Explique techniquement la refonte Strategy/Facade autour de llm_client.py :
+
+- selection de LLM_PROVIDER depuis .env ;
+- providers ollama, gemini et nvidia ;
+- fonctions communes get_llm_client(), get_llm_model() et verify_llm_connection() ;
+- variables de configuration propres a chaque provider ;
+- interet de cette abstraction pour changer de provider sans modifier les agents du pipeline ;
+- conservation d'Ollama comme provider local et historique.
+
+C. Ticket Agent universel
+
+Ajoute une section detaillee sur le Ticket Agent :
+
+- ingestion de tasks.md et creation des tickets initiaux en todo ;
+- fichier source de verite specs/{project}/.task_runtime/current-task.json ;
+- format JSON avec task_id, file, status, project_name, updated_at et tasks ;
+- obligation d'ecrire in_progress avant toute modification et done apres validation ;
+- carte complete tasks pour le traitement bulk de plusieurs taches comme T001, T002 et T003 ;
+- ecriture atomique avec fichier temporaire puis renommage ;
+- isolation de plusieurs projets sous specs/.
+
+D. Dual Watchers et synchronisation
+
+Explique la difference entre :
+
+- StructureWatcher : surveillance de tasks.md et detection des changements de structure ;
+- StatusWatcher : surveillance de current-task.json et synchronisation des statuts ;
+- TicketManager : resolution dynamique du projet et auto-switch ;
+- SyncService : lecture du JSON et mise a jour en base ;
+- Auditor : audit declenche apres le passage a done lorsqu'il est active.
+
+Decris le flux suivant sous forme de paragraphe technique et, si pertinent, d'un diagramme :
+
+LLM -> current-task.json -> StatusWatcher -> SyncService -> PostgreSQL -> API FastAPI -> frontend React/Kanban.
+
+E. Modele de donnees et tracabilite
+
+Renforce la partie base de donnees avec :
+
+- Project, Artifact, DocVersion, PipelineRun ;
+- Ticket, TicketEvent, TicketComment et TicketMetrics ;
+- relations et cascades importantes ;
+- historique des changements de statut ;
+- distinction entre source initial_ingestion, watcher et audit ;
+- persistance des metriques de conformite et leur affichage dans le frontend.
+
+F. Extension VS Code
+
+Ajoute une section decrivant le role de agentdocx-speckit :
+
+- initialisation de .task_runtime par projet ;
+- lancement du serveur FastAPI et du frontend ;
+- canaux Output AgentDocx Server, AgentDocx Watcher et AgentDocx Frontend ;
+- integration avec SpecKit ;
+- diminution des manipulations manuelles de terminaux ;
+- generation du package VSIX avec le processus documente.
+
+G. Utilisation directe des fichiers CLAUDE.md et AGENTS.md
+
+Documente le raffinement suivant :
+
+- CLAUDE.md peut etre lu directement a la racine par Claude Code ;
+- AGENTS.md peut etre lu directement a la racine par Codex et les environnements compatibles ;
+- il n'est plus necessaire de copier ces contrats dans un dossier skills propre a chaque CLI pour le scenario standard ;
+- prompts/universal-contract.md reste la source de verite ;
+- les adapters restent disponibles pour Cursor, Windsurf et les configurations specifiques de Copilot ;
+- cette simplification reduit la duplication et le risque d'utiliser un contrat obsolete ;
+- le chemin de synchronisation reste exclusivement specs/{project}/.task_runtime/current-task.json.
+
+H. Manifest extension.yml et publication
+
+Ajoute une section technique sur extension.yml :
+
+- schema_version ;
+- extension.id ;
+- name, version, description et author ;
+- repository, homepage et license ;
+- category et effect ;
+- version minimale SpecKit dans requires ;
+- scripts declares dans provides ;
+- difference entre extension.yml comme manifest de publication/integration et package.json comme fichier de packaging VS Code ;
+- publication du projet dans une communaute GitHub/SpecKit ;
+- correspondance entre la version du manifest, la release GitHub et le package VSIX.
+
+Structure de ta reponse attendue
+
+1. Commence par un court diagnostic de l'etat du rapport actuel : ce qui est deja couvert et ce qui manque.
+2. Propose une table de correspondance entre les sections existantes et les sections a ajouter.
+3. Fournis ensuite le contenu LaTeX complet a inserer, avec des commentaires indiquant l'emplacement recommande.
+4. Fournis les tableaux LaTeX, equations eventuelles et diagrammes necessaires dans des blocs de code separes.
+5. Termine par une liste de verifications :
+   - packages LaTeX requis ;
+   - references a verifier ;
+   - figures ou captures a ajouter ;
+   - incoherences detectees ;
+   - commande de compilation recommandee.
+6. Ne reecris le rapport complet que si cela est necessaire. Dans le cas general, privilegie des blocs d'insertion clairement delimites afin que je puisse les integrer dans mon fichier source.
+
+Format de sortie obligatoire
+
+- Reponse en francais.
+- Tout code LaTeX dans des blocs ```latex````.
+- Aucun pseudo-code presente comme du code fonctionnel.
+- Aucun contenu marketing.
+- Une formulation adaptee a un rapport universitaire ou technique.
+
+Commence par lire les deux fichiers joints et fais le diagnostic avant de generer le LaTeX.

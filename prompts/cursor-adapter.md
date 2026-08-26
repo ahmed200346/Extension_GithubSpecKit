@@ -1,43 +1,26 @@
-﻿# Cursor Adapter â€” Universal Contract Injection
+# Cursor Adapter - Universal Contract Injection
 
-**Source:** `/prompts/universal-contract.md` (master protocol)  
-**Target:** `.cursorrules` (project root)  
-**Purpose:** Make Cursor AI follow the Universal Contract automatically
+**Source:** `/prompts/universal-contract.md` (master protocol)
+**Target:** `.cursorrules` (project root)
 
----
+## Ticket Agent Protocol (MANDATORY)
 
-## Injection Instructions
+Use `specs/{project_name}/.task_runtime/current-task.json` for every task. Resolve `project_name` from `.task_runtime/config.json`, the parent folder of `tasks.md`, or the Git remote. Never create a workspace-root `.task_runtime`.
 
-Copy the **entire content below** into your project's `.cursorrules` file at the root of the repository.
+At task start, atomically write the full task map with the active task `in_progress`. After implementation and tests pass, write the full map with the task `done` only after completing the verification below. The `tasks` object must contain every task ID from `tasks.md`.
 
----
+### Metrics and Dashboard Verification (MANDATORY)
 
-## .cursorrules Content (Copy Everything Below This Line)
+1. Ensure `ENABLE_AUDITOR=true` on the running backend.
+2. The `done` write triggers StatusWatcher and the Auditor.
+3. If needed, call `POST http://localhost:8000/api/v1/sync-current-task` once; never edit the database directly.
+4. Verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}` returns `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability` for the completed task.
+5. Confirm the dashboard Metrics tab displays the score, verdict, and component metrics. If absent, keep the task `in_progress` and resolve the backend issue.
 
----
+Never invent metrics or put metric values in `current-task.json`.
 
-# Ticket Agent Protocol (MANDATORY for Cursor AI)
+### JSON Shape
 
-You are acting as a **Universal Ticket Agent**. Your primary responsibility, in addition to coding, is to sync your progress to a live Kanban board by maintaining a specific JSON state file.
-
-**You MUST follow this protocol for EVERY task you work on. No exceptions.**
-
----
-
-## ðŸ›  The Protocol
-
-### 1. Target File
-Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (where `{project_name}` is the exact folder name under `specs/`)
-**NEVER** create `.task_runtime/` at the project root â€” only under `specs/{project}/`.
-
-> [!IMPORTANT] Until `tasks.md` exists, keep `current-task.json` empty (`tasks:{}`) â€” do NOT treat `spec.md`/`plan.md` as tasks.
-
-### 2. Trigger Points
-- **IMMEDIATELY BEFORE you start coding (first action)**: Write `status: "in_progress"`
-- **IMMEDIATELY AFTER coding + tests pass**: Write `status: "done"`
-- **EVERY WRITE**: You MUST provide the **FULL `tasks` map** (all task IDs $\rightarrow$ current status) to allow backend recovery.
-
-### 3. Required JSON Format
 ```json
 {
   "task_id": "T004",
@@ -45,47 +28,6 @@ Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (wh
   "status": "in_progress",
   "project_name": "my-project",
   "updated_at": "2026-08-12T10:30:00.000Z",
-  "tasks": {
-    "T001": "done",
-    "T002": "done",
-    "T003": "done",
-    "T004": "in_progress",
-    "T005": "todo"
-  }
+  "tasks": {"T001": "done", "T004": "in_progress"}
 }
 ```
-
-### 4. Field Constraints
-- `task_id`: Must match the ID in `tasks.md` (e.g., `T001`).
-- `file`: Relative path of the file you are currently modifying.
-- `status`: Only `"in_progress"` or `"done"`.
-- `project_name`: Exact name from `.task_runtime/config.json` or the `specs/` folder name.
-- `updated_at`: ISO8601 UTC timestamp.
-- `tasks`: A complete dictionary of ALL tasks found in `tasks.md` with their current status.
-
----
-
-## ðŸš€ Workflow Example
-
-**User:** "Implement T012: Add database migrations"
-
-1. **Pre-Coding**: Write to `specs/{project_name}/.task_runtime/current-task.json` with `status: "in_progress"` and the full task map.
-2. **Execution**: Perform the coding, testing, and verification.
-3. **Post-Coding**: Write to `specs/{project_name}/.task_runtime/current-task.json` with `status: "done"` and updated task map.
-
----
-
-## âœ… Compliance Checklist
-Before concluding any response, verify:
-- [ ] Did I write to `current-task.json` at the start AND end?
-- [ ] Is the `project_name` correct?
-- [ ] Did I include the **FULL** `tasks` map?
-- [ ] Is the JSON syntax valid?
-
----
-
-**This protocol is an implementation of the `/prompts/universal-contract.md`. Failure to follow this results in a broken Kanban board sync.**
-
----
-
-## End of Injection

@@ -19,6 +19,10 @@ Write all updates to: `specs/{project_name}/.task_runtime/current-task.json` (wh
 - **COMPLETING a task**: Immediately write `status: "done"`
 - **EVERY WRITE**: You MUST provide the **FULL `tasks` map** (all task IDs $\rightarrow$ current status) to allow backend recovery.
 
+### 2.1 Metrics and Dashboard Verification (MANDATORY)
+
+Before marking a task done, ensure the backend Ticket Agent runs with `ENABLE_AUDITOR=true`, write the full `current-task.json` with the completed task set to `"done"`, and allow the StatusWatcher to trigger the Auditor. Verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}` returns `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability` for the completed task. Confirm the dashboard ticket Metrics tab displays the score, verdict, and component metrics. If missing, keep the task `in_progress`; never invent metrics or edit the database directly.
+
 ### 3. Required JSON Format
 ```json
 {

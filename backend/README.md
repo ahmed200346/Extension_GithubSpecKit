@@ -173,6 +173,43 @@ graph LR
 - Config : `ENABLE_AUDITOR=True`, `AUDITOR_THRESHOLD=75.0`
 - Sur `→ done` : charge `spec.md`, `tasks.md`, `data-model.md`, `git diff`, appelle LLM pour score conformité. Si `< 75` → revert `done → in_progress` + événement `audit`
 
+#### 4.4.1 Calcul et exposition des métriques
+
+Le calcul est réalisé par `app/core/ticket_metrics.py`, puis le rapport est enregistré par l'Auditor dans les métadonnées de l'événement d'audit. Le Ticket Agent ne demande donc pas au LLM d'inventer un score dans `current-task.json` : ce fichier transporte uniquement l'état de la tâche et la map complète des statuts.
+
+Le score global est une moyenne pondérée des quatre composantes :
+
+| Métrique | Poids | Signification |
+|---|---:|---|
+| **Requirement Coverage** | 40 % | Mesure dans quelle proportion les critères d'acceptation de `tasks.md` sont satisfaits. Chaque critère est classé `FULLY_MET`, `PARTIALLY_MET` ou `NOT_MET`; un critère partiel compte pour 50 %. |
+| **Code Quality** | 25 % | Vérifie notamment la gestion des erreurs, la validation des entrées, le typage, les pratiques de sécurité, les tests, la journalisation et la documentation. |
+| **Architecture** | 20 % | Évalue l'adhérence aux couches et conventions du projet : services, repositories, routes/API, modèles/schémas, middleware et utilitaires. |
+| **Traceability** | 15 % | Vérifie le lien entre la tâche, les critères, les fichiers modifiés, les commits et la documentation. |
+
+Formule :
+
+```text
+Conformity Score =
+  Requirement Coverage × 0.40
+  + Code Quality × 0.25
+  + Architecture × 0.20
+  + Traceability × 0.15
+```
+
+Chaque composante est exprimée sur 100. Le verdict est ensuite déterminé par le score : `EXEMPLARY` à partir de 90, `COMPLIANT` à partir de 75, `NEEDS_IMPROVEMENT` à partir de 60, puis `NON_COMPLIANT` en dessous de 60. Avec le seuil par défaut de 75, un score inférieur entraîne le retour de la tâche vers `in_progress`.
+
+#### 4.4.2 Cycle de calcul et stockage
+
+1. L'agent écrit `current-task.json` avec la tâche à `done`.
+2. `StatusWatcher` appelle `SyncService.sync_current_task()` et met à jour le ticket.
+3. Si `ENABLE_AUDITOR=True`, `Auditor.auto_audit_on_done()` collecte les critères, le diff Git, les fichiers modifiés et les documents de spécification.
+4. `build_conformity_report()` calcule le score global, le verdict, les quatre composantes, les preuves et les recommandations.
+5. Le rapport est stocké dans `TicketEvent.event_metadata` avec le contexte `audit_type: "conformity_check"`.
+6. `GET /api/v1/ticket-agent/metrics?project_name=...` agrège les résultats du projet : progression globale, moyenne des scores, nombre de tâches auditées, répartition des verdicts et métriques par tâche.
+7. Le frontend appelle cet endpoint et `GET /api/v1/tickets/{ticket_id}/metrics`, puis affiche le résultat dans l'onglet **Metrics**.
+
+Champs affichés pour une tâche : `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, `traceability` et `last_audit_at`. Tant qu'une tâche n'est pas auditée ou que l'Auditor est désactivé, ces valeurs peuvent être `N/A`.
+
 #### 4.5 Universal Contract (`prompts/universal-contract.md`)
 
 Contrat maître : le LLM écrit **avant** (`in_progress`) et **après** (`done`) chaque tâche dans `specs/{project}/.task_runtime/current-task.json` avec FULL `tasks` map, écriture atomique. Adapters : `CLAUDE.md`, `AGENTS.md`, `.cursorrules`, `.windsurfrules`, `copilot-instructions`.
