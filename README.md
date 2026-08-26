@@ -105,6 +105,14 @@ Le Frontend est une application React moderne utilisant **Material-UI** et **Dat
 
 L'**Agent Ticket** assure une synchronisation autonome et temps réel entre l'avancement technique (via n'importe quel LLM : Claude Code, Codex, Copilot, Cursor, Windsurf) et le tableau Kanban (To Do / In Progress / Done). Il remplace l'ancien Agent JIRA et fonctionne par **fichier unique par projet**.
 
+### 📊 Métriques d'une tâche implémentée
+
+Après le passage d'une tâche à `done`, le Ticket Agent déclenche l'Auditor backend. Le dashboard affiche ensuite dans l'onglet **Metrics** le score de conformité global, le verdict et quatre indicateurs détaillés : couverture des exigences, qualité du code, respect de l'architecture et traçabilité. Il affiche également la date du dernier audit et, lorsqu'elles sont disponibles, les métriques produites par l'agent.
+
+![Métriques d'une tâche implémentée](ticket_metricx.png)
+
+Exemple visible sur la capture : score de conformité `84.8`, verdict `COMPLIANT`, couverture des exigences `100 %`, qualité du code `74 %`, architecture `90 %` et traçabilité `55 %`. Ces valeurs sont calculées par le backend à partir des critères de la tâche et des éléments d'implémentation ; elles ne sont pas écrites manuellement par le LLM dans `current-task.json`.
+
 ### 🎯 Source Unique : `specs/{project}/.task_runtime/current-task.json`
 
 Chaque projet sous `specs/` possède son propre `.task_runtime` isolé :
