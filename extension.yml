@@ -1,0 +1,21 @@
+schema_version: "1.0"
+extension:
+  id: "agentdocx-speckitv2"
+  name: "AgentDocx SpecKit V2"
+  version: "0.0.4"
+  description: "Full-stack multi-agent specification pipeline with VS Code extension control, automated Kanban/Jira sync, and React monitoring dashboard."
+  author: "ahmed200346"
+  repository: "https://github.com/ahmed200346/Extension_GithubSpecKit"
+  license: "MIT"
+  homepage: "https://github.com/ahmed200346/Extension_GithubSpecKit"
+  category: "integration"
+  effect: "read-write"
+requires:
+  speckit_version: ">=0.1.0"
+provides:
+  scripts:
+    - name: "agentdocx-doc-pipeline"
+      file: "scripts/bash/create-doc-pipeline.sh"
+      description: "Runs the AgentDocx multi-agent documentation pipeline"
+      runtimes:
+        - "bash"
