@@ -4,6 +4,8 @@
 **Author**: Ahmed Aziz Ammar (5th Year AI Student)  
 **License**: MIT
 
+**VS Code Marketplace category**: `Integration` — l'extension relie Spec Kit, les CLI d'agents, le backend FastAPI, le frontend React et le Kanban Ticket Agent.
+
 > [!NOTE]
 > **Où se trouve cette extension ?** Branche `extension` (`BrancheExtenion/Extension_GithubSpecKit/agentdocx-speckit/`) — à part du pipeline `main` (`RepoSigma/Extension_GithubSpecKit/backend/`, `frontend/`, `specs/`). Voir `README.md` racine → `🌿 Branches du repo` pour cloner les deux ou les fusionner en `main` avant publication.
 
@@ -23,7 +25,7 @@ AgentDocx is a VS Code extension designed to bridge the gap between AI-generated
 - **Extension**: TypeScript / VS Code API (`src/extension.ts` with `initTaskRuntimes()` per-project)
 - **Backend**: Python / FastAPI / Uvicorn (`scripts/python/start_server.py` → `app.main:app` with `ticket_agent_lifespan`)
 - **Ticket Agent**: `DualWatcherManager` (StructureWatcher + StatusWatcher) → `SyncService` → `Auditor` (threshold 75.0)
-- **Database**: PostgreSQL `StageTal` (production) / SQLite fallback — `Ticket`, `TicketEvent` with `source:"watcher"` tracking
+- **Database**: PostgreSQL `FinalDB` (production) / SQLite fallback — `Ticket`, `TicketEvent` and `TicketMetrics` with `source:"watcher"` tracking
 - **Frontend**: React / JavaScript
 - **Sync Engine**: Watchdog (Python) → FastAPI → React Frontend + Ticket Agent file watcher (`specs/{project}/.task_runtime/current-task.json` → DB → Kanban)
 
@@ -81,7 +83,7 @@ agentdocx-speckit/
 ├── adapters/                 # Universal Contract adapters (claude, codex, copilot, cursor, windsurf)
 ├── prompts/                  # Master protocol (universal-contract.md) + per-IDE adapters
 ├── frontend/                 # React Dashboard
-├── package.json              # version 0.0.3
+├── package.json              # version 0.0.4
 ├── tsconfig.json
 ├── CHANGELOG.md
 └── LICENSE.md

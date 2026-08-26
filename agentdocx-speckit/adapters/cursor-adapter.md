@@ -189,4 +189,8 @@ curl -X POST http://localhost:8000/api/v1/sync-current-task
 
 ---
 
+### Metrics and Dashboard Verification (MANDATORY)
+
+Before marking a task done, ensure `ENABLE_AUDITOR=true`, write the full `current-task.json` with the task set to `"done"`, and allow the StatusWatcher to trigger the Auditor. Verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}` returns `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability`, then confirm the dashboard Metrics tab displays them. If missing, keep the task `in_progress`; never invent metrics or edit the database directly.
+
 ## End of Injection

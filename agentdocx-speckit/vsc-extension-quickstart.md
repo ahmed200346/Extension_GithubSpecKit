@@ -13,11 +13,17 @@
 
 ## 📦 What's in the folder — `0.0.4` Ticket Manager
 
-* `package.json` — manifeste `agentdocx-speckit` `0.0.4` : 6 commandes (`Start Server`, `Start Watcher`, `Start Frontend`, `Trigger Pipeline`, ...)
+* `package.json` — manifeste `agentdocx-speckit` `0.0.4`, catégorie Marketplace `Integration` : 7 commandes (`Start/Stop Server`, `Start/Stop Watcher`, `Start/Stop Frontend`, `Trigger Pipeline`)
 * `src/extension.ts` — `activate()` + `initTaskRuntimes()` : crée `specs/{project}/.task_runtime/current-task.json` **vide** (`tasks:{}`) jusqu'à `tasks.md`, puis `29 todo`
 * `scripts/python/` — `start_server.py` (`app.main:app` + `ticket_agent_lifespan` + auto `Base.metadata.create_all` pour `FinalDB`), `spec_watcher.py` (watchdog `specs/**/*.md` sans créer à la racine)
 * `adapters/` — contrats `universal-contract.md` + 5 adapters (`claude`, `codex`, `copilot`, `cursor`, `windsurf`) tous en `specs/{project}/.task_runtime`
 * `dist/extension.js` — bundle `esbuild` (généré par `npm run compile`)
+
+### Frontend intégré et terminal CLI unique
+
+À l'activation, l'extension lance le serveur FastAPI, le watcher Python et le frontend React avec `npm start`. Leurs sorties sont séparées dans `AgentDocx Server`, `AgentDocx Watcher` et `AgentDocx Frontend`. L'utilisateur ne garde donc qu'un terminal pour le CLI d'agent choisi (Claude Code, Codex/Copilot, Cursor ou Windsurf).
+
+Le CLI écrit `specs/{project}/.task_runtime/current-task.json`. Quand une tâche passe à `done`, le backend `StatusWatcher` déclenche l'Auditor si `ENABLE_AUDITOR=True`. Le dashboard affiche ensuite les métriques de `TicketMetrics` : score de conformité, verdict, couverture des exigences, qualité du code, architecture et traçabilité.
 
 ---
 

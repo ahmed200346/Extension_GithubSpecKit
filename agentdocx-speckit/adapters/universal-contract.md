@@ -106,6 +106,12 @@ The backend watcher (`watcher.py`) detects file changes via `watchfiles` and:
    - **Every entry in the `tasks` map** (recovery mechanism)
 4. Creates `TicketEvent` audit trail (`author_type: "agent"`)
 
+When a task is marked `done`, the StatusWatcher triggers the backend Auditor when `ENABLE_AUDITOR=true`. The Auditor calculates and persists `conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, and `traceability`. The dashboard only displays these backend results; assistants MUST NOT invent or write metric values into `current-task.json`.
+
+### 5.1 Completion Metrics Verification (MANDATORY)
+
+Before declaring a task complete, the assistant MUST verify `GET http://localhost:8000/api/v1/ticket-agent/metrics?project_name={project_name}` returns the completed task's audit metrics and confirm the dashboard Metrics tab displays them. If metrics are unavailable, keep the task `in_progress` and resolve the auditor/backend issue.
+
 ---
 
 ## 6. Compliance Checklist (AI Self-Verification)

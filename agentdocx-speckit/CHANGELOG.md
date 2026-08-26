@@ -4,6 +4,19 @@ Toutes les modifications notables apportées à l'extension **AgentDocx_SpecKit*
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [0.0.4] - 2026-08-26
+
+### Ajouté
+* **Catégorie Marketplace `Integration`** : le manifeste VS Code classe AgentDocx comme extension d'intégration entre Spec Kit, les CLI d'agents, FastAPI, React et le Ticket Agent.
+* **TicketMetrics** : documentation et affichage du score de conformité, du verdict, de la couverture des exigences, de la qualité du code, de l'architecture et de la traçabilité.
+* **Frontend intégré** : l'extension lance automatiquement React et centralise ses logs dans le canal `AgentDocx Frontend`, ce qui laisse un seul terminal à l'utilisateur pour son CLI d'agent.
+
+### Modifié
+* `package.json` : catégorie VS Code changée de `Other` vers `Integration` et version stabilisée à `0.0.4`.
+* `README.md` et `vsc-extension-quickstart.md` : alignement de la version, de `FinalDB`, des commandes et du flux frontend intégré.
+
+---
+
 ## [0.0.3] - 2026-08-25
 
 ### Ajouté
