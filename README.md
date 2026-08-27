@@ -306,6 +306,40 @@ erDiagram
     tickets ||--o{ ticket_metrics : references
     projects ||--o{ ticket_metrics : references
 ```
+
+### 📋 Explication des Tables
+
+#### Tables documentaires (V1 — pipeline agentique)
+
+| Table | Rôle | Champs clés |
+|---|---|---|
+| **`projects`** | Entité racine — chaque projet suivi | `id` (UUID PK), `name`, `repo_url`, `created_at` |
+| **`artifacts`** | Fichiers SDD surveillés (spec.md, plan.md, tasks.md…) | `project_id` FK, `current_file_hash` (SHA-256), `source_path`, `artifact_type` (spec/plan/task/constitution…) |
+| **`doc_versions`** | Versions compilées d'un artefact (PDF immutable) | `artifact_id` FK, `version_no` (incrémental), `pdf_path`, `source_file_hash`, `global_kpi_score`, `pipeline_run_id` FK |
+| **`pipeline_runs`** | Traçabilité d'un run complet du graphe LangGraph | `artifact_id` FK, `current_stage` (parsing/parallel_enrichment/writing/layout/rendering/completed/failed), sorties brutes de chaque agent (`structured_json`, `summary_output`, `diagram_output`, `glossary_output`, `written_doc`, `layout_output`), évaluations JSON (`parsing_eval`…`layout_eval`), `global_kpi_score`, `error_message`, `started_at`, `completed_at` |
+
+#### Tables de tickets (V2 — Agent Ticket unifié)
+
+| Table | Rôle | Champs clés |
+|---|---|---|
+| **`tickets`** | Tâches issues de `tasks.md`, synchronisées avec le Kanban | `project_id` FK cascade, `ticket_id` (T001, T002…), `status` (todo/in_progress/done), `source_file_path` (tasks.md#T004), `checkbox_state`, `line_number` |
+| **`ticket_events`** | Historique des transitions de statut | `ticket_id` FK, `event_type`, `old_status`, `new_status`, `event_metadata` JSONB — source : `initial_ingestion` / `watcher` / `audit` |
+| **`ticket_comments`** | Commentaires sur un ticket | `ticket_id` FK, `author_name`, `author_type` (human/agent), `content` |
+| **`ticket_metrics`** | Métriques de conformité (Auditor backend) | `ticket_id` FK unique cascade, `project_id` FK cascade, `conformity_score`, `verdict` (COMPLIANT / NON-COMPLIANT), `requirement_coverage`, `code_quality`, `architecture`, `traceability`, `last_audit_at`, `audit_metadata` JSONB |
+
+#### Cascades et propriétés
+
+```
+Project ──cascade──> Ticket ──cascade──> TicketEvent
+                                  ──cascade──> TicketComment
+                                  ──cascade──> TicketMetrics
+Project ──cascade──> TicketMetrics
+```
+
+- **`DELETE FROM projects`** supprime toute la hiérarchie : artifacts, doc_versions, pipeline_runs, tickets, ticket_events, ticket_comments, ticket_metrics
+- **`ticket_metrics`** est la table dédiée aux métriques : `1 ticket → 0..1 metrics` — remplace le scan `ticket_events.event_metadata` pour `GET /tickets/{id}/metrics` (fini le `N/A`)
+- **`specs/{project}/.task_runtime/current-task.json`** reste la seule source disque ; `tickets` / `ticket_metrics` en sont le miroir DB
+
 ---
 
 ## 🔌 Extension VS Code SpecKit (Nouveau)
