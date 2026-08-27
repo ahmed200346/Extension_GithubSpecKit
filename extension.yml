@@ -12,10 +12,14 @@ extension:
   effect: "read-write"
 requires:
   speckit_version: ">=0.1.0"
+  tools:
+    python: ">=3.10"
+    node: ">=18"
+    postgresql: ">=12"
 provides:
   scripts:
     - name: "agentdocx-doc-pipeline"
-      file: "scripts/bash/create-doc-pipeline.sh"
+      file: "agentdocx-speckit/scripts/bash/create-doc-pipeline.sh"
       description: "Runs the AgentDocx multi-agent documentation pipeline"
       runtimes:
         - "bash"
