@@ -2,7 +2,7 @@ schema_version: "1.0"
 extension:
   id: "agentdocx-speckitv2"
   name: "AgentDocx SpecKit V2"
-  version: "0.0.4"
+  version: "0.0.5"
   description: "Full-stack multi-agent specification pipeline with VS Code extension control, automated Kanban/Jira sync, and React monitoring dashboard."
   author: "ahmed200346"
   repository: "https://github.com/ahmed200346/Extension_GithubSpecKit"
