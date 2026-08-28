@@ -4,6 +4,13 @@ Toutes les modifications notables apportées à l'extension **AgentDocx_SpecKit*
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [0.0.7] - 2026-08-28
+
+### Corrigé
+* **Schema `requires.tools`** : correction du format dans `extension.yml` — passage de mapping (`python: ">=3.10"`) à liste d'objets (`- name: python / version: ">=3.10" / required: true`) pour conformité au schéma Spec Kit.
+
+---
+
 ## [0.0.6] - 2026-08-28
 
 ### Corrigé

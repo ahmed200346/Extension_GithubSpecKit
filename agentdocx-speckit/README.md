@@ -1,6 +1,6 @@
 # 🚀 AgentDocx - Spec Kit Orchestrator
 
-**Version**: 0.0.6  
+**Version**: 0.0.7  
 **Author**: Ahmed Aziz Ammar (5th Year AI Student)  
 **License**: MIT
 
@@ -83,7 +83,7 @@ agentdocx-speckit/
 ├── adapters/                 # Universal Contract adapters (claude, codex, copilot, cursor, windsurf)
 ├── prompts/                  # Master protocol (universal-contract.md) + per-IDE adapters
 ├── frontend/                 # React Dashboard
-├── package.json              # version 0.0.6
+├── package.json              # version 0.0.7
 ├── tsconfig.json
 ├── CHANGELOG.md
 └── LICENSE.md
