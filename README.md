@@ -1,7 +1,7 @@
 # 🚀 Spec Kit — AgentDocx Ticket Manager
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-0.0.5-blue?style=for-the-badge" alt="version" />
+  <img src="https://img.shields.io/badge/version-0.0.6-blue?style=for-the-badge" alt="version" />
   <img src="https://img.shields.io/badge/python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="python" />
   <img src="https://img.shields.io/badge/FastAPI-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="fastapi" />
   <img src="https://img.shields.io/badge/PostgreSQL-Database-336791?style=for-the-badge&logo=postgresql&logoColor=white" alt="postgres" />
@@ -53,7 +53,7 @@ Le projet adopte une architecture modulaire où l'IA n'est pas seulement un "cha
 
 | Module | README détaillé | Contenu |
 |---|---|---|
-| **🧩 Extension VS Code** | [`agentdocx-speckit/README.md`](agentdocx-speckit/README.md) | Auto-init `.task_runtime`, Dual Watchers, `start_server.py`, `spec_watcher.py`, packaging `0.0.5` |
+| **🧩 Extension VS Code** | [`agentdocx-speckit/README.md`](agentdocx-speckit/README.md) | Auto-init `.task_runtime`, Dual Watchers, `start_server.py`, `spec_watcher.py`, packaging `0.0.6` |
 | **🖥️ Frontend Dashboard** | [`frontend/README.md`](frontend/README.md) | React/MUI, Kanban Board, `kanbanSlice`, Drag & Drop, polling + WebSocket |
 | **⚙️ Backend Moteur** | [`backend/README.md`](backend/README.md) | LLM providers (ollama/gemini/nvidia), LangGraph, Ticket Agent (`manager`, `watcher`, `sync_service`, `auditor`), API & BDD |
 
@@ -188,7 +188,7 @@ Adapters fournis pour chaque IDE :
 
 Le système s'appuie sur **PostgreSQL `DATABASE`** (création autonome via `Base.metadata.create_all` au lancement) pour l'immuabilité des versions et la traçabilité complète.
 
-**Nouveautés `0.0.5` :**
+**Nouveautés `0.0.6` :**
 - **`ticket_metrics`** : table dédiée `1 ticket → 0..1 metrics` (`conformity_score`, `verdict`, `requirement_coverage`, `code_quality`, `architecture`, `traceability`, `last_audit_at`, `audit_metadata JSONB`) — remplace le scan `ticket_events.event_metadata` pour `GET /tickets/{id}/metrics` (fini le `N/A`)
 - **Cascades** : `Project -- cascade --> Ticket -- cascade --> TicketEvent/TicketComment/TicketMetrics` et `Project -- cascade --> TicketMetrics` → `DELETE FROM projects` supprime tout (plus de tickets orphelins après `rm -rf specs/`)
 - **Isolation** : `specs/{project}/.task_runtime/current-task.json` reste la seule source disque, `tickets`/`ticket_metrics` en sont le miroir DB
@@ -361,14 +361,14 @@ L'extension VS Code **AgentDocx SpecKit** offre une expérience intégrée dans 
 > ![Installation VSIX](ExtensionVSCode.png)
 > *(Capture : icône Extensions → "..." → "Install from VSIX..." → sélectionner le fichier .vsix)*
 
-1. Téléchargez `agentdocx-speckit-0.0.5.vsix`.
+1. Téléchargez `agentdocx-speckit-0.0.6.vsix`.
 2. `Ctrl+Shift+P` $\rightarrow$ **Extensions: Install from VSIX...**
 
 ---
 
 ## 🌿 Branches du repo — où se trouve quoi ?
 
-> **Depuis `0.0.5`, tout est dans `main` au même niveau** (plus besoin de 2 clones) :
+> **Depuis `0.0.6`, tout est dans `main` au même niveau** (plus besoin de 2 clones) :
 
 | Emplacement dans `main` | Contenu | README détaillé |
 |---|---|---|
@@ -546,7 +546,7 @@ cd agentdocx-speckit
 npm install              # installe tsc, esbuild, eslint (une seule fois)
 npm run compile          # vérifie types + lint + bundle
 # ou package complet :
-npx @vscode/vsce package # génère agentdocx-speckit-0.0.5.vsix
+npx @vscode/vsce package # génère agentdocx-speckit-0.0.6.vsix
 cd ..
 ```
 
@@ -554,7 +554,7 @@ cd ..
 
 | Étape | Action | Vérification |
 |:---:|---|---|
-| **1️⃣** | **Extension** : Installez `agentdocx-speckit-0.0.5.vsix` → `Ctrl+Shift+P` → `Developer: Reload Window` | `Output > AgentDocx Server` affiche `✔ [TicketManager] Dual watchers started` + `StatusWatcher Monitoring .../.task_runtime` |
+| **1️⃣** | **Extension** : Installez `agentdocx-speckit-0.0.6.vsix` → `Ctrl+Shift+P` → `Developer: Reload Window` | `Output > AgentDocx Server` affiche `✔ [TicketManager] Dual watchers started` + `StatusWatcher Monitoring .../.task_runtime` |
 | **2️⃣** | **Frontend** : `AgentDocx: Start Frontend` dans la palette (ou `cd frontend && npm start`) | `Output > AgentDocx Frontend` → `webpack compiled successfully` → `http://localhost:5000` |
 | **3️⃣** | **Pipeline** : Modifiez un fichier dans `specs/{project}/` ou `AgentDocx: Trigger Pipeline` | `Output > AgentDocx Watcher` → `Pipeline exécuté avec succès` |
 | **4️⃣** | **Kanban** : Dashboard → `Ingest Tasks` → lancez `Claude Code : /speckit-implement T009` | Kanban passe `todo → in_progress → done` en temps réel (`source:"watcher"` dans `Ticket Events`) |

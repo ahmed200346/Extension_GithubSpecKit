@@ -4,6 +4,13 @@ Toutes les modifications notables apportées à l'extension **AgentDocx_SpecKit*
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [0.0.6] - 2026-08-28
+
+### Corrigé
+* **Bash operators** : remplacement des tokens `\vert{}` corrompus par les opérateurs `|` et `||` natifs dans `create-doc-pipeline.sh`.
+
+---
+
 ## [0.0.5] - 2026-08-28
 
 ### Corrigé
