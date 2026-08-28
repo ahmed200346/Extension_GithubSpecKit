@@ -24,7 +24,7 @@ fi
 find_repo_root() {
     local dir="$1"
     while [ "$dir" != "/" ] && [ "$dir" != "." ]; do
-        if [ -d "$dir/.git" ] \vert{}\vert{} [ -d "$dir/scripts" ]; then
+        if [ -d "$dir/.git" ] || [ -d "$dir/scripts" ]; then
             echo "$dir"
             return 0
         fi
@@ -68,14 +68,14 @@ NEXT=$((HIGHEST + 1))
 WORKFLOW_NUM=$(printf "\%03d" "$NEXT")
 
 # Formatage du nom de dossier et de branche Git
-BRANCH_SUFFIX=$(echo "$DESCRIPTION" \vert{} tr '[:upper:]' '[:lower:]' \vert{} sed 's/[^a-zA-Z0-9]/-/g' \vert{} sed 's/-\+/-/g' \vert{} sed 's/^-//' \vert{} sed 's/-$//')
-WORDS=$(echo "$BRANCH_SUFFIX" | tr '-' '\n' | grep -v '^$' \vert{} head -3 \vert{} tr '\n' '-' \vert{} sed 's/-$//')
+BRANCH_SUFFIX=$(echo "$DESCRIPTION" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-zA-Z0-9]/-/g' | sed 's/-\+/-/g' | sed 's/^-//' | sed 's/-$//')
+WORDS=$(echo "$BRANCH_SUFFIX" | tr '-' '\n' | grep -v '^$' | head -3 | tr '\n' '-' | sed 's/-$//')
 BRANCH_NAME="doc-pipeline/${WORKFLOW_NUM}-${WORDS}"
 WORKFLOW_ID="doc-pipeline-${WORKFLOW_NUM}"
 
 # Création de la branche Git si Git est disponible
 if [ "$HAS_GIT" = true ]; then
-    git checkout -b "$BRANCH_NAME" 2>/dev/null \vert{}\vert{} git checkout "$BRANCH_NAME" 2>/dev/null || true
+    git checkout -b "$BRANCH_NAME" 2>/dev/null || git checkout "$BRANCH_NAME" 2>/dev/null || true
 else
     >&2 echo "[doc-pipeline] Warning: Git not detected; skipped branch creation"
 fi
