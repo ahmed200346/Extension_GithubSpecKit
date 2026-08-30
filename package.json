@@ -2,7 +2,7 @@
   "name": "agentdocx-speckit",
   "displayName": "AgentDocx SpecKit",
   "description": "Extension VS Code pour le suivi et le déclenchement du pipeline de documentation Spec Kit",
-  "version": "0.0.4",
+  "version": "0.0.7",
   "publisher": "agentdocx",
   "repository": {
     "type": "git",

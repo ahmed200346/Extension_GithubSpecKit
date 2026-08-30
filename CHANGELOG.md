@@ -4,6 +4,32 @@ Toutes les modifications notables apportées à l'extension **AgentDocx_SpecKit*
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/).
 
+## [0.0.7] - 2026-08-28
+
+### Corrigé
+* **Schema `requires.tools`** : correction du format dans `extension.yml` — passage de mapping (`python: ">=3.10"`) à liste d'objets (`- name: python / version: ">=3.10" / required: true`) pour conformité au schéma Spec Kit.
+
+---
+
+## [0.0.6] - 2026-08-28
+
+### Corrigé
+* **Bash operators** : remplacement des tokens `\vert{}` corrompus par les opérateurs `|` et `||` natifs dans `create-doc-pipeline.sh`.
+
+---
+
+## [0.0.5] - 2026-08-28
+
+### Corrigé
+* **Script path** : correction du chemin `file:` dans `extension.yml` — `scripts/bash/create-doc-pipeline.sh` → `agentdocx-speckit/scripts/bash/create-doc-pipeline.sh` (le script est dans le sous-dossier `agentdocx-speckit/`, pas à la racine).
+* **Required Tools** : ajout des versions minimales requises dans `extension.yml` — Python >=3.10, Node.js >=18, PostgreSQL >=12.
+
+### Modifié
+* `extension.yml` : version bump `0.0.4 → 0.0.5`, ajout de la section `requires.tools`.
+* `package.json` : version bump `0.0.4 → 0.0.5`.
+
+---
+
 ## [0.0.4] - 2026-08-26
 
 ### Ajouté
